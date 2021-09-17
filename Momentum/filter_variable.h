@@ -33,10 +33,10 @@
 #include "Arduino.h"
 #include "AudioStream.h"
 
-class AudioFilterStateVariableTS: public AudioStream
+class AudioFilterStateVariable: public AudioStream
 {
 public:
-	AudioFilterStateVariableTS() : AudioStream(2, inputQueueArray) {
+	AudioFilterStateVariable() : AudioStream(2, inputQueueArray) {
 		frequency(1000);
 		octaveControl(1.0); // default values
 		resonance(0.707);

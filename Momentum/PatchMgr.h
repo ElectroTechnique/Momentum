@@ -1,11 +1,10 @@
 /*
-  Momentum patch saving and recall works like an analogue polysynth from the late 70s (Prophet 5).
+  TSynth patch saving and recall works like an analogue polysynth from the late 70s (Prophet 5).
   When you recall a patch, all the front panel controls will be different values from those saved in the patch. 
   Moving them will cause a jump to the current value.
 */
 //Agileware CircularBuffer available in libraries manager
 #include <CircularBuffer.h>
-#include "Constants.h"
 
 #define TOTALCHARS 64
 

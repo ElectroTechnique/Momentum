@@ -1,5 +1,5 @@
-#ifndef MOMENTUM_UTILS_H
-#define MOMENTUM_UTILS_H
+#ifndef TSYNTH_UTILS_H
+#define TSYNTH_UTILS_H
 
 #include <Arduino.h>
 

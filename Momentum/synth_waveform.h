@@ -62,10 +62,10 @@ typedef struct step_state
 } step_state ;
 
 
-class BandLimitedWaveformTS
+class BandLimitedWaveform
 {
 public:
-  BandLimitedWaveformTS (void) ;
+  BandLimitedWaveform (void) ;
   int16_t generate_sawtooth (uint32_t new_phase, int i) ;
   int16_t generate_square (uint32_t new_phase, int i) ;
   int16_t generate_pulse (uint32_t new_phase, uint32_t pulse_width, int i) ;
@@ -184,7 +184,7 @@ private:
   short    tone_type;
   int16_t  tone_offset;
     int16_t   syncFlag;
-        BandLimitedWaveformTS band_limit_waveform ;
+        BandLimitedWaveform band_limit_waveform ;
 };
 
 
@@ -275,7 +275,7 @@ private:
   uint8_t  tone_type;
   uint8_t  modulation_type;
     int16_t   syncFlag;
-        BandLimitedWaveformTS band_limit_waveform ;
+        BandLimitedWaveform band_limit_waveform ;
 };
 
 

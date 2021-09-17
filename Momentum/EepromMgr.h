@@ -16,10 +16,12 @@
 
 FLASHMEM void storeGlideShape(byte type){
   EEPROM.update(EEPROM_GLIDE_SHAPE, type);
+  Serial.println(type);
 }
 
 FLASHMEM void storeAmpEnv(byte type){
   EEPROM.update(EEPROM_AMP_ENV, type);
+  Serial.println(type);
 }
 
 FLASHMEM void storeFiltEnv(byte type){
@@ -27,21 +29,15 @@ FLASHMEM void storeFiltEnv(byte type){
 }
 
 FLASHMEM int8_t getGlideShape() {
-  int8_t gs = (int8_t)EEPROM.read(EEPROM_GLIDE_SHAPE);
-  if (gs < 0 || gs > 1) gs = 1;//If EEPROM has no glide shape (Exp type)
-  return gs;
+  return  (int8_t)EEPROM.read(EEPROM_GLIDE_SHAPE);
 }
 
 FLASHMEM int8_t getAmpEnv() {
-  int8_t ae = (int8_t)EEPROM.read(EEPROM_AMP_ENV);
-  if (ae < -8 || ae > 8) ae = -128;//If EEPROM has no amp env (Lin type)
-  return ae;
+  return  (int8_t)EEPROM.read(EEPROM_AMP_ENV);
 }
 
 FLASHMEM int8_t getFiltEnv() {
-  int8_t fe = (int8_t)EEPROM.read(EEPROM_FILT_ENV);
-  if (fe < -8 || fe > 8) fe = -128;//If EEPROM has no filter env (Lin type)
-  return fe;
+  return  (int8_t)EEPROM.read(EEPROM_FILT_ENV);
 }
 
 FLASHMEM int getMIDIChannel() {

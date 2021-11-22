@@ -1,25 +1,25 @@
 #ifndef Oscilloscope_h_
 #define Oscilloscope_h_
 #include "AudioStream.h"
-#include "ST7735_t3.h"
+#include "ILI9341_t3n.h"
 
 class Oscilloscope : public AudioStream {
   public:
     Oscilloscope(void) : AudioStream(1, inputQueueArray) {
     }
     virtual void update(void);
-    void ScreenSetup(ST7735_t3*);
+    void ScreenSetup(ILI9341_t3n*);
     void Display(void);
     void AddtoBuffer(int16_t*);
 
   private:
     audio_block_t *inputQueueArray[1];
-    ST7735_t3 *display;
+    ILI9341_t3n *display;
     int16_t buffer[AUDIO_BLOCK_SAMPLES];
 };
 #endif
 
-void Oscilloscope::ScreenSetup(ST7735_t3 *screen) {
+void Oscilloscope::ScreenSetup(ILI9341_t3n *screen) {
   display = screen;
 }
 

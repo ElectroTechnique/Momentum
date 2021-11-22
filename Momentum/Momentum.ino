@@ -21,7 +21,7 @@
   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
   SOFTWARE.
 
-  ElectroTechnique Momentum - Firmware Rev 3.00
+  ElectroTechnique Momentum - Firmware Rev 1.00
   TEENSY MicroMod - 12 VOICES
 
   Arduino IDE Tools Settings:
@@ -46,6 +46,8 @@
     Agileware CircularBuffer, Adafruit_GFX (available in Arduino libraries manager)
 */
 
+//******************NEW*********************************
+
 #include <Adafruit_GFX.h>
 #include <ILI9341_t3n.h>
 #include <vector>
@@ -69,7 +71,7 @@
 #include "Voice.h"
 #include "VoiceGroup.h"
 // This should be included here, but it introduces a circular dependency.
-// #include "Display.h"
+// #include "ILI9341Display.h"
 
 #define PARAMETER 0     //The main page for displaying the current patch and control (parameter) changes
 #define RECALL 1        //Patches list
@@ -96,8 +98,8 @@ uint8_t activeGroupIndex = 0;
 USBHost myusb;
 USBHub hub1(myusb);
 USBHub hub2(myusb);
-//MIDIDevice midi1(myusb); //Small Buffer
-MIDIDevice_BigBuffer midi1(myusb); // Big Buffer - if your MIDI Compliant controller has problems
+MIDIDevice midi1(myusb);
+//MIDIDevice_BigBuffer midi1(myusb); // Try this if your MIDI Compliant controller has problems
 
 //MIDI 5 Pin DIN
 MIDI_CREATE_INSTANCE(HardwareSerial, Serial1, MIDI);
@@ -121,7 +123,6 @@ long earliestTime = millis(); //For voice allocation - initialise to now
 
 FLASHMEM void setup()
 {
-  Serial.println(VERSION);
   // Initialize the voice groups.
   uint8_t total = 0;
   while (total < global.maxVoices())
@@ -156,6 +157,7 @@ FLASHMEM void setup()
       savePatch("1", INITPATCH);
       loadPatches();
     }
+    recallPatch(patchNo); //Load first patch
   }
   else
   {
@@ -386,10 +388,12 @@ FLASHMEM void updateUnison(uint8_t unison)
   else if (unison == 1)
   {
     showCurrentParameterPage("Dyn. Unison", "On");
+
   }
   else
   {
     showCurrentParameterPage("Chd. Unison", "On");
+
   }
 }
 
@@ -1174,7 +1178,6 @@ FLASHMEM void recallPatch(int patchNo)
   }
 }
 
-//0 to 49 currently in use
 FLASHMEM void setCurrentPatchData(String data[])
 {
   updatePatch(data[0], patchNo);
@@ -1184,6 +1187,7 @@ FLASHMEM void setCurrentPatchData(String data[])
   updateUnison(data[4].toInt());
   updateOscFX(data[5].toInt());
   updateDetune(data[6].toFloat(), data[48].toInt());
+  // Why is this MIDI Clock stuff part of the patch??
   lfoSyncFreq = data[7].toInt();
   midiClkTimeInterval = data[8].toInt();
   lfoTempoValue = data[9].toFloat();
@@ -1233,6 +1237,8 @@ FLASHMEM void setCurrentPatchData(String data[])
   updatePitchEnv(data[46].toFloat());
   velocitySens = data[47].toFloat();
   groupvec[activeGroupIndex]->setMonophonic(data[49].toInt());
+  //  SPARE1 = data[50].toFloat();
+  //  SPARE2 = data[51].toFloat();
 
   Serial.print(F("Set Patch: "));
   Serial.println(data[0]);
@@ -1244,149 +1250,165 @@ FLASHMEM String getCurrentPatchData()
   return patchName + "," + String(groupvec[activeGroupIndex]->getOscLevelA()) + "," + String(groupvec[activeGroupIndex]->getOscLevelB()) + "," + String(groupvec[activeGroupIndex]->getPinkNoiseLevel() - groupvec[activeGroupIndex]->getWhiteNoiseLevel()) + "," + String(p.unisonMode) + "," + String(groupvec[activeGroupIndex]->getOscFX()) + "," + String(p.detune, 5) + "," + String(lfoSyncFreq) + "," + String(midiClkTimeInterval) + "," + String(lfoTempoValue) + "," + String(groupvec[activeGroupIndex]->getKeytrackingAmount()) + "," + String(p.glideSpeed, 5) + "," + String(p.oscPitchA) + "," + String(p.oscPitchB) + "," + String(groupvec[activeGroupIndex]->getWaveformA()) + "," + String(groupvec[activeGroupIndex]->getWaveformB()) + "," +
          String(groupvec[activeGroupIndex]->getPwmSource()) + "," + String(groupvec[activeGroupIndex]->getPwmAmtA()) + "," + String(groupvec[activeGroupIndex]->getPwmAmtB()) + "," + String(groupvec[activeGroupIndex]->getPwmRate()) + "," + String(groupvec[activeGroupIndex]->getPwA()) + "," + String(groupvec[activeGroupIndex]->getPwB()) + "," + String(groupvec[activeGroupIndex]->getResonance()) + "," + String(groupvec[activeGroupIndex]->getCutoff()) + "," + String(groupvec[activeGroupIndex]->getFilterMixer()) + "," + String(groupvec[activeGroupIndex]->getFilterEnvelope()) + "," + String(groupvec[activeGroupIndex]->getPitchLfoAmount(), 5) + "," + String(groupvec[activeGroupIndex]->getPitchLfoRate(), 5) + "," + String(groupvec[activeGroupIndex]->getPitchLfoWaveform()) + "," + String(int(groupvec[activeGroupIndex]->getPitchLfoRetrig())) + "," + String(int(groupvec[activeGroupIndex]->getPitchLfoMidiClockSync())) + "," + String(groupvec[activeGroupIndex]->getFilterLfoRate(), 5) + "," +
          groupvec[activeGroupIndex]->getFilterLfoRetrig() + "," + groupvec[activeGroupIndex]->getFilterLfoMidiClockSync() + "," + groupvec[activeGroupIndex]->getFilterLfoAmt() + "," + groupvec[activeGroupIndex]->getFilterLfoWaveform() + "," + groupvec[activeGroupIndex]->getFilterAttack() + "," + groupvec[activeGroupIndex]->getFilterDecay() + "," + groupvec[activeGroupIndex]->getFilterSustain() + "," + groupvec[activeGroupIndex]->getFilterRelease() + "," + groupvec[activeGroupIndex]->getAmpAttack() + "," + groupvec[activeGroupIndex]->getAmpDecay() + "," + groupvec[activeGroupIndex]->getAmpSustain() + "," + groupvec[activeGroupIndex]->getAmpRelease() + "," +
-         String(groupvec[activeGroupIndex]->getEffectAmount()) + "," + String(groupvec[activeGroupIndex]->getEffectMix()) + "," + String(groupvec[activeGroupIndex]->getPitchEnvelope()) + "," + String(velocitySens) + "," + String(p.chordDetune) + "," + String(groupvec[activeGroupIndex]->getMonophonicMode())
-         + "," + String(0.0f) + "," + String(0.0f);
+         String(groupvec[activeGroupIndex]->getEffectAmount()) + "," + String(groupvec[activeGroupIndex]->getEffectMix()) + "," + String(groupvec[activeGroupIndex]->getPitchEnvelope()) + "," + String(velocitySens) + "," + String(p.chordDetune) + "," + String(groupvec[activeGroupIndex]->getMonophonicMode()) + "," + String(0.0f) + "," + String(0.0f);
 }
 
 void checkHardware()
 {
-byte mux1Read = 0; 
-byte mux2Read = 0; 
-byte muxInput = 0; 
-  switch (muxInput)
-  {
-    case MUX1_noiseLevel:
-      midiCCOut(CCnoiseLevel, mux1Read);
-      myControlChange(midiChannel, CCnoiseLevel, mux1Read);
+  controlParameter p = control_noiseLevel;
+  int val = 0;
+  switch (p) {
+    case control_noiseLevel:
+      midiCCOut(CCnoiseLevel, val);
+      myControlChange(midiChannel, CCnoiseLevel, val);
       break;
-    case MUX1_pitchLfoRate:
-      midiCCOut(CCoscLfoRate, mux1Read);
-      myControlChange(midiChannel, CCoscLfoRate, mux1Read);
+    case control_pitchLfoRate:
+      midiCCOut(CCoscLfoRate, val);
+      myControlChange(midiChannel, CCoscLfoRate, val);
       break;
-    case MUX1_pitchLfoWaveform:
-      midiCCOut(CCoscLfoWaveform, mux1Read);
-      myControlChange(midiChannel, CCoscLfoWaveform, mux1Read);
+    case control_pitchLfoWaveform:
+      midiCCOut(CCoscLfoWaveform, val);
+      myControlChange(midiChannel, CCoscLfoWaveform, val);
       break;
-    case MUX1_pitchLfoAmount:
-      midiCCOut(CCosclfoamt, mux1Read);
-      myControlChange(midiChannel, CCosclfoamt, mux1Read);
+    case control_pitchLfoAmount:
+      midiCCOut(CCosclfoamt, val);
+      myControlChange(midiChannel, CCosclfoamt, val);
       break;
-    case MUX1_detune:
-      midiCCOut(CCdetune, mux1Read);
-      myControlChange(midiChannel, CCdetune, mux1Read);
+    case control_detune:
+      midiCCOut(CCdetune, val);
+      myControlChange(midiChannel, CCdetune, val);
       break;
-    case MUX1_oscMix:
-      midiCCOut(CCoscLevelA, mux1Read);
-      midiCCOut(CCoscLevelB, mux1Read);
-      myControlChange(midiChannel, CCoscLevelA, OSCMIXA[mux1Read]);
-      myControlChange(midiChannel, CCoscLevelB, OSCMIXB[mux1Read]);
+    case control_oscMix:
+      midiCCOut(CCoscLevelA, val);
+      midiCCOut(CCoscLevelB, val);
+      myControlChange(midiChannel, CCoscLevelA, OSCMIXA[val]);
+      myControlChange(midiChannel, CCoscLevelB, OSCMIXB[val]);
       break;
-    case MUX1_filterAttack:
-      midiCCOut(CCfilterattack, mux1Read);
-      myControlChange(midiChannel, CCfilterattack, mux1Read);
+    case control_filterAttack:
+      midiCCOut(CCfilterattack, val);
+      myControlChange(midiChannel, CCfilterattack, val);
       break;
-    case MUX1_filterDecay:
-      midiCCOut(CCfilterdecay, mux1Read);
-      myControlChange(midiChannel, CCfilterdecay, mux1Read);
+    case control_filterDecay:
+      midiCCOut(CCfilterdecay, val);
+      myControlChange(midiChannel, CCfilterdecay, val);
       break;
-    case MUX1_pwmAmountA:
-      midiCCOut(CCpwA, mux1Read);
-      myControlChange(midiChannel, CCpwA, mux1Read);
+    case control_pwmAmountA:
+      midiCCOut(CCpwA, val);
+      myControlChange(midiChannel, CCpwA, val);
       break;
-    case MUX1_waveformA:
-      midiCCOut(CCoscwaveformA, mux1Read);
-      myControlChange(midiChannel, CCoscwaveformA, mux1Read);
+    case control_waveformA:
+      midiCCOut(CCoscwaveformA, val);
+      myControlChange(midiChannel, CCoscwaveformA, val);
       break;
-    case MUX1_pitchA:
-      midiCCOut(CCpitchA, mux1Read);
-      myControlChange(midiChannel, CCpitchA, mux1Read);
+    case control_pitchA:
+      midiCCOut(CCpitchA, val);
+      myControlChange(midiChannel, CCpitchA, val);
       break;
-    case MUX1_pwmAmountB:
-      midiCCOut(CCpwB, mux1Read);
-      myControlChange(midiChannel, CCpwB, mux1Read);
+    case control_pwmAmountB:
+      midiCCOut(CCpwB, val);
+      myControlChange(midiChannel, CCpwB, val);
       break;
-    case MUX1_waveformB:
-      midiCCOut(CCoscwaveformB, mux1Read);
-      myControlChange(midiChannel, CCoscwaveformB, mux1Read);
+    case control_waveformB:
+      midiCCOut(CCoscwaveformB, val);
+      myControlChange(midiChannel, CCoscwaveformB, val);
       break;
-    case MUX1_pitchB:
-      midiCCOut(CCpitchB, mux1Read);
-      myControlChange(midiChannel, CCpitchB, mux1Read);
+    case control_pitchB:
+      midiCCOut(CCpitchB, val);
+      myControlChange(midiChannel, CCpitchB, val);
       break;
-    case MUX1_pwmRate:
-      midiCCOut(CCpwmRate, mux1Read);
-      myControlChange(midiChannel, CCpwmRate, mux1Read);
+    case control_pwmRate:
+      midiCCOut(CCpwmRate, val);
+      myControlChange(midiChannel, CCpwmRate, val);
       break;
-    case MUX1_pitchEnv:
-      midiCCOut(CCpitchenv, mux1Read);
-      myControlChange(midiChannel, CCpitchenv, mux1Read);
+    case control_pitchEnv:
+      midiCCOut(CCpitchenv, val);
+      myControlChange(midiChannel, CCpitchenv, val);
       break;
-    case MUX2_attack:
-      midiCCOut(CCampattack, mux2Read);
-      myControlChange(midiChannel, CCampattack, mux2Read);
+    case control_attack:
+      midiCCOut(CCampattack, val);
+      myControlChange(midiChannel, CCampattack, val);
       break;
-    case MUX2_decay:
-      midiCCOut(CCampdecay, mux2Read);
-      myControlChange(midiChannel, CCampdecay, mux2Read);
+    case control_decay:
+      midiCCOut(CCampdecay, val);
+      myControlChange(midiChannel, CCampdecay, val);
       break;
-    case MUX2_sustain:
-      midiCCOut(CCampsustain, mux2Read);
-      myControlChange(midiChannel, CCampsustain, mux2Read);
+    case control_sustain:
+      midiCCOut(CCampsustain, val);
+      myControlChange(midiChannel, CCampsustain, val);
       break;
-    case MUX2_release:
-      midiCCOut(CCamprelease, mux2Read);
-      myControlChange(midiChannel, CCamprelease, mux2Read);
+    case control_release:
+      midiCCOut(CCamprelease, val);
+      myControlChange(midiChannel, CCamprelease, val);
       break;
-    case MUX2_filterLFOAmount:
-      midiCCOut(CCfilterlfoamt, mux2Read);
-      myControlChange(midiChannel, CCfilterlfoamt, mux2Read);
+    case control_filterLFOAmount:
+      midiCCOut(CCfilterlfoamt, val);
+      myControlChange(midiChannel, CCfilterlfoamt, val);
       break;
-    case MUX2_FXMix:
-      midiCCOut(CCfxmix, mux2Read);
-      myControlChange(midiChannel, CCfxmix, mux2Read);
+    case control_FXMix:
+      midiCCOut(CCfxmix, val);
+      myControlChange(midiChannel, CCfxmix, val);
       break;
-    case MUX2_FXAmount:
-      midiCCOut(CCfxamt, mux2Read);
-      myControlChange(midiChannel, CCfxamt, mux2Read);
+    case control_FXAmount:
+      midiCCOut(CCfxamt, val);
+      myControlChange(midiChannel, CCfxamt, val);
       break;
-    case MUX2_glide:
-      midiCCOut(CCglide, mux2Read);
-      myControlChange(midiChannel, CCglide, mux2Read);
+    case control_glide:
+      midiCCOut(CCglide, val);
+      myControlChange(midiChannel, CCglide, val);
       break;
-    case MUX2_filterEnv:
-      midiCCOut(CCfilterenv, mux2Read);
-      myControlChange(midiChannel, CCfilterenv, mux2Read);
+    case control_filterEnv:
+      midiCCOut(CCfilterenv, val);
+      myControlChange(midiChannel, CCfilterenv, val);
       break;
-    case MUX2_filterRelease:
-      midiCCOut(CCfilterrelease, mux2Read);
-      myControlChange(midiChannel, CCfilterrelease, mux2Read);
+    case control_filterRelease:
+      midiCCOut(CCfilterrelease, val);
+      myControlChange(midiChannel, CCfilterrelease, val);
       break;
-    case MUX2_filterSustain:
-      midiCCOut(CCfiltersustain, mux2Read);
-      myControlChange(midiChannel, CCfiltersustain, mux2Read);
+    case control_filterSustain:
+      midiCCOut(CCfiltersustain, val);
+      myControlChange(midiChannel, CCfiltersustain, val);
       break;
-    case MUX2_filterType:
-      midiCCOut(CCfiltermixer, mux2Read);
-      myControlChange(midiChannel, CCfiltermixer, mux2Read);
+    case control_filterType:
+      midiCCOut(CCfiltermixer, val);
+      myControlChange(midiChannel, CCfiltermixer, val);
       break;
-    case MUX2_resonance:
-      midiCCOut(CCfilterres, mux2Read);
-      myControlChange(midiChannel, CCfilterres, mux2Read);
+    case control_resonance:
+      midiCCOut(CCfilterres, val);
+      myControlChange(midiChannel, CCfilterres, val);
       break;
-    case MUX2_cutoff:
-      midiCCOut(CCfilterfreq, mux2Read);
-      myControlChange(midiChannel, CCfilterfreq, mux2Read);
+    case control_cutoff:
+      midiCCOut(CCfilterfreq, val);
+      myControlChange(midiChannel, CCfilterfreq, val);
       break;
-    case MUX2_filterLFORate:
-      midiCCOut(CCfilterlforate, mux2Read);
-      myControlChange(midiChannel, CCfilterlforate, mux2Read);
+    case control_filterLFORate:
+      midiCCOut(CCfilterlforate, val);
+      myControlChange(midiChannel, CCfilterlforate, val);
       break;
-    case MUX2_filterLFOWaveform:
-      midiCCOut(CCfilterlfowaveform, mux2Read);
-      myControlChange(midiChannel, CCfilterlfowaveform, mux2Read);
+    case control_filterLFOWaveform:
+      midiCCOut(CCfilterlfowaveform, val);
+      myControlChange(midiChannel, CCfilterlfowaveform, val);
       break;
-     case volumeXX:  
-     myControlChange(midiChannel, CCvolume, volumeRead);   
+    case control_volume:
+      myControlChange(midiChannel, CCvolume, val);
+      break;
+    case control_unison:
+      midiCCOut(CCunison, groupvec[activeGroupIndex]->params().unisonMode == 2 ? 0 : groupvec[activeGroupIndex]->params().unisonMode + 1);
+      myControlChange(midiChannel, CCunison, groupvec[activeGroupIndex]->params().unisonMode == 2 ? 0 : groupvec[activeGroupIndex]->params().unisonMode + 1);
+      break;
+    case control_oscFX:
+      midiCCOut(CCoscfx, groupvec[activeGroupIndex]->getOscFX() == 2 ? 0 : groupvec[activeGroupIndex]->getOscFX() + 1);
+      myControlChange(midiChannel, CCoscfx, groupvec[activeGroupIndex]->getOscFX() == 2 ? 0 : groupvec[activeGroupIndex]->getOscFX() + 1);
+      break;
+    case control_filterLFORetrig:
+      bool val2 = !groupvec[activeGroupIndex]->getFilterLfoRetrig();
+      midiCCOut(CCfilterlforetrig, val2);
+      myControlChange(midiChannel, CCfilterlforetrig, val2);
+      break;
+    case control_filterLFOMidiClkSync:
+      bool value3 = !groupvec[activeGroupIndex]->getFilterLfoMidiClockSync();
+      midiCCOut(CCfilterLFOMidiClkSync, value3);
+      myControlChange(midiChannel, CCfilterLFOMidiClkSync, value3);
+      break;
   }
 }
 
@@ -1394,9 +1416,9 @@ void showSettingsPage()
 {
   showSettingsPage(settings::current_setting(), settings::current_setting_value(), state);
 }
-
-void checkSwitches()
-{
+/*
+  void checkSwitches()
+  {
   unisonSwitch.update();
   if (unisonSwitch.numClicks() == 1)
   {
@@ -1434,48 +1456,48 @@ void checkSwitches()
   {
     switch (state)
     {
-      case PARAMETER:
-      case PATCH:
-        state = DELETE;
-        break;
+    case PARAMETER:
+    case PATCH:
+      state = DELETE;
+      break;
     }
   }
   else if (saveButton.numClicks() == 1)
   {
     switch (state)
     {
-      case PARAMETER:
-        if (patches.size() < PATCHES_LIMIT)
-        {
-          resetPatchesOrdering(); //Reset order of patches from first patch
-          patches.push({patches.size() + 1, INITPATCHNAME});
-          state = SAVE;
-        }
-        break;
-      case SAVE:
-        //Save as new patch with INITIALPATCH name or overwrite existing keeping name - bypassing patch renaming
-        patchName = patches.last().patchName;
-        state = PATCH;
-        savePatch(String(patches.last().patchNo).c_str(), getCurrentPatchData());
-        showPatchPage(patches.last().patchNo, patches.last().patchName);
-        patchNo = patches.last().patchNo;
-        loadPatches(); //Get rid of pushed patch if it wasn't saved
-        setPatchesOrdering(patchNo);
-        renamedPatch = "";
-        state = PARAMETER;
-        break;
-      case PATCHNAMING:
-        if (renamedPatch.length() > 0)
-          patchName = renamedPatch; //Prevent empty strings
-        state = PATCH;
-        savePatch(String(patches.last().patchNo).c_str(), getCurrentPatchData());
-        showPatchPage(patches.last().patchNo, patchName);
-        patchNo = patches.last().patchNo;
-        loadPatches(); //Get rid of pushed patch if it wasn't saved
-        setPatchesOrdering(patchNo);
-        renamedPatch = "";
-        state = PARAMETER;
-        break;
+    case PARAMETER:
+      if (patches.size() < PATCHES_LIMIT)
+      {
+        resetPatchesOrdering(); //Reset order of patches from first patch
+        patches.push({patches.size() + 1, INITPATCHNAME});
+        state = SAVE;
+      }
+      break;
+    case SAVE:
+      //Save as new patch with INITIALPATCH name or overwrite existing keeping name - bypassing patch renaming
+      patchName = patches.last().patchName;
+      state = PATCH;
+      savePatch(String(patches.last().patchNo).c_str(), getCurrentPatchData());
+      showPatchPage(patches.last().patchNo, patches.last().patchName);
+      patchNo = patches.last().patchNo;
+      loadPatches(); //Get rid of pushed patch if it wasn't saved
+      setPatchesOrdering(patchNo);
+      renamedPatch = "";
+      state = PARAMETER;
+      break;
+    case PATCHNAMING:
+      if (renamedPatch.length() > 0)
+        patchName = renamedPatch; //Prevent empty strings
+      state = PATCH;
+      savePatch(String(patches.last().patchNo).c_str(), getCurrentPatchData());
+      showPatchPage(patches.last().patchNo, patchName);
+      patchNo = patches.last().patchNo;
+      loadPatches(); //Get rid of pushed patch if it wasn't saved
+      setPatchesOrdering(patchNo);
+      renamedPatch = "";
+      state = PARAMETER;
+      break;
     }
   }
 
@@ -1491,17 +1513,17 @@ void checkSwitches()
   {
     switch (state)
     {
-      case PARAMETER:
-        state = SETTINGS;
-        showSettingsPage();
-        break;
-      case SETTINGS:
-        showSettingsPage();
-      case SETTINGSVALUE:
-        settings::save_current_value();
-        state = SETTINGS;
-        showSettingsPage();
-        break;
+    case PARAMETER:
+      state = SETTINGS;
+      showSettingsPage();
+      break;
+    case SETTINGS:
+      showSettingsPage();
+    case SETTINGSVALUE:
+      settings::save_current_value();
+      state = SETTINGS;
+      showSettingsPage();
+      break;
     }
   }
 
@@ -1516,32 +1538,32 @@ void checkSwitches()
   {
     switch (state)
     {
-      case RECALL:
-        setPatchesOrdering(patchNo);
-        state = PARAMETER;
-        break;
-      case SAVE:
-        renamedPatch = "";
-        state = PARAMETER;
-        loadPatches(); //Remove patch that was to be saved
-        setPatchesOrdering(patchNo);
-        break;
-      case PATCHNAMING:
-        charIndex = 0;
-        renamedPatch = "";
-        state = SAVE;
-        break;
-      case DELETE:
-        setPatchesOrdering(patchNo);
-        state = PARAMETER;
-        break;
-      case SETTINGS:
-        state = PARAMETER;
-        break;
-      case SETTINGSVALUE:
-        state = SETTINGS;
-        showSettingsPage();
-        break;
+    case RECALL:
+      setPatchesOrdering(patchNo);
+      state = PARAMETER;
+      break;
+    case SAVE:
+      renamedPatch = "";
+      state = PARAMETER;
+      loadPatches(); //Remove patch that was to be saved
+      setPatchesOrdering(patchNo);
+      break;
+    case PATCHNAMING:
+      charIndex = 0;
+      renamedPatch = "";
+      state = SAVE;
+      break;
+    case DELETE:
+      setPatchesOrdering(patchNo);
+      state = PARAMETER;
+      break;
+    case SETTINGS:
+      state = PARAMETER;
+      break;
+    case SETTINGSVALUE:
+      state = SETTINGS;
+      showSettingsPage();
+      break;
     }
   }
 
@@ -1561,77 +1583,63 @@ void checkSwitches()
   {
     switch (state)
     {
-      case PARAMETER:
-        state = RECALL; //show patch list
-        break;
-      case RECALL:
-        state = PATCH;
-        //Recall the current patch
-        patchNo = patches.first().patchNo;
-        recallPatch(patchNo);
-        state = PARAMETER;
-        break;
-      case SAVE:
-        showRenamingPage(patches.last().patchName);
-        patchName = patches.last().patchName;
-        state = PATCHNAMING;
-        break;
-      case PATCHNAMING:
-        if (renamedPatch.length() < 12) //actually 12 chars
-        {
-          renamedPatch.concat(String(currentCharacter));
-          charIndex = 0;
-          currentCharacter = CHARACTERS[charIndex];
-          showRenamingPage(renamedPatch);
-        }
-        break;
-      case DELETE:
-        //Don't delete final patch
-        if (patches.size() > 1)
-        {
-          state = DELETEMSG;
-          patchNo = patches.first().patchNo;    //PatchNo to delete from SD card
-          patches.shift();                      //Remove patch from circular buffer
-          deletePatch(String(patchNo).c_str()); //Delete from SD card
-          loadPatches();                        //Repopulate circular buffer to start from lowest Patch No
-          renumberPatchesOnSD();
-          loadPatches();                     //Repopulate circular buffer again after delete
-          patchNo = patches.first().patchNo; //Go back to 1
-          recallPatch(patchNo);              //Load first patch
-        }
-        state = PARAMETER;
-        break;
-      case SETTINGS:
-        state = SETTINGSVALUE;
-        showSettingsPage();
-        break;
-      case SETTINGSVALUE:
-        settings::save_current_value();
-        state = SETTINGS;
-        showSettingsPage();
-        break;
+    case PARAMETER:
+      state = RECALL; //show patch list
+      break;
+    case RECALL:
+      state = PATCH;
+      //Recall the current patch
+      patchNo = patches.first().patchNo;
+      recallPatch(patchNo);
+      state = PARAMETER;
+      break;
+    case SAVE:
+      showRenamingPage(patches.last().patchName);
+      patchName = patches.last().patchName;
+      state = PATCHNAMING;
+      break;
+    case PATCHNAMING:
+      if (renamedPatch.length() < 12) //actually 12 chars
+      {
+        renamedPatch.concat(String(currentCharacter));
+        charIndex = 0;
+        currentCharacter = CHARACTERS[charIndex];
+        showRenamingPage(renamedPatch);
+      }
+      break;
+    case DELETE:
+      //Don't delete final patch
+      if (patches.size() > 1)
+      {
+        state = DELETEMSG;
+        patchNo = patches.first().patchNo;    //PatchNo to delete from SD card
+        patches.shift();                      //Remove patch from circular buffer
+        deletePatch(String(patchNo).c_str()); //Delete from SD card
+        loadPatches();                        //Repopulate circular buffer to start from lowest Patch No
+        renumberPatchesOnSD();
+        loadPatches();                     //Repopulate circular buffer again after delete
+        patchNo = patches.first().patchNo; //Go back to 1
+        recallPatch(patchNo);              //Load first patch
+      }
+      state = PARAMETER;
+      break;
+    case SETTINGS:
+      state = SETTINGSVALUE;
+      showSettingsPage();
+      break;
+    case SETTINGSVALUE:
+      settings::save_current_value();
+      state = SETTINGS;
+      showSettingsPage();
+      break;
     }
   }
-}
-
-FLASHMEM void reinitialiseToPanel()
-{
-  //This sets the current patch to be the same as the current hardware panel state - all the pots
-  //The four button controls stay the same state
-  //This reinialises the previous hardware values to force a re-read
-  muxInput = 0;
-  for (int i = 0; i < MUXCHANNELS; i++)
-  {
-    mux1ValuesPrev[i] = RE_READ;
-    mux2ValuesPrev[i] = RE_READ;
   }
-  volumePrevious = RE_READ;
-  patchName = INITPATCHNAME;
-  showPatchPage("Initial", "Panel Settings");
-}
 
-void checkEncoder()
-{
+
+
+  void checkEncoder()
+  {
   //Encoder works with relative inc and dec values
   //Detent encoder goes up in 4 steps, hence +/-3
   long encRead = encoder.read();
@@ -1639,39 +1647,39 @@ void checkEncoder()
   {
     switch (state)
     {
-      case PARAMETER:
-        state = PATCH;
-        patches.push(patches.shift());
-        patchNo = patches.first().patchNo;
-        recallPatch(patchNo);
-        state = PARAMETER;
-        // Make sure the current setting value is refreshed.
-        settings::increment_setting();
-        settings::decrement_setting();
-        break;
-      case RECALL:
-        patches.push(patches.shift());
-        break;
-      case SAVE:
-        patches.push(patches.shift());
-        break;
-      case PATCHNAMING:
-        if (charIndex == TOTALCHARS)
-          charIndex = 0; //Wrap around
-        currentCharacter = CHARACTERS[charIndex++];
-        showRenamingPage(renamedPatch + currentCharacter);
-        break;
-      case DELETE:
-        patches.push(patches.shift());
-        break;
-      case SETTINGS:
-        settings::increment_setting();
-        showSettingsPage();
-        break;
-      case SETTINGSVALUE:
-        settings::increment_setting_value();
-        showSettingsPage();
-        break;
+    case PARAMETER:
+      state = PATCH;
+      patches.push(patches.shift());
+      patchNo = patches.first().patchNo;
+      recallPatch(patchNo);
+      state = PARAMETER;
+      // Make sure the current setting value is refreshed.
+      settings::increment_setting();
+      settings::decrement_setting();
+      break;
+    case RECALL:
+      patches.push(patches.shift());
+      break;
+    case SAVE:
+      patches.push(patches.shift());
+      break;
+    case PATCHNAMING:
+      if (charIndex == TOTALCHARS)
+        charIndex = 0; //Wrap around
+      currentCharacter = CHARACTERS[charIndex++];
+      showRenamingPage(renamedPatch + currentCharacter);
+      break;
+    case DELETE:
+      patches.push(patches.shift());
+      break;
+    case SETTINGS:
+      settings::increment_setting();
+      showSettingsPage();
+      break;
+    case SETTINGSVALUE:
+      settings::increment_setting_value();
+      showSettingsPage();
+      break;
     }
     encPrevious = encRead;
   }
@@ -1679,43 +1687,44 @@ void checkEncoder()
   {
     switch (state)
     {
-      case PARAMETER:
-        state = PATCH;
-        patches.unshift(patches.pop());
-        patchNo = patches.first().patchNo;
-        recallPatch(patchNo);
-        state = PARAMETER;
-        // Make sure the current setting value is refreshed.
-        settings::increment_setting();
-        settings::decrement_setting();
-        break;
-      case RECALL:
-        patches.unshift(patches.pop());
-        break;
-      case SAVE:
-        patches.unshift(patches.pop());
-        break;
-      case PATCHNAMING:
-        if (charIndex == -1)
-          charIndex = TOTALCHARS - 1;
-        currentCharacter = CHARACTERS[charIndex--];
-        showRenamingPage(renamedPatch + currentCharacter);
-        break;
-      case DELETE:
-        patches.unshift(patches.pop());
-        break;
-      case SETTINGS:
-        settings::decrement_setting();
-        showSettingsPage();
-        break;
-      case SETTINGSVALUE:
-        settings::decrement_setting_value();
-        showSettingsPage();
-        break;
+    case PARAMETER:
+      state = PATCH;
+      patches.unshift(patches.pop());
+      patchNo = patches.first().patchNo;
+      recallPatch(patchNo);
+      state = PARAMETER;
+      // Make sure the current setting value is refreshed.
+      settings::increment_setting();
+      settings::decrement_setting();
+      break;
+    case RECALL:
+      patches.unshift(patches.pop());
+      break;
+    case SAVE:
+      patches.unshift(patches.pop());
+      break;
+    case PATCHNAMING:
+      if (charIndex == -1)
+        charIndex = TOTALCHARS - 1;
+      currentCharacter = CHARACTERS[charIndex--];
+      showRenamingPage(renamedPatch + currentCharacter);
+      break;
+    case DELETE:
+      patches.unshift(patches.pop());
+      break;
+    case SETTINGS:
+      settings::decrement_setting();
+      showSettingsPage();
+      break;
+    case SETTINGSVALUE:
+      settings::decrement_setting_value();
+      showSettingsPage();
+      break;
     }
     encPrevious = encRead;
   }
-}
+  }
+*/
 
 void midiCCOut(byte cc, byte value)
 {
@@ -1750,12 +1759,7 @@ void loop()
   //MIDI 5 Pin DIN
   MIDI.read(midiChannel);
   encoders.tick();
-  for (unsigned i = 0; i < encoderCount; i++)
-  {
-    Serial.printf("E%u:%3d ", i, encoders[i].getValue());
-  }
-  Serial.println();
-  checkHardware();
+  // checkHardware();
   //lightLEDs();
   //CPUMonitor();
 }

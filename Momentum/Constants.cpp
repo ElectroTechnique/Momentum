@@ -35,6 +35,7 @@ const  float  LFOMAXRATE = 40.0f;//40Hz
 const uint8_t PWMSOURCELFO = 0;
 const uint8_t PWMSOURCEFENV = 1;
 const float  ONE = 1.0f;
+const  float  SGTL_MAXVOLUME = 0.9f;
 const  float  WAVEFORMLEVEL = ONE;
 const float  VOICEMIXERLEVEL = 0.28f;
 const float MAX_VOL = 2.0f;

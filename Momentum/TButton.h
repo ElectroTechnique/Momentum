@@ -2,7 +2,7 @@
 #define TButton_H
 
 #include <Arduino.h>
-#include <Bounce.h>
+#include <Bounce2.h>
 
 /**
  * Wrap a pin to help detect different types of button activation.

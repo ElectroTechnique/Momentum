@@ -5,23 +5,20 @@
 #define EEPROM_MODWHEEL_DEPTH 2
 #define EEPROM_ENCODER_DIR 3
 #define EEPROM_PICKUP_ENABLE 4
-#define EEPROM_BASSENHANCE_ENABLE 5
-#define EEPROM_SCOPE_ENABLE 6
-#define EEPROM_MIDI_OUT_CH 7
-#define EEPROM_VU_ENABLE 8
-#define EEPROM_MIDI_THRU 9
-#define EEPROM_AMP_ENV 10
-#define EEPROM_FILT_ENV 11
-#define EEPROM_GLIDE_SHAPE 12
+#define EEPROM_SCOPE_ENABLE 5
+#define EEPROM_MIDI_OUT_CH 6
+#define EEPROM_VU_ENABLE 7
+#define EEPROM_MIDI_THRU 8
+#define EEPROM_AMP_ENV 9
+#define EEPROM_FILT_ENV 10
+#define EEPROM_GLIDE_SHAPE 11
 
 FLASHMEM void storeGlideShape(byte type){
   EEPROM.update(EEPROM_GLIDE_SHAPE, type);
-  Serial.println(type);
 }
 
 FLASHMEM void storeAmpEnv(byte type){
   EEPROM.update(EEPROM_AMP_ENV, type);
-  Serial.println(type);
 }
 
 FLASHMEM void storeFiltEnv(byte type){
@@ -29,15 +26,21 @@ FLASHMEM void storeFiltEnv(byte type){
 }
 
 FLASHMEM int8_t getGlideShape() {
-  return  (int8_t)EEPROM.read(EEPROM_GLIDE_SHAPE);
+  int8_t gs = (int8_t)EEPROM.read(EEPROM_GLIDE_SHAPE);
+  if (gs < 0 || gs > 1) gs = 1;//If EEPROM has no glide shape (Exp type)
+  return gs;
 }
 
 FLASHMEM int8_t getAmpEnv() {
-  return  (int8_t)EEPROM.read(EEPROM_AMP_ENV);
+  int8_t ae = (int8_t)EEPROM.read(EEPROM_AMP_ENV);
+  if (ae < -8 || ae > 8) ae = -128;//If EEPROM has no amp env (Lin type)
+  return ae;
 }
 
 FLASHMEM int8_t getFiltEnv() {
-  return  (int8_t)EEPROM.read(EEPROM_FILT_ENV);
+  int8_t fe = (int8_t)EEPROM.read(EEPROM_FILT_ENV);
+  if (fe < -8 || fe > 8) fe = -128;//If EEPROM has no filter env (Lin type)
+  return fe;
 }
 
 FLASHMEM int getMIDIChannel() {
@@ -109,16 +112,6 @@ FLASHMEM boolean getPickupEnable() {
 
 FLASHMEM void storePickupEnable(byte pickupEnable){
   EEPROM.update(EEPROM_PICKUP_ENABLE, pickupEnable);
-}
-
-FLASHMEM boolean getBassEnhanceEnable() {
-  byte eh = EEPROM.read(EEPROM_BASSENHANCE_ENABLE); 
-  if (eh < 0 || eh > 1)return false; //If EEPROM has no bass enhance enable stored
-  return eh == 1 ? true : false;
-}
-
-FLASHMEM void storeBassEnhanceEnable(byte bassEnhanceEnable){
-  EEPROM.update(EEPROM_BASSENHANCE_ENABLE, bassEnhanceEnable);
 }
 
 FLASHMEM boolean getScopeEnable() {

@@ -9,7 +9,6 @@ void settingsModWheelDepth(int index, const char * value);
 void settingsMIDIOutCh(int index, const char * value);
 void settingsMIDIThru(int index, const char * value);
 void settingsEncoderDir(int index, const char * value);
-void settingsPickupEnable(int index, const char * value);
 void settingsScopeEnable(int index, const char * value);
 void settingsVUEnable(int index, const char * value);
 void settingsMonophonic(int index, const char * value);
@@ -25,7 +24,6 @@ int currentIndexModWheelDepth();
 int currentIndexMIDIOutCh();
 int currentIndexMIDIThru();
 int currentIndexEncoderDir();
-int currentIndexPickupEnable();
 int currentIndexScopeEnable();
 int currentIndexVUEnable();
 int currentIndexMonophonicMode();
@@ -190,16 +188,6 @@ FLASHMEM void settingsEncoderDir(int index, const char * value) {
   storeEncoderDir(encCW ? 1 : 0);
 }
 
-FLASHMEM void settingsPickupEnable(int index, const char * value) {
-  if (strcmp(value, "Off") == 0) {
-    pickUp = false;
-  } else {
-    pickUp =  true;
-  }
-  storePickupEnable(pickUp ? 1 : 0);
-}
-
-
 FLASHMEM void settingsMonophonic(int index, const char * value) {
   uint8_t monophonic;
   if (strcmp(value, "Off") == 0)     monophonic = MONOPHONIC_OFF;
@@ -270,10 +258,6 @@ FLASHMEM int currentIndexEncoderDir() {
   return getEncoderDir() ? 0 : 1;
 }
 
-FLASHMEM int currentIndexPickupEnable() {
-  return getPickupEnable() ? 1 : 0;
-}
-
 FLASHMEM int currentIndexMonophonicMode() {
   return groupvec[activeGroupIndex]->getMonophonicMode();
 }
@@ -299,7 +283,6 @@ FLASHMEM void setUpSettings() {
   settings::append(settings::SettingsOption{"Amp. Env.", {"Lin", "Exp -8", "Exp -7", "Exp -6", "Exp -5", "Exp -4", "Exp -3", "Exp -2", "Exp -1", "Exp 0", "Exp +1", "Exp +2", "Exp +3", "Exp +4", "Exp +5", "Exp +6", "Exp +7", "Exp +8", "\0"}, settingsAmpEnv, currentIndexAmpEnv});
   settings::append(settings::SettingsOption{"Filter Env.", {"Lin", "Exp -8", "Exp -7", "Exp -6", "Exp -5", "Exp -4", "Exp -3", "Exp -2", "Exp -1", "Exp 0", "Exp +1", "Exp +2", "Exp +3", "Exp +4", "Exp +5", "Exp +6", "Exp +7", "Exp +8", "\0"}, settingsFiltEnv, currentIndexFiltEnv});
   settings::append(settings::SettingsOption{"Glide Shape", {"Lin", "Exp", "\0"}, settingsGlideShape, currentIndexGlideShape});
-  settings::append(settings::SettingsOption{"Pick-up", {"Off", "On", "\0"}, settingsPickupEnable, currentIndexPickupEnable});
   settings::append(settings::SettingsOption{"Encoder", {"Type 1", "Type 2", "\0"}, settingsEncoderDir, currentIndexEncoderDir});
   settings::append(settings::SettingsOption{"Oscilloscope", {"Off", "On", "\0"}, settingsScopeEnable, currentIndexScopeEnable});
   settings::append(settings::SettingsOption{"VU Meter", {"Off", "On", "\0"}, settingsVUEnable, currentIndexVUEnable});

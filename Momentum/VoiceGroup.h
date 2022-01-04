@@ -568,7 +568,7 @@ public:
         VG_FOR_EACH_OSC(filter_.frequency(value))
 
         float filterOctave = 0.0;
-        //Altering filterOctave to give more cutoff width for deeper bass, but sharper cuttoff at higher frequncies
+        //Altering filterOctave to give more cutoff width for deeper bass, but sharper cutoff at higher frequncies
         if (value <= 2000)
         {
             filterOctave = 4.0f + ((2000.0f - value) / 710.0f); //More bass

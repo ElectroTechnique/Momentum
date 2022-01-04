@@ -1,26 +1,34 @@
-#include <EncoderTool.h>
+#include "ButtonTool/ButtonTool.h"
+using namespace ButtonTool;
+#include "EncoderTool/EncoderTool.h"
 using namespace EncoderTool;
-#include "TButton.h"
 
 constexpr unsigned encoderCount = 8; // number of attached
 
-constexpr unsigned encA = 40;   //output pin QH of shift register Enc pin A
-constexpr unsigned encB = 41;   //output pin QH of shift register Enc pin B
-constexpr unsigned encButton = 42;   //output pin QH of shift register Button
-constexpr unsigned pinLD = 45;  //load pin for all shift registers
-constexpr unsigned pinCLK = 6; //clock pin for all shift registers
+constexpr unsigned srA = 40;   // output pin QH of shift register Enc pin A
+constexpr unsigned srB = 41;   // output pin QH of shift register Enc pin B
+constexpr unsigned srC = 42;   // output pin QH of shift register Button
+constexpr unsigned pinLD = 45; // load pin for all shift registers
+constexpr unsigned pinCLK = 6; // clock pin for all shift registers
 
-const int latchPin = 26;//LEDs SR2
-const int clockPin = 9;//LEDs CLK2
-const int dataPinG = 44;//Green LEDs data
-const int dataPinR = 43;//Ref LEDs data
+const int latchPin = 26; // LEDs SR2
+const int clockPin = 9;  // LEDs CLK2
+const int dataPinG = 44; // Green LEDs data
+const int dataPinR = 43; // Red LEDs data
 
-EncPlex74165 encoders(encoderCount, pinLD, pinCLK, encB, encA, encButton);
+EncPlex74165 encoders(encoderCount, pinLD, pinCLK, srB, srA, srC);
+ButtonPlex74165 buttons(24, pinLD, pinCLK, srB, srA, srC);
 
-//TeensyMM pins
-#define BACKLIGHT 24 //A10/I2C_SCL1
+// TeensyMM pins
+#define BACKLIGHT 24 // A10/I2C_SCL1
+typedef enum
+{
+  RED,
+  GREEN,
+} ledColour;
 
-typedef enum {
+typedef enum
+{
   control_noiseLevel,
   control_pitchLfoRate,
   control_pitchLfoWaveform,
@@ -58,23 +66,71 @@ typedef enum {
   control_oscFX,
   control_filterLFORetrig,
   control_filterLFOMidiClkSync,
-} controlParameter  ;
+} controlParameter;
 
-void encoderCallback(unsigned enc_idx, int value, int delta) {
-  Serial.printf("enc[%u]: v=%d, d=%d\n", enc_idx, value, delta);
-}
+const int8_t LED_TO_BIN[9] = {0, 1, 2, 4, 8, 16, 32, 64}; // First value is dummy, LEDs are 1-8
 
-
-FLASHMEM void setupHardware() {
+FLASHMEM void setupHardware(EncoderTool::allCallback_t ec, EncoderTool::allBtnCallback_t ebc, ButtonTool::allBtnCallback_t bc)
+{
   pinMode(latchPin, OUTPUT);
   pinMode(clockPin, OUTPUT);
   pinMode(dataPinG, OUTPUT);
   pinMode(dataPinR, OUTPUT);
 
   encoders.begin(CountMode::full);
-  encoders.attachCallback(encoderCallback);
+  encoders.attachCallback(ec);
+  encoders.attachBtnCallback(ebc);
+  buttons.begin(bc);
 
-  //Display backlight - Can be used to turn off or dim using PWM
-  //Not used but you never know
-  //pinMode(BACKLIGHT, OUTPUT);
+  // Display backlight - Can be used to turn off or dim using PWM
+  // Not used but you never know
+  // pinMode(BACKLIGHT, OUTPUT);
+}
+
+// Shift both red and green LEDs
+void shiftOutX(uint8_t dataPinR, uint8_t dataPinG, uint8_t clockPin, uint8_t bitOrder, uint8_t valR, uint8_t valG)
+{
+  uint8_t i;
+
+  for (i = 0; i < 8; i++)
+  {
+    if (bitOrder == LSBFIRST)
+    {
+      digitalWrite(dataPinR, valR & 1);
+      valR >>= 1;
+      digitalWrite(dataPinG, valG & 1);
+      valG >>= 1;
+    }
+    else
+    {
+      digitalWrite(dataPinR, (valR & 128) != 0);
+      valR <<= 1;
+      digitalWrite(dataPinG, (valG & 128) != 0);
+      valG <<= 1;
+    }
+
+    digitalWrite(clockPin, HIGH);
+    digitalWrite(clockPin, LOW);
+  }
+}
+
+void singleLED(ledColour color, int8_t ledNo)
+{
+  digitalWrite(latchPin, LOW);
+  if (color == RED)
+  {
+    shiftOutX(dataPinR, dataPinG, clockPin, MSBFIRST, LED_TO_BIN[ledNo], 0);
+  }
+  else
+  {
+    shiftOutX(dataPinR, dataPinG, clockPin, MSBFIRST, 0, LED_TO_BIN[ledNo]);
+  }
+  digitalWrite(latchPin, HIGH);
+}
+
+void lightRGLEDs(int8_t ledRNos, int8_t ledGNos)
+{
+  digitalWrite(latchPin, LOW);
+  shiftOutX(dataPinR, dataPinG, clockPin, MSBFIRST, ledRNos, ledGNos);
+  digitalWrite(latchPin, HIGH);
 }

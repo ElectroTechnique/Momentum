@@ -4,14 +4,13 @@
 #define EEPROM_PITCHBEND 1
 #define EEPROM_MODWHEEL_DEPTH 2
 #define EEPROM_ENCODER_DIR 3
-#define EEPROM_PICKUP_ENABLE 4
-#define EEPROM_SCOPE_ENABLE 5
-#define EEPROM_MIDI_OUT_CH 6
-#define EEPROM_VU_ENABLE 7
-#define EEPROM_MIDI_THRU 8
-#define EEPROM_AMP_ENV 9
-#define EEPROM_FILT_ENV 10
-#define EEPROM_GLIDE_SHAPE 11
+#define EEPROM_SCOPE_ENABLE 4
+#define EEPROM_MIDI_OUT_CH 5
+#define EEPROM_VU_ENABLE 6
+#define EEPROM_MIDI_THRU 7
+#define EEPROM_AMP_ENV 8
+#define EEPROM_FILT_ENV 9
+#define EEPROM_GLIDE_SHAPE 10
 
 FLASHMEM void storeGlideShape(byte type){
   EEPROM.update(EEPROM_GLIDE_SHAPE, type);
@@ -102,16 +101,6 @@ FLASHMEM boolean getEncoderDir() {
 
 FLASHMEM void storeEncoderDir(byte encoderDir){
   EEPROM.update(EEPROM_ENCODER_DIR, encoderDir);
-}
-
-FLASHMEM boolean getPickupEnable() {
-  byte pu = EEPROM.read(EEPROM_PICKUP_ENABLE); 
-  if (pu < 0 || pu > 1)return false; //If EEPROM has no pickup enable stored
-  return pu == 1 ? true : false;
-}
-
-FLASHMEM void storePickupEnable(byte pickupEnable){
-  EEPROM.update(EEPROM_PICKUP_ENABLE, pickupEnable);
 }
 
 FLASHMEM boolean getScopeEnable() {

@@ -6,6 +6,7 @@
 //Agileware CircularBuffer available in libraries manager
 #include <CircularBuffer.h>
 #include "Constants.h"
+#include <RokkitHash.h>
 
 #define TOTALCHARS 64
 
@@ -180,4 +181,9 @@ FLASHMEM void setPatchesOrdering(int no) {
 
 FLASHMEM void resetPatchesOrdering() {
   setPatchesOrdering(1);
+}
+
+FLASHMEM uint32_t getHash(char tohash[])
+{
+  return rokkit(tohash, strlen(tohash));
 }

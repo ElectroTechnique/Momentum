@@ -23,19 +23,7 @@ extern int8_t envTypeAmp;
 extern int8_t envTypeFilt;
 //Glide shape
 extern int8_t glideShape;
-
-//Pick-up - Experimental feature
-//Control will only start changing when the Knob/MIDI control reaches the current parameter value
-//Prevents jumps in value when the patch parameter and control are different values
-extern boolean pickUp;
-extern boolean pickUpActive;
-#define TOLERANCE 2 //Gives a window of when pick-up occurs, this is due to the speed of control changing and Mux reading
-extern float filterfreqPrevValue;
-extern float filterMixPrevValue;
-extern float resonancePrevValue;
-extern float oscLfoAmtPrevValue;
-extern float oscLfoRatePrevValue;
-extern float filterLfoRatePrevValue;
-extern float filterLfoAmtPrevValue;
-extern float fxAmtPrevValue;
-extern float fxMixPrevValue;
+extern int16_t enc4Value;
+extern int16_t enc5Value;
+extern int16_t enc6Value;
+extern int16_t enc7Value;

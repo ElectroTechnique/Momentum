@@ -20,28 +20,28 @@
  */
 class TButton
 {
-  private:
-    Bounce pin;
-    uint32_t _holdThresh;
-    uint32_t _clickWindow;
-    uint8_t _pressedState;
-    uint8_t _currentState;
-    uint32_t _windowStartTime;
-    uint32_t _clicks;
+private:
+  Bounce pin;
+  uint32_t _holdThresh;
+  uint32_t _clickWindow;
+  uint8_t _pressedState;
+  uint8_t _currentState;
+  uint32_t _windowStartTime;
+  uint32_t _clicks;
 
-    // cached state for accessing
-    int clicks;
-    boolean buttonHeld;
+  // cached state for accessing
+  int clicks;
+  boolean buttonHeld;
 
-  public:
-    TButton(uint8_t pin);
-    TButton(uint8_t pin, uint32_t activeState);
-    TButton(uint8_t pin, uint32_t activeState, uint32_t holdThresh, uint32_t debounceWindow, uint32_t clickTime);
-    void update();
-    inline int numClicks(){ return clicks; };
-    inline int numClicksPending(){ return _clicks; };
-    bool pressed(){ return _currentState == _pressedState; };
-    bool held(){ return buttonHeld; };
+public:
+  TButton(uint8_t pin);
+  TButton(uint8_t pin, uint32_t activeState);
+  TButton(uint8_t pin, uint32_t activeState, uint32_t holdThresh, uint32_t debounceWindow, uint32_t clickTime);
+  void update();
+  inline int numClicks() { return clicks; };
+  inline int numClicksPending() { return _clicks; };
+  bool pressed() { return _currentState == _pressedState; };
+  bool held() { return buttonHeld; };
 };
 
 #endif

@@ -1,6 +1,5 @@
 #pragma once
 
-#include "../delay.h"
 #include "Bounce2.h"
 #include "EncPlexBase.h"
 
@@ -63,9 +62,9 @@ namespace EncoderTool
     {
         // load current values to shift register
         digitalWriteFast(LD, LOW);
-        delay50ns();
-        delay50ns();
-        delay50ns();
+        delayNanoseconds(50);
+        delayNanoseconds(50);
+        delayNanoseconds(50);
         digitalWriteFast(LD, HIGH);
 
         long now = millis();
@@ -75,7 +74,7 @@ namespace EncoderTool
             if (i > 0)
             {
                 digitalWriteFast(CLK, HIGH);
-                delay50ns();
+                delayNanoseconds(50);
             }
             int delta = encoders[i].update(digitalReadFast(A), digitalReadFast(B), Btn != UINT32_MAX ? digitalReadFast(Btn) : LOW);
             // Condition removes some unwanted changes to the encoder value when pushing its button
@@ -100,7 +99,7 @@ namespace EncoderTool
             if (i > 0)
             {
                 digitalWriteFast(CLK, LOW);
-                delay50ns();
+                delayNanoseconds(50);
             }
         }
     }

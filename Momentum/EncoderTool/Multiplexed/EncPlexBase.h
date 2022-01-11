@@ -1,7 +1,7 @@
 #pragma once
 
-#include "config.h"
-#include "EncoderBase.h"
+#include "../config.h"
+#include "../EncoderBase.h"
 
 namespace EncoderTool
 {

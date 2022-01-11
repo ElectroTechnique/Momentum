@@ -33,6 +33,7 @@ class VoiceGroup
 private:
     String patchName;
     uint32_t patchIndex;
+    uint32_t UID;
 
     // Audio Objects
     PatchShared &shared;
@@ -137,7 +138,7 @@ public:
                                        effectAmount(1.0),
                                        effectMix(0.0)
     {
-        _params.keytrackingAmount = 0.5; //Half - MIDI CC & settings option
+        _params.keytrackingAmount = 0.5; // Half - MIDI CC & settings option
         _params.mixerLevel = 0.0;
         _params.prevNote = 48;
         _params.glideSpeed = 0.0;
@@ -155,7 +156,7 @@ public:
         shared.pwmLfoA.begin(PWMWAVEFORM);
         shared.pwmLfoB.amplitude(ONE);
         shared.pwmLfoB.begin(PWMWAVEFORM);
-        shared.pwmLfoB.phase(10.0f); //Off set phase of second osc
+        shared.pwmLfoB.phase(10.0f); // Off set phase of second osc
 
         setEffectAmount(effectAmount);
         setEffectMix(effectMix);
@@ -166,6 +167,7 @@ public:
     bool getFilterLfoMidiClockSync() { return filterLfoMidiClockSync; }
     bool getPitchLfoMidiClockSync() { return pitchLFOMidiClockSync; }
     inline uint32_t getPatchIndex() { return this->patchIndex; }
+    inline uint32_t getUID() { return this->UID; }
     float getKeytrackingAmount() { return this->_params.keytrackingAmount; }
     uint8_t getMonophonicMode() { return this->monophonic; }
     uint32_t getWaveformA() { return waveformA; }
@@ -214,6 +216,11 @@ public:
     inline void setPatchIndex(uint32_t index)
     {
         this->patchIndex = index;
+    }
+
+    inline void setUID(uint32_t uid)
+    {
+        this->UID = uid;
     }
 
     void setWaveformA(uint32_t waveform)
@@ -267,17 +274,17 @@ public:
 
         if (pwmRate == PWMRATE_PW_MODE)
         {
-            //Set to fixed PW mode
-            this->setPwmMixerALFO(0); //LFO Source off
+            // Set to fixed PW mode
+            this->setPwmMixerALFO(0); // LFO Source off
             this->setPwmMixerBLFO(0);
-            this->setPwmMixerAFEnv(0); //Filter Env Source off
+            this->setPwmMixerAFEnv(0); // Filter Env Source off
             this->setPwmMixerBFEnv(0);
-            this->setPwmMixerAPW(1); //Manually adjustable pulse width on
+            this->setPwmMixerAPW(1); // Manually adjustable pulse width on
             this->setPwmMixerBPW(1);
         }
         else if (pwmRate == PWMRATE_SOURCE_FILTER_ENV)
         {
-            //Set to Filter Env Mod source
+            // Set to Filter Env Mod source
             this->setPWMSource(PWMSOURCEFENV);
             this->setPwmMixerAFEnv(this->getPwmAmtA());
             this->setPwmMixerBFEnv(this->getPwmAmtB());
@@ -346,7 +353,7 @@ public:
         pwmAmtA = valuePwmAmtA;
         if (pwmRate == PWMRATE_PW_MODE)
         {
-            //fixed PW is enabled
+            // fixed PW is enabled
             this->setPwmMixerALFO(0);
             this->setPwmMixerBLFO(0);
             this->setPwmMixerAFEnv(0);
@@ -360,17 +367,17 @@ public:
             this->setPwmMixerBPW(0);
             if (pwmSource == PWMSOURCELFO)
             {
-                //PW alters PWM LFO amount for waveform A
+                // PW alters PWM LFO amount for waveform A
                 this->setPwmMixerALFO(pwmAmtA);
             }
             else
             {
-                //PW alters PWM Filter Env amount for waveform A
+                // PW alters PWM Filter Env amount for waveform A
                 this->setPwmMixerAFEnv(pwmAmtA);
             }
         }
 
-        //Prevent silence when pw = +/-1.0 on pulse
+        // Prevent silence when pw = +/-1.0 on pulse
         float pwA_Adj = pwA;
         if (pwA > 0.98)
             pwA_Adj = 0.98f;
@@ -385,7 +392,7 @@ public:
         pwmAmtB = valuePwmAmtA;
         if (pwmRate == PWMRATE_PW_MODE)
         {
-            //fixed PW is enabled
+            // fixed PW is enabled
             this->setPwmMixerALFO(0);
             this->setPwmMixerBLFO(0);
             this->setPwmMixerAFEnv(0);
@@ -399,17 +406,17 @@ public:
             this->setPwmMixerBPW(0);
             if (pwmSource == PWMSOURCELFO)
             {
-                //PW alters PWM LFO amount for waveform B
+                // PW alters PWM LFO amount for waveform B
                 this->setPwmMixerBLFO(pwmAmtB);
             }
             else
             {
-                //PW alters PWM Filter Env amount for waveform B
+                // PW alters PWM Filter Env amount for waveform B
                 this->setPwmMixerBFEnv(pwmAmtB);
             }
         }
 
-        //Prevent silence when pw = +/-1.0 on pulse
+        // Prevent silence when pw = +/-1.0 on pulse
         float pwB_Adj = pwB;
         if (pwB > 0.98)
             pwB_Adj = 0.98f;
@@ -423,25 +430,25 @@ public:
         pwmSource = value;
         if (value == PWMSOURCELFO)
         {
-            //Set filter mod to zero
+            // Set filter mod to zero
             this->setPwmMixerAFEnv(0);
             this->setPwmMixerBFEnv(0);
 
-            //Set LFO mod
+            // Set LFO mod
             if (pwmRate > PWMRATE_SOURCE_FILTER_ENV)
             {
-                this->setPwmMixerALFO(pwmAmtA); //Set LFO mod
-                this->setPwmMixerBLFO(pwmAmtB); //Set LFO mod
+                this->setPwmMixerALFO(pwmAmtA); // Set LFO mod
+                this->setPwmMixerBLFO(pwmAmtB); // Set LFO mod
             }
         }
         else
         {
-            this->setPwmMixerALFO(0); //Set LFO mod to zero
-            this->setPwmMixerBLFO(0); //Set LFO mod to zero
+            this->setPwmMixerALFO(0); // Set LFO mod to zero
+            this->setPwmMixerBLFO(0); // Set LFO mod to zero
             if (pwmRate > PWMRATE_SOURCE_FILTER_ENV)
             {
-                this->setPwmMixerAFEnv(pwmAmtA); //Set filter mod
-                this->setPwmMixerBFEnv(pwmAmtB); //Set filter mod
+                this->setPwmMixerAFEnv(pwmAmtA); // Set filter mod
+                this->setPwmMixerBFEnv(pwmAmtB); // Set filter mod
             }
         }
     }
@@ -472,23 +479,23 @@ public:
 
         switch (oscFX)
         {
-        case 1:                                                       //XOR
-            setWaveformMixerLevel(0, oscLevelA);                      //Osc 1 (A)
-            setWaveformMixerLevel(3, (oscLevelA + oscLevelB) / 2.0f); //oscFX XOR level
+        case 1:                                                       // XOR
+            setWaveformMixerLevel(0, oscLevelA);                      // Osc 1 (A)
+            setWaveformMixerLevel(3, (oscLevelA + oscLevelB) / 2.0f); // oscFX XOR level
             break;
-        case 2: //XMod
-            //osc A sounds with increasing osc B mod
+        case 2: // XMod
+            // osc A sounds with increasing osc B mod
             if (oscLevelA == 1.0f && oscLevelB <= 1.0f)
             {
-                setOscModMixerA(3, 1 - oscLevelB); //Feed from Osc 2 (B)
-                setWaveformMixerLevel(0, ONE);     //Osc 1 (A)
-                setWaveformMixerLevel(1, 0);       //Osc 2 (B)
+                setOscModMixerA(3, 1 - oscLevelB); // Feed from Osc 2 (B)
+                setWaveformMixerLevel(0, ONE);     // Osc 1 (A)
+                setWaveformMixerLevel(1, 0);       // Osc 2 (B)
             }
             break;
-        case 0:                                  //None
-            setOscModMixerA(3, 0);               //Feed from Osc 2 (B)
-            setWaveformMixerLevel(0, oscLevelA); //Osc 1 (A)
-            setWaveformMixerLevel(3, 0);         //XOR
+        case 0:                                  // None
+            setOscModMixerA(3, 0);               // Feed from Osc 2 (B)
+            setWaveformMixerLevel(0, oscLevelA); // Osc 1 (A)
+            setWaveformMixerLevel(3, 0);         // XOR
             break;
         }
     }
@@ -499,23 +506,23 @@ public:
 
         switch (oscFX)
         {
-        case 1:                                                       //XOR
-            setWaveformMixerLevel(1, oscLevelB);                      //Osc 2 (B)
-            setWaveformMixerLevel(3, (oscLevelA + oscLevelB) / 2.0f); //oscFX XOR level
+        case 1:                                                       // XOR
+            setWaveformMixerLevel(1, oscLevelB);                      // Osc 2 (B)
+            setWaveformMixerLevel(3, (oscLevelA + oscLevelB) / 2.0f); // oscFX XOR level
             break;
-        case 2: //XMod
-            //osc B sounds with increasing osc A mod
+        case 2: // XMod
+            // osc B sounds with increasing osc A mod
             if (oscLevelB == 1.0f && oscLevelA < 1.0f)
             {
-                setOscModMixerB(3, 1 - oscLevelA); //Feed from Osc 1 (A)
-                setWaveformMixerLevel(0, 0);       //Osc 1 (A)
-                setWaveformMixerLevel(1, ONE);     //Osc 2 (B)
+                setOscModMixerB(3, 1 - oscLevelA); // Feed from Osc 1 (A)
+                setWaveformMixerLevel(0, 0);       // Osc 1 (A)
+                setWaveformMixerLevel(1, ONE);     // Osc 2 (B)
             }
             break;
-        case 0:                                  //None
-            setOscModMixerB(3, 0);               //Feed from Osc 1 (A)
-            setWaveformMixerLevel(1, oscLevelB); //Osc 2 (B)
-            setWaveformMixerLevel(3, 0);         //XOR
+        case 0:                                  // None
+            setOscModMixerB(3, 0);               // Feed from Osc 1 (A)
+            setWaveformMixerLevel(1, oscLevelB); // Osc 2 (B)
+            setWaveformMixerLevel(3, 0);         // XOR
             break;
         }
     }
@@ -528,36 +535,36 @@ public:
         {
             if (oscLevelA == 1.0f && oscLevelB <= 1.0f)
             {
-                setOscModMixerA(3, 1 - oscLevelB); //Feed from Osc 2 (B)
-                setWaveformMixerLevel(0, ONE);     //Osc 1 (A)
-                setWaveformMixerLevel(1, 0);       //Osc 2 (B)
+                setOscModMixerA(3, 1 - oscLevelB); // Feed from Osc 2 (B)
+                setWaveformMixerLevel(0, ONE);     // Osc 1 (A)
+                setWaveformMixerLevel(1, 0);       // Osc 2 (B)
             }
             else
             {
-                setOscModMixerB(3, 1 - oscLevelA); //Feed from Osc 1 (A)
-                setWaveformMixerLevel(0, 0);       //Osc 1 (A)
-                setWaveformMixerLevel(1, ONE);     //Osc 2 (B)
+                setOscModMixerB(3, 1 - oscLevelA); // Feed from Osc 1 (A)
+                setWaveformMixerLevel(0, 0);       // Osc 1 (A)
+                setWaveformMixerLevel(1, ONE);     // Osc 2 (B)
             }
-            //Set XOR type off
+            // Set XOR type off
             setOscFXCombineMode(AudioEffectDigitalCombine::OFF);
-            setWaveformMixerLevel(3, 0); //XOR
+            setWaveformMixerLevel(3, 0); // XOR
         }
         else if (oscFX == 1)
         {
-            setOscModMixerA(3, 0); //XMod off
-            setOscModMixerB(3, 0); //XMod off
-            //XOR 'Ring Mod' type effect
+            setOscModMixerA(3, 0); // XMod off
+            setOscModMixerB(3, 0); // XMod off
+            // XOR 'Ring Mod' type effect
             setOscFXCombineMode(AudioEffectDigitalCombine::XOR);
-            setWaveformMixerLevel(3, (oscLevelA + oscLevelB) / 2.0f); //XOR on
+            setWaveformMixerLevel(3, (oscLevelA + oscLevelB) / 2.0f); // XOR on
         }
         else
         {
-            setOscModMixerA(3, 0);                               //XMod off
-            setOscModMixerB(3, 0);                               //XMod off
-            setOscFXCombineMode(AudioEffectDigitalCombine::OFF); //Set XOR type off
-            setWaveformMixerLevel(0, oscLevelA);                 //Osc 1 (A)
-            setWaveformMixerLevel(1, oscLevelB);                 //Osc 2 (B)
-            setWaveformMixerLevel(3, 0);                         //XOR off
+            setOscModMixerA(3, 0);                               // XMod off
+            setOscModMixerB(3, 0);                               // XMod off
+            setOscFXCombineMode(AudioEffectDigitalCombine::OFF); // Set XOR type off
+            setWaveformMixerLevel(0, oscLevelA);                 // Osc 1 (A)
+            setWaveformMixerLevel(1, oscLevelB);                 // Osc 2 (B)
+            setWaveformMixerLevel(3, 0);                         // XOR off
         }
     }
 
@@ -568,22 +575,22 @@ public:
         VG_FOR_EACH_OSC(filter_.frequency(value))
 
         float filterOctave = 0.0;
-        //Altering filterOctave to give more cutoff width for deeper bass, but sharper cutoff at higher frequncies
+        // Altering filterOctave to give more cutoff width for deeper bass, but sharper cutoff at higher frequncies
         if (value <= 2000)
         {
-            filterOctave = 4.0f + ((2000.0f - value) / 710.0f); //More bass
+            filterOctave = 4.0f + ((2000.0f - value) / 710.0f); // More bass
         }
         else if (value > 2000 && value <= 3500)
         {
-            filterOctave = 3.0f + ((3500.0f - value) / 1500.0f); //Sharper cutoff
+            filterOctave = 3.0f + ((3500.0f - value) / 1500.0f); // Sharper cutoff
         }
         else if (value > 3500 && value <= 7000)
         {
-            filterOctave = 2.0f + ((7000.0f - value) / 4000.0f); //Sharper cutoff
+            filterOctave = 2.0f + ((7000.0f - value) / 4000.0f); // Sharper cutoff
         }
         else
         {
-            filterOctave = 1.0f + ((12000.0f - value) / 5100.0f); //Sharper cutoff
+            filterOctave = 1.0f + ((12000.0f - value) / 5100.0f); // Sharper cutoff
         }
 
         VG_FOR_EACH_OSC(filter_.octaveControl(filterOctave))
@@ -605,14 +612,14 @@ public:
 
         if (value == BANDPASS)
         {
-            //BP mode
+            // BP mode
             LP = 0;
             BP = 1.0f;
             HP = 0;
         }
         else
         {
-            //LP-HP mix mode - a notch filter
+            // LP-HP mix mode - a notch filter
             LP = 1.0f - value;
             BP = 0;
             HP = value;
@@ -779,10 +786,10 @@ public:
     void setEffectMix(float value)
     {
         effectMix = value;
-        shared.effectMixerL.gain(0, 1.0f - effectMix); //Dry
-        shared.effectMixerL.gain(1, effectMix);        //Wet
-        shared.effectMixerR.gain(0, 1.0f - effectMix); //Dry
-        shared.effectMixerR.gain(1, effectMix);        //Wet
+        shared.effectMixerL.gain(0, 1.0f - effectMix); // Dry
+        shared.effectMixerL.gain(1, effectMix);        // Wet
+        shared.effectMixerR.gain(0, 1.0f - effectMix); // Dry
+        shared.effectMixerR.gain(1, effectMix);        // Wet
     }
 
     inline void setMonophonic(uint8_t mode)
@@ -931,7 +938,7 @@ public:
     {
         shared.volumeMixer.gain(0, amount);
     }
-    
+
     void midiClockStart()
     {
         midiClockSignal = true;

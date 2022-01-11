@@ -1,28 +1,31 @@
 /*
   Momentum patch saving and recall works like an analogue polysynth from the late 70s (Prophet 5).
-  When you recall a patch, all the front panel controls will be different values from those saved in the patch. 
+  When you recall a patch, all the front panel controls will be different values from those saved in the patch.
   Moving them will cause a jump to the current value.
 */
-//Agileware CircularBuffer available in libraries manager
+// Agileware CircularBuffer available in libraries manager
 #include <CircularBuffer.h>
 #include "Constants.h"
+#include <ArduinoJson.h>
 #include <RokkitHash.h>
 
 #define TOTALCHARS 64
 
-const static char CHARACTERS[TOTALCHARS] = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',' ', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', ' ', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0'};
+const static char CHARACTERS[TOTALCHARS] = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', ' ', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', ' ', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0'};
 int charIndex = 0;
 char currentCharacter = 0;
 String renamedPatch = "";
 
-struct PatchNoAndName{
+struct PatchNoAndName
+{
   int patchNo;
   String patchName;
 };
 
 CircularBuffer<PatchNoAndName, PATCHES_LIMIT> patches;
 
-FLASHMEM size_t readField(File *file, char *str, size_t size, const char *delim){
+FLASHMEM size_t readField(File *file, char *str, size_t size, const char *delim)
+{
   char ch;
   size_t n = 0;
   while ((n + 1) < size && file->read(&ch, 1) == 1)
@@ -42,8 +45,9 @@ FLASHMEM size_t readField(File *file, char *str, size_t size, const char *delim)
   return n;
 }
 
-FLASHMEM void recallPatchData(File patchFile, String data[]){
-  //Read patch data from file and set current patch parameters
+FLASHMEM void recallPatchData(File patchFile, String data[])
+{
+  // Read patch data from file and set current patch parameters
   size_t n;     // Length of returned field with delimiter.
   char str[20]; // Must hold longest field with delimiter and zero byte.
   uint32_t i = 0;
@@ -72,13 +76,15 @@ FLASHMEM void recallPatchData(File patchFile, String data[]){
   }
 }
 
-FLASHMEM int compare(const void *a, const void *b) {
-  return ((PatchNoAndName*)a)->patchNo - ((PatchNoAndName*)b)->patchNo;
+FLASHMEM int compare(const void *a, const void *b)
+{
+  return ((PatchNoAndName *)a)->patchNo - ((PatchNoAndName *)b)->patchNo;
 }
 
-FLASHMEM void sortPatches(){
+FLASHMEM void sortPatches()
+{
   int arraySize = patches.size();
-  //Sort patches buffer to be consecutive ascending patchNo order
+  // Sort patches buffer to be consecutive ascending patchNo order
   struct PatchNoAndName arrayToSort[arraySize];
 
   for (int i = 0; i < arraySize; ++i)
@@ -94,12 +100,13 @@ FLASHMEM void sortPatches(){
   }
 }
 
-FLASHMEM void loadPatches(){
+FLASHMEM void loadPatches()
+{
   File file = SD.open("/");
   patches.clear();
   while (true)
   {
-    String data[NO_OF_PARAMS]; //Array of data read in
+    String data[NO_OF_PARAMS]; // Array of data read in
     File patchFile = file.openNextFile();
     if (!patchFile)
     {
@@ -120,10 +127,11 @@ FLASHMEM void loadPatches(){
   sortPatches();
 }
 
-FLASHMEM void savePatch(const char *patchNo, String patchData){
+FLASHMEM void savePatch(const char *patchNo, String patchData)
+{
   // Serial.print("savePatch Patch No:");
   //  Serial.println(patchNo);
-  //Overwrite existing patch by deleting
+  // Overwrite existing patch by deleting
   if (SD.exists(patchNo))
   {
     SD.remove(patchNo);
@@ -133,7 +141,7 @@ FLASHMEM void savePatch(const char *patchNo, String patchData){
   {
     //    Serial.print("Writing Patch No:");
     //    Serial.println(patchNo);
-    //Serial.println(patchData);
+    // Serial.println(patchData);
     patchFile.println(patchData);
     patchFile.close();
   }
@@ -144,7 +152,8 @@ FLASHMEM void savePatch(const char *patchNo, String patchData){
   }
 }
 
-FLASHMEM void savePatch(const char *patchNo, String patchData[]){
+FLASHMEM void savePatch(const char *patchNo, String patchData[])
+{
   String dataString = patchData[0];
   for (uint32_t i = 1; i < NO_OF_PARAMS; i++)
   {
@@ -155,34 +164,43 @@ FLASHMEM void savePatch(const char *patchNo, String patchData[]){
 
 FLASHMEM void deletePatch(const char *patchNo)
 {
-  if (SD.exists(patchNo)) SD.remove(patchNo);
+  if (SD.exists(patchNo))
+    SD.remove(patchNo);
 }
 
-FLASHMEM void renumberPatchesOnSD() {
+FLASHMEM void renumberPatchesOnSD()
+{
   for (int i = 0; i < patches.size(); i++)
   {
-    String data[NO_OF_PARAMS]; //Array of data read in
+    String data[NO_OF_PARAMS]; // Array of data read in
     File file = SD.open(String(patches[i].patchNo).c_str());
-    if (file) {
+    if (file)
+    {
       recallPatchData(file, data);
       file.close();
       savePatch(String(i + 1).c_str(), data);
     }
   }
-  deletePatch(String(patches.size() + 1).c_str()); //Delete final patch which is duplicate of penultimate patch
+  deletePatch(String(patches.size() + 1).c_str()); // Delete final patch which is duplicate of penultimate patch
 }
 
-FLASHMEM void setPatchesOrdering(int no) {
-  if (patches.size() < 2)return;
-  while (patches.first().patchNo != no) {
+FLASHMEM void setPatchesOrdering(int no)
+{
+  if (patches.size() < 2)
+    return;
+  while (patches.first().patchNo != no)
+  {
     patches.push(patches.shift());
   }
 }
 
-FLASHMEM void resetPatchesOrdering() {
+FLASHMEM void resetPatchesOrdering()
+{
   setPatchesOrdering(1);
 }
 
+// Computes a hash of the parameter values to create a UID for each patch that is stored with it.
+// This can also be used to identify identical patches. Hash takes about 2.8us on TeensyMM
 FLASHMEM uint32_t getHash(char tohash[])
 {
   return rokkit(tohash, strlen(tohash));

@@ -3,6 +3,11 @@
 #include "Bounce2.h"
 #include "ButtonPlexBase.h"
 
+/*
+Modified from https://github.com/luni64/EncoderTool to support buttons on 74HC595 parallel shift registers
+The tick() code has been written specifically for Momentum due to the three parallel shift registers
+*/
+
 namespace ButtonTool
 {
     class ButtonPlex74165 : public ButtonPlexBase
@@ -13,7 +18,7 @@ namespace ButtonTool
 
         inline void begin();
         inline void begin(allBtnCallback_t callback);
-        inline void tick(); // call as often as possible
+        inline void read(); // call as often as possible
 
     protected:
         const unsigned BtnA, BtnB, BtnC, LD, CLK;
@@ -54,7 +59,7 @@ namespace ButtonTool
         }
     }
 
-    void ButtonPlex74165::tick()
+    void ButtonPlex74165::read()
     /*
     Button1 SR1 D4
     Button2 SR2 D4
@@ -75,6 +80,7 @@ namespace ButtonTool
         delayNanoseconds(50);
         digitalWriteFast(LD, HIGH);
 
+        // Read three buttons in each shift
         unsigned i = 0;
         while (i < buttonCount)
         {
@@ -85,7 +91,7 @@ namespace ButtonTool
             }
 
             buttons[i].update(digitalReadFast(BtnA));
-            if (callback != nullptr && buttons[i].buttonChanged() && buttons[i].getButton() == HIGH)
+            if (callback != nullptr && buttons[i].buttonChanged() && buttons[i].getButton() == HIGH) // Pressed then released
             {
                 callback(i, buttons[i].getButton());
             }

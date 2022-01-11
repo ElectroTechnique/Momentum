@@ -1,7 +1,7 @@
 /*
    MIT License
 
-  Copyright (c) 2020-21 ElectroTechnique
+  Copyright (c) 2020-22 ElectroTechnique
 
   Permission is hereby granted, free of charge, to any person obtaining a copy
   of this software and associated documentation files (the "Software"), to deal
@@ -21,8 +21,10 @@
   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
   SOFTWARE.
 
-  ElectroTechnique Momentum - Firmware Rev 1.00
-  TEENSY MicroMod - 12 VOICES
+------------------------------------------------
+  ELECTROTECHNIQUE MOMENTUM - Firmware Rev 1.00
+  Teensy MicroMod based Synthesizer - 12 voices
+------------------------------------------------
 
   Arduino IDE Tools Settings:
     Board: "Teensy MicroMod"
@@ -30,16 +32,14 @@
     CPU Speed: "600MHz"
     Optimize: "Faster"
 
-  Performance Tests   Max CPU  Mem
-  600MHz Faster        80+     59
-
-  This code is based on TSynth V2.31 firmware - ElectroTechnique 2021
+  This code is based on TSynth V2.32 firmware - ElectroTechnique 2021
   and includes code by:
     Dave Benn - Handling MUXs, a few other bits and original inspiration  https://www.notesandvolts.com/2019/01/teensy-synth-part-10-hardware.html
     Alexander Davis / Vince R. Pearson - Stereo ensemble chorus effect https://github.com/quarterturn/teensy3-ensemble-chorus
     Will Winder - Major refactoring and monophonic mode
     Vince R. Pearson - Exponential envelopes & glide
     Github members fab672000 & CDW2000 - General improvements to code
+    Github member luni64 - EncoderTool library modified and included https://github.com/luni64/EncoderTool
     Mark Tillotson - Special thanks for band-limiting the waveforms in the Audio Library
 
   Additional libraries:
@@ -105,7 +105,6 @@ MIDI_CREATE_INSTANCE(HardwareSerial, Serial1, MIDI);
 
 void changeMIDIThruMode()
 {
-  // MIDI.turnThruOn(midi::Thru::Full);
   MIDI.turnThruOn(MIDIThru);
 }
 
@@ -174,7 +173,7 @@ FLASHMEM void setup()
   Serial.println("MIDI In Ch:" + String(midiChannel) + " (0 is Omni On)");
 
   // USB HOST MIDI Class Compliant
-  delay(200); // Wait to turn on USB Host
+  ledAnimation(70); // Delay to wait to turn on USB Host
   myusb.begin();
   midi1.setHandleControlChange(myControlChange);
   midi1.setHandleNoteOff(myNoteOff);
@@ -837,10 +836,11 @@ FLASHMEM void updateEffectMix(float value)
   showCurrentParameterPage("Effect Mix", String(value));
 }
 
-FLASHMEM void updatePatch(String name, uint32_t index)
+FLASHMEM void updatePatch(String name, uint32_t index, uint32_t UID)
 {
   groupvec[activeGroupIndex]->setPatchName(name);
   groupvec[activeGroupIndex]->setPatchIndex(index);
+  groupvec[activeGroupIndex]->setUID(UID);
   showPatchPage(String(index), name);
 }
 
@@ -850,6 +850,7 @@ void myPitchBend(byte channel, int bend)
   groupvec[activeGroupIndex]->pitchBend(bend * 0.5f * pitchBendRange * DIV12 * DIV8192);
 }
 
+// MIDI CC
 void myControlChange(byte channel, byte control, byte value)
 {
   switch (control)
@@ -1128,8 +1129,8 @@ FLASHMEM void recallPatch(int patchNo)
   }
   else
   {
-    String data[NO_OF_PARAMS]; // Array of data read in
-    recallPatchData(patchFile, data);
+    String data[NO_OF_PARAMS];        // Array of data read in
+    recallPatchData(patchFile, data); // TODO use UID
     setCurrentPatchData(data);
     patchFile.close();
   }
@@ -1137,7 +1138,7 @@ FLASHMEM void recallPatch(int patchNo)
 
 FLASHMEM void setCurrentPatchData(String data[])
 {
-  updatePatch(data[0], patchNo); // TODO use UID
+  updatePatch(data[0], patchNo, data[51].toInt());
   updateOscLevelA(data[1].toFloat());
   updateOscLevelB(data[2].toFloat());
   updateNoiseLevel(data[3].toFloat());
@@ -1155,7 +1156,7 @@ FLASHMEM void setCurrentPatchData(String data[])
   updateWaveformB(data[15].toInt());
   updatePWMSource(data[16].toInt());
   updatePWA(data[20].toFloat(), data[17].toFloat());
-  updatePWA(data[21].toFloat(), data[18].toFloat());
+  updatePWB(data[21].toFloat(), data[18].toFloat());
   updatePWMRate(data[19].toFloat());
   updateFilterRes(data[22].toFloat());
   updateFilterFreq(data[23].toFloat());
@@ -1165,7 +1166,7 @@ FLASHMEM void setCurrentPatchData(String data[])
   updatePitchLFORate(data[27].toFloat());
   updatePitchLFOWaveform(data[28].toInt());
   updatePitchLFORetrig(data[29].toInt() > 0);
-  updatePitchLFOMidiClkSync(data[30].toInt() > 0); // MIDI CC Only
+  updatePitchLFOMidiClkSync(data[30].toInt() > 0);
   updateFilterLfoRate(data[31].toFloat(), "");
   updateFilterLFORetrig(data[32].toInt() > 0);
   updateFilterLFOMidiClkSync(data[33].toInt() > 0);
@@ -1184,16 +1185,20 @@ FLASHMEM void setCurrentPatchData(String data[])
   updatePitchEnv(data[46].toFloat());
   velocitySens = data[47].toFloat();
   groupvec[activeGroupIndex]->setMonophonic(data[49].toInt());
-  //  SPARE1 = data[50].toFloat();
-  //  SPARE2 = data[51].toFloat();
-
+  //  SPARE = data[50].toFloat();
   Serial.print(F("Set Patch: "));
-  Serial.println(data[0]);
+  Serial.print(data[0]);
+  Serial.print(F(" UID: "));
+  Serial.println(groupvec[activeGroupIndex]->getUID());
 }
 
 FLASHMEM String getCurrentPatchData()
 {
-  return patchName + "," + getCurrentPatchDataWithoutPatchname();
+  // Add the UID to end
+  String pd = getCurrentPatchDataWithoutPatchname();
+  char arr[pd.length() + 1];
+  strcpy(arr, pd.c_str());
+  return patchName + "," + arr + getHash(arr);
 }
 
 FLASHMEM String getCurrentPatchDataWithoutPatchname()
@@ -1202,12 +1207,10 @@ FLASHMEM String getCurrentPatchDataWithoutPatchname()
   return String(groupvec[activeGroupIndex]->getOscLevelA()) + "," + String(groupvec[activeGroupIndex]->getOscLevelB()) + "," + String(groupvec[activeGroupIndex]->getPinkNoiseLevel() - groupvec[activeGroupIndex]->getWhiteNoiseLevel()) + "," + String(p.unisonMode) + "," + String(groupvec[activeGroupIndex]->getOscFX()) + "," + String(p.detune, 5) + "," + String(lfoSyncFreq) + "," + String(midiClkTimeInterval) + "," + String(lfoTempoValue) + "," + String(groupvec[activeGroupIndex]->getKeytrackingAmount()) + "," + String(p.glideSpeed, 5) + "," + String(p.oscPitchA) + "," + String(p.oscPitchB) + "," + String(groupvec[activeGroupIndex]->getWaveformA()) + "," + String(groupvec[activeGroupIndex]->getWaveformB()) + "," +
          String(groupvec[activeGroupIndex]->getPwmSource()) + "," + String(groupvec[activeGroupIndex]->getPwmAmtA()) + "," + String(groupvec[activeGroupIndex]->getPwmAmtB()) + "," + String(groupvec[activeGroupIndex]->getPwmRate()) + "," + String(groupvec[activeGroupIndex]->getPwA()) + "," + String(groupvec[activeGroupIndex]->getPwB()) + "," + String(groupvec[activeGroupIndex]->getResonance()) + "," + String(groupvec[activeGroupIndex]->getCutoff()) + "," + String(groupvec[activeGroupIndex]->getFilterMixer()) + "," + String(groupvec[activeGroupIndex]->getFilterEnvelope()) + "," + String(groupvec[activeGroupIndex]->getPitchLfoAmount(), 5) + "," + String(groupvec[activeGroupIndex]->getPitchLfoRate(), 5) + "," + String(groupvec[activeGroupIndex]->getPitchLfoWaveform()) + "," + String(int(groupvec[activeGroupIndex]->getPitchLfoRetrig())) + "," + String(int(groupvec[activeGroupIndex]->getPitchLfoMidiClockSync())) + "," + String(groupvec[activeGroupIndex]->getFilterLfoRate(), 5) + "," +
          groupvec[activeGroupIndex]->getFilterLfoRetrig() + "," + groupvec[activeGroupIndex]->getFilterLfoMidiClockSync() + "," + groupvec[activeGroupIndex]->getFilterLfoAmt() + "," + groupvec[activeGroupIndex]->getFilterLfoWaveform() + "," + groupvec[activeGroupIndex]->getFilterAttack() + "," + groupvec[activeGroupIndex]->getFilterDecay() + "," + groupvec[activeGroupIndex]->getFilterSustain() + "," + groupvec[activeGroupIndex]->getFilterRelease() + "," + groupvec[activeGroupIndex]->getAmpAttack() + "," + groupvec[activeGroupIndex]->getAmpDecay() + "," + groupvec[activeGroupIndex]->getAmpSustain() + "," + groupvec[activeGroupIndex]->getAmpRelease() + "," +
-         String(groupvec[activeGroupIndex]->getEffectAmount()) + "," + String(groupvec[activeGroupIndex]->getEffectMix()) + "," + String(groupvec[activeGroupIndex]->getPitchEnvelope()) + "," + String(velocitySens) + "," + String(p.chordDetune) + "," + String(groupvec[activeGroupIndex]->getMonophonicMode()) + "," + String(0.0f) + "," + String(0.0f);
+         String(groupvec[activeGroupIndex]->getEffectAmount()) + "," + String(groupvec[activeGroupIndex]->getEffectMix()) + "," + String(groupvec[activeGroupIndex]->getPitchEnvelope()) + "," + String(velocitySens) + "," + String(p.chordDetune) + "," + String(groupvec[activeGroupIndex]->getMonophonicMode()) + "," + String(0.0f);
 }
 
 /*
-  controlParameter p = 99;//TODO
-  int val = 0; //TODO
   switch (p) {
     case control_noiseLevel:
       midiCCOut(CCnoiseLevel, val);
@@ -1361,7 +1364,6 @@ FLASHMEM String getCurrentPatchDataWithoutPatchname()
       myControlChange(midiChannel, CCfilterLFOMidiClkSync, value3);
       break;
   }
-  }
 */
 
 void encoderCallback(unsigned enc_idx, int value, int delta)
@@ -1370,33 +1372,33 @@ void encoderCallback(unsigned enc_idx, int value, int delta)
 
   switch (enc_idx)
   {
-  case 4:
-    if ((enc4Value + delta > -1) && (enc4Value + delta < 256))
+  case 4: // TR
+    if ((encTRValue + delta > -1) && (encTRValue + delta < 256))
     {
       // enc4Value = groupvec[activeGroupIndex]->getCutoff();
-      enc4Value += delta;
+      encTRValue += delta;
     }
-    updateFilterFreq(FILTERFREQS256[enc4Value]);
-    midiCCOut(CCfilterfreq, enc4Value << 1); // 8 to 7 bit
+    updateFilterFreq(FILTERFREQS256[encTRValue]);
+    midiCCOut(CCfilterfreq, encTRValue << 1); // 8 to 7 bit
     break;
-  case 5:
-    if ((enc5Value + delta > -1) && (enc5Value + delta < 128))
-      enc5Value += delta;
-    midiCCOut(CCfilterres, enc5Value);
-    updateFilterRes(enc5Value);
-    myControlChange(midiChannel, CCfilterres, enc5Value);
+  case 5: // BR
+    if ((encBRValue + delta > -1) && (encBRValue + delta < 128))
+      encBRValue += delta;
+    midiCCOut(CCfilterres, encBRValue);
+    updateFilterRes(encBRValue);
+    myControlChange(midiChannel, CCfilterres, encBRValue);
     break;
-  case 6:
-    if ((enc6Value + delta > -1) && (enc6Value + delta < 128))
-      enc6Value += delta;
-    midiCCOut(CCfxamt, enc6Value);
-    myControlChange(midiChannel, CCfxamt, enc6Value);
+  case 6: // TL
+    if ((encTLValue + delta > -1) && (encTLValue + delta < 128))
+      encTLValue += delta;
+    midiCCOut(CCfxamt, encTLValue);
+    myControlChange(midiChannel, CCfxamt, encTLValue);
     break;
-  case 7:
-    if ((enc7Value + delta > -1) && (enc7Value + delta < 128))
-      enc7Value += delta;
-    midiCCOut(CCfxmix, enc7Value);
-    myControlChange(midiChannel, CCfxmix, enc7Value);
+  case 7: // BL
+    if ((encBLValue + delta > -1) && (encBLValue + delta < 128))
+      encBLValue += delta;
+    midiCCOut(CCfxmix, encBLValue);
+    myControlChange(midiChannel, CCfxmix, encBLValue);
     break;
   }
 }
@@ -1758,10 +1760,12 @@ void buttonCallback(unsigned button_idx, int state)
   case 0:
     if (state == HIGH)
       Serial.println("Vol Down");
+    updateVolume(LINEAR[0]);
     break;
   case 1:
     if (state == HIGH)
       Serial.println("Vol Up");
+    updateVolume(LINEAR[127]);
     break;
   case 3:
     if (state == HIGH)
@@ -1834,8 +1838,8 @@ void loop()
   usbMIDI.read(midiChannel);
   // MIDI 5 Pin DIN
   MIDI.read(midiChannel);
-  encoders.tick();
-  buttons.tick();
+  encoders.read();
+  buttons.read();
   lightLEDs();
   // CPUMonitor();
 }

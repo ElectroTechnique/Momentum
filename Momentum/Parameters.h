@@ -2,7 +2,7 @@
 #include <stdint.h>
 #include <MIDI.h>
 
-// Globals used for OLED Settings
+// Globals used for LCD Settings
 extern byte midiChannel;
 extern byte midiOutCh;
 extern midi::Thru::Mode MIDIThru;
@@ -21,9 +21,10 @@ extern int velocitySens;
 // Exponential envelopes
 extern int8_t envTypeAmp;
 extern int8_t envTypeFilt;
-//Glide shape
+// Glide shape
 extern int8_t glideShape;
-extern int16_t enc4Value;
-extern int16_t enc5Value;
-extern int16_t enc6Value;
-extern int16_t enc7Value;
+// Encoders
+extern int16_t encTRValue;
+extern int16_t encBRValue;
+extern int16_t encTLValue;
+extern int16_t encBLValue;

@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 
-#define MAXDETUNE 0.06f
+#define MAXDETUNE 0.06f // 6% 1semitone
 #define CDT_DETUNE 0.992f
 
 extern const float DETUNE[4][24];

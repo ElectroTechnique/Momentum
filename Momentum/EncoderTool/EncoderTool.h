@@ -1,6 +1,9 @@
 #pragma once
 
 #include "Multiplexed/EncPlex74165.h"
-#include "Multiplexed/EncPlex4067.h"
-#include "Single/Encoder.h"
-#include "Single/PolledEncoder.h"
+
+/*
+Modified from https://github.com/luni64/EncoderTool
+This has encoder acceleration and an all button callback added.
+Some parts of this library have been removed.
+*/

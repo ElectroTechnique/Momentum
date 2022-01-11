@@ -6,7 +6,7 @@ namespace ButtonTool
 {
     class Button : public Bounce
     {
-     public:
+    public:
         Button() : Bounce() {}
 
         bool update(bool state)
@@ -15,7 +15,7 @@ namespace ButtonTool
             return Bounce::update();
         }
 
-     protected:
+    protected:
         bool readCurrentState() override { return curState; }
         bool curState;
     };

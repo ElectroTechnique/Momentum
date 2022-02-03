@@ -25,8 +25,4 @@ int8_t envTypeFilt = -128; // Linear
 // Glide shape
 int8_t glideShape = 1; // Exp
 
-//encoder current value
-int16_t encTRValue = 0;
-int16_t encBRValue = 0;
-int16_t encTLValue = 0;
-int16_t encBLValue = 0;
+uint8_t currentVolume = 63;

@@ -116,7 +116,7 @@ FLASHMEM void renderCurrentPatchPage()
   tft.setCursor(100, 94);
   tft.setTextColor(ILI9341_RED);
   tft.setTextSize(1);
-  tft.println("Category");
+  tft.println("Bank Name 1");
 
   tft.setTextColor(ILI9341_BLACK);
   tft.setFont(&FreeSans12pt7b);
@@ -245,14 +245,14 @@ FLASHMEM void renderDeletePatchPage()
   tft.setFont(&FreeSans12pt7b);
   tft.setCursor(0, 78);
   tft.setTextColor(ILI9341_YELLOW);
-  tft.println(patches.last().patchNo);
+  tft.println(patches.last().patchUID);
   tft.setCursor(35, 78);
   tft.setTextColor(ILI9341_WHITE);
   tft.println(patches.last().patchName);
   tft.fillRect(0, 85, tft.width(), 23, ILI9341_MAROON);
   tft.setCursor(0, 98);
   tft.setTextColor(ILI9341_YELLOW);
-  tft.println(patches.first().patchNo);
+  tft.println(patches.first().patchUID);
   tft.setCursor(35, 98);
   tft.setTextColor(ILI9341_WHITE);
   tft.println(patches.first().patchName);
@@ -282,14 +282,14 @@ FLASHMEM void renderSavePage()
   tft.setFont(&FreeSans12pt7b);
   tft.setCursor(0, 78);
   tft.setTextColor(ILI9341_YELLOW);
-  tft.println(patches[patches.size() - 2].patchNo);
+  tft.println(patches[patches.size() - 2].patchUID);
   tft.setCursor(35, 78);
   tft.setTextColor(ILI9341_WHITE);
   tft.println(patches[patches.size() - 2].patchName);
   tft.fillRect(0, 85, tft.width(), 23, ILI9341_MAROON);
   tft.setCursor(0, 98);
   tft.setTextColor(ILI9341_YELLOW);
-  tft.println(patches.last().patchNo);
+  tft.println(patches.last().patchUID);
   tft.setCursor(35, 98);
   tft.setTextColor(ILI9341_WHITE);
   tft.println(patches.last().patchName);
@@ -327,7 +327,7 @@ FLASHMEM void renderRecallPage()
   tft.setFont(&FreeSans12pt7b);
   tft.setCursor(0, 45);
   tft.setTextColor(ILI9341_YELLOW);
-  tft.println(patches.last().patchNo);
+  tft.println(patches.last().patchUID);
   tft.setCursor(35, 45);
   tft.setTextColor(ILI9341_WHITE);
   tft.println(patches.last().patchName);
@@ -335,14 +335,14 @@ FLASHMEM void renderRecallPage()
   tft.fillRect(0, 56, tft.width(), 23, 0xA000);
   tft.setCursor(0, 72);
   tft.setTextColor(ILI9341_YELLOW);
-  tft.println(patches.first().patchNo);
+  tft.println(patches.first().patchUID);
   tft.setCursor(35, 72);
   tft.setTextColor(ILI9341_WHITE);
   tft.println(patches.first().patchName);
 
   tft.setCursor(0, 98);
   tft.setTextColor(ILI9341_YELLOW);
-  patches.size() > 1 ? tft.println(patches[1].patchNo) : tft.println(patches.last().patchNo);
+  patches.size() > 1 ? tft.println(patches[1].patchUID) : tft.println(patches.last().patchUID);
   tft.setCursor(35, 98);
   tft.setTextColor(ILI9341_WHITE);
   patches.size() > 1 ? tft.println(patches[1].patchName) : tft.println(patches.last().patchName);

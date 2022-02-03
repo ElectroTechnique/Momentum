@@ -3,6 +3,24 @@ using namespace ButtonTool;
 #include "EncoderTool/EncoderTool.h"
 using namespace EncoderTool;
 
+// Encoder Shift Register numbering
+#define ENC_TL 6
+#define ENC_BL 7
+#define ENC_TR 4
+#define ENC_BR 5
+
+// Button numbering
+#define VOL_DOWN 0
+#define VOL_UP 1
+#define BUTTON_8 3
+#define BUTTON_7 4
+#define BUTTON_5 6
+#define BUTTON_4 7
+#define BUTTON_6 8
+#define BUTTON_2 9
+#define BUTTON_1 10
+#define BUTTON_3 11
+
 // Because of the way the four encoders and ten buttons are arranged on three 74HC595 shift registers in parallel, these counts are not the same
 constexpr unsigned encoderCount = 8; // There are four arranged over three Shift Registers on the last four positions, hence all eight positions must be shifted to reach them.
 constexpr unsigned buttonCount = 12; // There are ten buttons, but arranged over three Shift Registers on the first four positions. The last four are skipped.
@@ -82,6 +100,11 @@ FLASHMEM void setupHardware(EncoderTool::allCallback_t ec, EncoderTool::allBtnCa
   encoders.begin(CountMode::full);
   encoders.attachCallback(ec);
   encoders.attachBtnCallback(ebc);
+
+  for (uint8_t i = 0; i < encoderCount; i++)
+  {
+    encoders[i].setLimits(0, 127);
+  }
   buttons.begin(bc);
 
   // Display backlight - Can be used to turn off or dim using PWM

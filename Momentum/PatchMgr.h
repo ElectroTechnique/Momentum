@@ -1,8 +1,3 @@
-/*
-  Momentum patch saving and recall works like an analogue polysynth from the late 70s (Prophet 5).
-  When you recall a patch, all the front panel controls will be different values from those saved in the patch.
-  Moving them will cause a jump to the current value.
-*/
 // Agileware CircularBuffer available in libraries manager
 #include <CircularBuffer.h>
 #include "Constants.h"
@@ -14,99 +9,224 @@
 const static char CHARACTERS[TOTALCHARS] = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', ' ', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', ' ', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0'};
 int charIndex = 0;
 char currentCharacter = 0;
-String renamedPatch = "";
 
-struct PatchNoAndName
+PatchStruct currentPatch;
+
+struct PatchUIDAndName
 {
-  int patchNo;
+  uint32_t patchUID;
   String patchName;
 };
 
-CircularBuffer<PatchNoAndName, PATCHES_LIMIT> patches;
+CircularBuffer<PatchUIDAndName, PATCHES_LIMIT> patches;
 
-FLASHMEM size_t readField(File *file, char *str, size_t size, const char *delim)
+// Computes a hash of the parameter values to create a UID for each patch that is stored with it.
+// This can also be used to identify identical patches. Hash takes about 2.8us on TeensyMM
+FLASHMEM uint32_t getHash(String tohash)
 {
-  char ch;
-  size_t n = 0;
-  while ((n + 1) < size && file->read(&ch, 1) == 1)
-  {
-    // Delete CR.
-    if (ch == '\r')
-    {
-      continue;
-    }
-    str[n++] = ch;
-    if (strchr(delim, ch))
-    {
-      break;
-    }
-  }
-  str[n] = '\0';
-  return n;
+  return rokkit(tohash.c_str(), strlen(tohash.c_str()));
 }
 
-FLASHMEM void recallPatchData(File patchFile, String data[])
+FLASHMEM void savePatch()
 {
-  // Read patch data from file and set current patch parameters
-  size_t n;     // Length of returned field with delimiter.
-  char str[20]; // Must hold longest field with delimiter and zero byte.
-  uint32_t i = 0;
-  while (patchFile.available() && i < NO_OF_PARAMS)
+  StaticJsonDocument<1024> doc;
+
+  doc["PatchName"] = currentPatch.PatchName;
+
+  JsonObject OSC1 = doc.createNestedObject("OSC1");
+  OSC1["Pitch"] = currentPatch.PitchA;
+  OSC1["Waveform"] = currentPatch.WaveformA;
+  OSC1["Level"] = currentPatch.OscLevelA;
+  OSC1["PWAmount"] = currentPatch.PWA_Amount;
+  OSC1["PWMAmount"] = currentPatch.PWMA_Amount;
+
+  JsonObject OSC2 = doc.createNestedObject("OSC2");
+  OSC2["Pitch"] = currentPatch.PitchB;
+  OSC2["Waveform"] = currentPatch.WaveformB;
+  OSC2["Level"] = currentPatch.OscLevelB;
+  OSC2["PWAmount"] = currentPatch.PWB_Amount;
+  OSC2["PWMAmount"] = currentPatch.PWMB_Amount;
+
+  doc["PWMSource"] = currentPatch.PWMSource;
+  doc["PWMRate"] = currentPatch.PWMRate;
+  doc["Detune"] = currentPatch.Detune;
+  doc["NoiseLevel"] = currentPatch.NoiseLevel;
+  doc["Unison"] = currentPatch.Unison;
+  doc["OscFX"] = currentPatch.OscFX;
+  doc["PitchEnv"] = currentPatch.PitchEnv;
+  doc["PitchLFOAmt"] = currentPatch.PitchLFOAmt;
+  doc["PitchLFORate"] = currentPatch.PitchLFORate;
+  doc["PitchLFOWaveform"] = currentPatch.PitchLFOWaveform;
+  doc["PitchLFORetrig"] = currentPatch.PitchLFORetrig;
+  doc["PitchLFOMidiClkSync"] = currentPatch.PitchLFOMidiClkSync;
+
+  JsonObject Filter = doc.createNestedObject("Filter");
+  Filter["Freq"] = currentPatch.FilterFreq;
+  Filter["Res"] = currentPatch.FilterRes;
+  Filter["Mixer"] = currentPatch.FilterMixer;
+  Filter["FilterEnv"] = currentPatch.FilterEnv;
+  Filter["LFORate"] = currentPatch.FilterLFORate;
+  Filter["LFORetrig"] = currentPatch.FilterLFORetrig;
+  Filter["LFOMidiClkSync"] = currentPatch.FilterLFOMidiClkSync;
+  Filter["LfoAmt"] = currentPatch.FilterLfoAmt;
+  Filter["LFOWaveform"] = currentPatch.FilterLFOWaveform;
+  Filter["Attack"] = currentPatch.FilterAttack;
+  Filter["Decay"] = currentPatch.FilterDecay;
+  Filter["Sustain"] = currentPatch.FilterSustain;
+  Filter["Release"] = currentPatch.FilterRelease;
+
+  JsonObject Amp = doc.createNestedObject("Amp");
+  Amp["Attack"] = currentPatch.Attack;
+  Amp["Decay"] = currentPatch.Decay;
+  Amp["Sustain"] = currentPatch.Sustain;
+  Amp["Release"] = currentPatch.Release;
+
+  doc["KeyTracking"] = currentPatch.KeyTracking;
+  doc["LFOTempoValue"] = currentPatch.LFOTempoValue;
+  doc["LFOSyncFreq"] = currentPatch.LFOSyncFreq;
+  doc["MidiClkTimeInterval"] = currentPatch.MidiClkTimeInterval;
+  doc["VelocitySensitivity"] = currentPatch.VelocitySensitivity;
+  doc["ChordDetune"] = currentPatch.ChordDetune;
+  doc["MonophonicMode"] = currentPatch.MonophonicMode;
+  doc["Glide"] = currentPatch.Glide;
+  doc["EffectAmt"] = currentPatch.EffectAmt;
+  doc["EffectMix"] = currentPatch.EffectMix;
+
+  // Need to generate a new UID as the patch settings may have changed if overwriting an existing patch
+  String output;
+  serializeJson(doc, output);      // Generate JSON without UID
+  uint32_t iUID = getHash(output); // Generate UID
+  currentPatch.UID = iUID;         // Give current patch a UID
+  doc["UID"] = iUID;               // Insert UID
+  serializeJson(doc, output);      // Generate complete JSON to save
+
+  File file = SD.open(String(iUID).c_str(), FILE_WRITE);
+  if (!file)
   {
-    n = readField(&patchFile, str, sizeof(str), ",\n");
-    // done if Error or at EOF.
-    if (n == 0)
-      break;
-    // Print the type of delimiter.
-    if (str[n - 1] == ',' || str[n - 1] == '\n')
-    {
-      // Remove the delimiter.
-      str[n - 1] = 0;
-    }
-    else
-    {
-      // At eof, too long, or read error.  Too long is error.
-      Serial.print(patchFile.available() ? F("error: ") : F("eof:   "));
-    }
-    // Print the field.
-    //    Serial.print(i);
-    //    Serial.print(" - ");
-    //    Serial.println(str);
-    data[i++] = String(str);
+    Serial.println(F("Failed to create file"));
+    return;
+  }
+  if (serializeJson(doc, file) == 0)
+  {
+    Serial.println(F("Failed to write to file"));
+    return;
   }
 }
 
-FLASHMEM int compare(const void *a, const void *b)
+// Filename is UID
+FLASHMEM void loadPatch(uint32_t filename)
 {
-  return ((PatchNoAndName *)a)->patchNo - ((PatchNoAndName *)b)->patchNo;
+  // Open file for reading - UID is Filename
+  char buf[12];
+  File file = SD.open(utoa(filename, buf, 10));
+
+  // Allocate a temporary JsonDocument
+  // Don't forget to change the capacity to match your requirements.
+  // Use https://arduinojson.org/v6/assistant to compute the capacity.
+  StaticJsonDocument<2048> doc;
+
+  // Deserialize the JSON document
+  DeserializationError error = deserializeJson(doc, file);
+  if (error)
+  {
+    Serial.print(F("loadPatch() - Failed to read file:"));
+    Serial.println(filename);
+    return;
+  }
+  // Copy values from the JsonDocument to the PatchStruct
+  strncpy(currentPatch.PatchName, doc["PatchName"], sizeof(currentPatch.PatchName));
+  currentPatch.UID = doc["UID"];
+
+  JsonObject OSC1 = doc["OSC1"];
+  currentPatch.PitchA = OSC1["Pitch"];
+  currentPatch.WaveformA = OSC1["Waveform"];
+  currentPatch.OscLevelA = OSC1["Level"];
+  currentPatch.PWA_Amount = OSC1["PWAmount"];
+  currentPatch.PWMA_Amount = OSC1["PWMAmount"];
+
+  JsonObject OSC2 = doc["OSC2"];
+  currentPatch.PitchB = OSC2["Pitch"];
+  currentPatch.WaveformB = OSC2["Waveform"];
+  currentPatch.OscLevelB = OSC2["Level"];
+  currentPatch.PWB_Amount = OSC2["PWAmount"];
+  currentPatch.PWMB_Amount = OSC2["PWMAmount"];
+
+  currentPatch.PWMSource = doc["PWMSource"];
+  currentPatch.PWMRate = doc["PWMRate"];
+  currentPatch.Detune = doc["Detune"];
+  currentPatch.NoiseLevel = doc["NoiseLevel"];
+  currentPatch.Unison = doc["Unison"];
+  Serial.println(currentPatch.Unison);
+  currentPatch.OscFX = doc["OscFX"];
+  currentPatch.PitchEnv = doc["PitchEnv"];
+  currentPatch.PitchLFOAmt = doc["PitchLFOAmt"];
+  currentPatch.PitchLFORate = doc["PitchLFORate"];
+  currentPatch.PitchLFOWaveform = doc["PitchLFOWaveform"];
+  currentPatch.PitchLFORetrig = doc["PitchLFORetrig"];
+  currentPatch.PitchLFOMidiClkSync = doc["PitchLFOMidiClkSync"];
+
+  JsonObject Filter = doc["Filter"];
+  currentPatch.FilterFreq = Filter["Freq"];
+  currentPatch.FilterRes = Filter["Res"];
+  currentPatch.FilterMixer = Filter["Mixer"];
+  currentPatch.FilterEnv = Filter["Env"];
+  currentPatch.FilterLFORate = Filter["LFORate"];
+  currentPatch.FilterLFORetrig = Filter["LFORetrig"];
+  currentPatch.FilterLFOMidiClkSync = Filter["LFOMidiClkSync"];
+  currentPatch.FilterLfoAmt = Filter["LfoAmt"];
+  currentPatch.FilterLFOWaveform = Filter["LFOWaveform"];
+  currentPatch.FilterAttack = Filter["Attack"];
+  currentPatch.FilterDecay = Filter["Decay"];
+  currentPatch.FilterSustain = Filter["Sustain"];
+  currentPatch.FilterRelease = Filter["Release"];
+
+  JsonObject Amp = doc["Amp"];
+  currentPatch.Attack = Amp["Attack"];
+  currentPatch.Decay = Amp["Decay"];
+  currentPatch.Sustain = Amp["Sustain"];
+  currentPatch.Release = Amp["Release"];
+
+  currentPatch.KeyTracking = doc["KeyTracking"];
+  currentPatch.LFOTempoValue = doc["LFOTempoValue"];
+  currentPatch.LFOSyncFreq = doc["LFOSyncFreq"];
+  currentPatch.MidiClkTimeInterval = doc["MidiClkTimeInterval"];
+  currentPatch.VelocitySensitivity = doc["VelocitySensitivity"];
+  currentPatch.ChordDetune = doc["ChordDetune"];
+  currentPatch.MonophonicMode = doc["MonophonicMode"];
+  currentPatch.Glide = doc["Glide"];
+  currentPatch.EffectAmt = doc["EffectAmt"];
+  currentPatch.EffectMix = doc["EffectMix"];
+
+  file.close();
 }
 
-FLASHMEM void sortPatches()
+// Patchname from a files and return it
+char *getPatchName(File file)
 {
-  int arraySize = patches.size();
-  // Sort patches buffer to be consecutive ascending patchNo order
-  struct PatchNoAndName arrayToSort[arraySize];
+  // Allocate a temporary JsonDocument
+  // Don't forget to change the capacity to match your requirements.
+  // Use https://arduinojson.org/v6/assistant to compute the capacity.
+  StaticJsonDocument<2048> doc;
 
-  for (int i = 0; i < arraySize; ++i)
+  // Deserialize the JSON document
+  DeserializationError error = deserializeJson(doc, file);
+  if (error)
   {
-    arrayToSort[i] = patches[i];
+    Serial.println(F("getPatchName() - Failed to read file"));
+    return 0;
   }
-  qsort(arrayToSort, arraySize, sizeof(PatchNoAndName), compare);
-  patches.clear();
-
-  for (int i = 0; i < arraySize; ++i)
-  {
-    patches.push(arrayToSort[i]);
-  }
+  // Copy values from the JsonDocument to the PatchStruct
+  return doc["PatchName"];
 }
 
-FLASHMEM void loadPatches()
+// Loads Patchnames into circular buffer for display only and uses UID (filename) to recall
+FLASHMEM void loadPatchNames()
 {
+  Serial.println("LoadPatchNames()");
   File file = SD.open("/");
   patches.clear();
   while (true)
   {
-    String data[NO_OF_PARAMS]; // Array of data read in
     File patchFile = file.openNextFile();
     if (!patchFile)
     {
@@ -118,90 +238,20 @@ FLASHMEM void loadPatches()
     }
     else
     {
-      recallPatchData(patchFile, data);
-      patches.push(PatchNoAndName{atoi(patchFile.name()), data[0]});
-      Serial.println(String(patchFile.name()) + ":" + data[0]);
+      uint32_t ui = strtoul(patchFile.name(), NULL, 0);
+      patches.push(PatchUIDAndName{ui, getPatchName(patchFile)});
+      Serial.println(String(patches.last().patchUID) + ":" + patches.last().patchName);
     }
     patchFile.close();
   }
-  sortPatches();
 }
 
-FLASHMEM void savePatch(const char *patchNo, String patchData)
-{
-  // Serial.print("savePatch Patch No:");
-  //  Serial.println(patchNo);
-  // Overwrite existing patch by deleting
-  if (SD.exists(patchNo))
-  {
-    SD.remove(patchNo);
-  }
-  File patchFile = SD.open(patchNo, FILE_WRITE);
-  if (patchFile)
-  {
-    //    Serial.print("Writing Patch No:");
-    //    Serial.println(patchNo);
-    // Serial.println(patchData);
-    patchFile.println(patchData);
-    patchFile.close();
-  }
-  else
-  {
-    Serial.print("Error writing Patch file:");
-    Serial.println(patchNo);
-  }
-}
-
-FLASHMEM void savePatch(const char *patchNo, String patchData[])
-{
-  String dataString = patchData[0];
-  for (uint32_t i = 1; i < NO_OF_PARAMS; i++)
-  {
-    dataString = dataString + "," + patchData[i];
-  }
-  savePatch(patchNo, dataString);
-}
-
-FLASHMEM void deletePatch(const char *patchNo)
-{
-  if (SD.exists(patchNo))
-    SD.remove(patchNo);
-}
-
-FLASHMEM void renumberPatchesOnSD()
-{
-  for (int i = 0; i < patches.size(); i++)
-  {
-    String data[NO_OF_PARAMS]; // Array of data read in
-    File file = SD.open(String(patches[i].patchNo).c_str());
-    if (file)
-    {
-      recallPatchData(file, data);
-      file.close();
-      savePatch(String(i + 1).c_str(), data);
-    }
-  }
-  deletePatch(String(patches.size() + 1).c_str()); // Delete final patch which is duplicate of penultimate patch
-}
-
-FLASHMEM void setPatchesOrdering(int no)
-{
-  if (patches.size() < 2)
-    return;
-  while (patches.first().patchNo != no)
-  {
-    patches.push(patches.shift());
-  }
-}
-
-FLASHMEM void resetPatchesOrdering()
-{
-  setPatchesOrdering(1);
-}
-
-// Computes a hash of the parameter values to create a UID for each patch that is stored with it.
-// This can also be used to identify identical patches. Hash takes about 2.8us on TeensyMM
-FLASHMEM uint32_t getHash(char tohash[])
-{
-  return rokkit(tohash, strlen(tohash));
-}
+// FLASHMEM void setPatchesOrdering(int no)
+// {
+//   if (patches.size() < 2)
+//     return;
+//   while (patches.first().patchNo != no)
+//   {
+//     patches.push(patches.shift());
+//   }
+// }

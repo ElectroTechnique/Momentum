@@ -5,7 +5,8 @@
 
 #define RE_READ -99
 #define PWMWAVEFORM WAVEFORM_SINE
-#define PATCHES_LIMIT 999
+#define BANKS_LIMIT 8 // 128 patches per bank
+#define PATCHES_LIMIT 128 // 128 patches per bank
 
 extern const char* VERSION;
 extern const float PROGMEM FILTERFREQS256[256];

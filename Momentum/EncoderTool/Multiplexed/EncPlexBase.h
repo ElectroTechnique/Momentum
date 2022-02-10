@@ -26,8 +26,8 @@ namespace EncoderTool
         allBtnCallback_t btnCallback = nullptr;
 
         // Encoder acceleration
-        long ACC_TIME = 15; // 15ms
-        long ACC_TIME2 = 5; // 5ms
+        long ACC_TIME = 10; // 10ms
+        long ACC_TIME2 = 3; // 3ms
         long last[8] = {0};
     };
 }

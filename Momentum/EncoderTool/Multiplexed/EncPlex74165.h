@@ -88,7 +88,7 @@ namespace EncoderTool
             {
                 int delta = encoders[i].update(digitalReadFast(A), digitalReadFast(B), digitalReadFast(Btn));
                 // Condition removes some unwanted changes to the encoder value when pushing its button
-                if (btnCallback != nullptr && encoders[i].buttonChanged() && encoders[i].getButton() == HIGH)
+                if (btnCallback != nullptr && encoders[i].buttonChanged() && encoders[i].getButton() == LOW)
                 {
                     btnCallback(i, encoders[i].getButton());
                 }
@@ -107,6 +107,7 @@ namespace EncoderTool
                     last[i] = now;
                 }
             }
+            //Clock after first is read
             if (i > 0)
             {
                 digitalWriteFast(CLK, LOW);

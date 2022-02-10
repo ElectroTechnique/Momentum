@@ -1,6 +1,5 @@
 #pragma once
 
-#include "Bounce2.h"
 #include "ButtonPlexBase.h"
 
 /*
@@ -21,7 +20,18 @@ namespace ButtonTool
         inline void read(); // call as often as possible
 
     protected:
-        const unsigned BtnA, BtnB, BtnC, LD, CLK;
+        const unsigned BtnA,
+            BtnB,
+            BtnC,
+            LD,
+            CLK;
+        int32_t previousState[8] = {LOW};
+        uint32_t WINDOWTIME[7] = {500, 390, 330, 220, 140, 80, 20};
+        uint32_t starttime[24] = {0};
+        boolean buttonHeld[24] = {false};
+        inline void readButton(unsigned i);
+
+        uint8_t w = 0;
     };
 
     // IMPLEMENTATION ============================================
@@ -80,7 +90,7 @@ namespace ButtonTool
         delayNanoseconds(50);
         digitalWriteFast(LD, HIGH);
 
-        // Read three buttons in each shift
+        // Read three buttons in parallel in each shift
         unsigned i = 0;
         while (i < buttonCount)
         {
@@ -89,31 +99,52 @@ namespace ButtonTool
                 digitalWriteFast(CLK, HIGH);
                 delayNanoseconds(50);
             }
-
             buttons[i].update(digitalReadFast(BtnA));
-            if (callback != nullptr && buttons[i].buttonChanged() && buttons[i].getButton() == HIGH) // Pressed then released
-            {
-                callback(i, buttons[i].getButton());
-            }
+            readButton(i);
             i++;
             buttons[i].update(digitalReadFast(BtnB));
-            if (callback != nullptr && buttons[i].buttonChanged() && buttons[i].getButton() == HIGH)
-            {
-                callback(i, buttons[i].getButton());
-            }
+            readButton(i);
             i++;
             buttons[i].update(digitalReadFast(BtnC));
-            if (callback != nullptr && buttons[i].buttonChanged() && buttons[i].getButton() == HIGH)
-            {
-                callback(i, buttons[i].getButton());
-            }
+            readButton(i);
             i++;
-
             if (i > 0)
             {
                 digitalWriteFast(CLK, LOW);
                 delayNanoseconds(50);
             }
+        }
+    }
+
+    void ButtonPlex74165::readButton(unsigned i)
+    {
+        if (i == 2 || i == 5 || i > 11)
+            return; // Ignore unconnected shift register inputs
+
+        if (callback != nullptr && buttons[i].buttonChanged())
+        {
+            if (buttons[i].getButton() == LOW)
+            {
+                starttime[i] = millis();
+                w = 0;
+            }
+            else
+            {
+                if (!buttonHeld[i])
+                    callback(i, buttons[i].getButton());
+                buttonHeld[i] = false;
+                w = 0;
+            }
+        }
+
+        if (callback != nullptr && buttons[i].getButton() == LOW && (millis() - starttime[i]) > WINDOWTIME[w])
+        {
+            buttonHeld[i] = true;
+            starttime[i] = millis();
+            // Acceleration of callcacks when button is held down
+            if (w < 6)
+                w++;
+            callback(i, 2); // HELD
         }
     }
 }

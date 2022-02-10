@@ -101,10 +101,10 @@ FLASHMEM void setupHardware(EncoderTool::allCallback_t ec, EncoderTool::allBtnCa
   encoders.attachCallback(ec);
   encoders.attachBtnCallback(ebc);
 
-  for (uint8_t i = 0; i < encoderCount; i++)
-  {
-    encoders[i].setLimits(0, 127);
-  }
+  // for (uint8_t i = 0; i < encoderCount; i++)
+  // {
+  //   encoders[i].setLimits(0, 127);
+  // }
   buttons.begin(bc);
 
   // Display backlight - Can be used to turn off or dim using PWM

@@ -164,6 +164,7 @@ FLASHMEM void setup()
   }
   else
   {
+    setCurrentPatchData(); // Initialise to default
     Serial.println(F("SD card is not connected or unusable"));
     showPatchPage("No SD", "conn'd / usable");
   }
@@ -1764,24 +1765,47 @@ void buttonCallback(unsigned button_idx, int state)
   {
   case VOL_DOWN:
     if (state == HIGH)
-      Serial.println("Vol Down");
-    currentVolume = clampToRange<int>(currentVolume, -1, 0, 127);
-    myControlChange(midiChannel, CCvolume, currentVolume);
+    {
+      currentVolume = clampToRange<int>(currentVolume, -1, 0, 127);
+      myControlChange(midiChannel, CCvolume, currentVolume);
+    }
+    if (state == 2)
+    {
+      currentVolume = clampToRange<int>(currentVolume, -1, 0, 127);
+      myControlChange(midiChannel, CCvolume, currentVolume);
+    }
     break;
   case VOL_UP:
     if (state == HIGH)
-      Serial.println("Vol Up");
-    currentVolume = clampToRange<int>(currentVolume, 1, 0, 127);
-    myControlChange(midiChannel, CCvolume, currentVolume);
+    {
+      currentVolume = clampToRange<int>(currentVolume, 1, 0, 127);
+      myControlChange(midiChannel, CCvolume, currentVolume);
+    }
+    if (state == 2)
+    {
+      currentVolume = clampToRange<int>(currentVolume, 1, 0, 127);
+      myControlChange(midiChannel, CCvolume, currentVolume);
+    }
     break;
   case BUTTON_8:
     if (state == HIGH)
+    {
       singleLED(RED, 8);
+    }
+    if (state == 2)
+    {
+      singleLED(GREEN, 8);
+    }
     break;
   case BUTTON_7:
     if (state == HIGH)
+    {
       singleLED(RED, 7);
-
+    }
+    if (state == 2)
+    {
+      singleLED(GREEN, 7);
+    }
     // switch (state)
     // {
     // case PARAMETER:
@@ -1820,27 +1844,63 @@ void buttonCallback(unsigned button_idx, int state)
     break;
   case BUTTON_5:
     if (state == HIGH)
+    {
       singleLED(RED, 5);
+    }
+    if (state == 2)
+    {
+      singleLED(GREEN, 5);
+    }
     break;
   case BUTTON_4:
     if (state == HIGH)
+    {
       singleLED(RED, 4);
+    }
+    if (state == 2)
+    {
+      singleLED(GREEN, 4);
+    }
     break;
   case BUTTON_6:
     if (state == HIGH)
+    {
       singleLED(RED, 6);
+    }
+    if (state == 2)
+    {
+      singleLED(GREEN, 6);
+    }
     break;
   case BUTTON_2:
     if (state == HIGH)
+    {
       singleLED(RED, 2);
+    }
+    if (state == 2)
+    {
+      singleLED(GREEN, 2);
+    }
     break;
   case BUTTON_1:
     if (state == HIGH)
+    {
       singleLED(RED, 1);
+    }
+        if (state == 2)
+    {
+      singleLED(GREEN, 1);
+    }
     break;
   case BUTTON_3:
     if (state == HIGH)
+    {
       singleLED(RED, 3);
+    }
+    if (state == 2)
+    {
+      singleLED(GREEN, 3);
+    }
     break;
   }
 }

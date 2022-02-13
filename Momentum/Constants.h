@@ -5,10 +5,10 @@
 
 #define RE_READ -99
 #define PWMWAVEFORM WAVEFORM_SINE
-#define BANKS_LIMIT 8 // 128 patches per bank
+#define BANKS_LIMIT 1     // 8 banks
 #define PATCHES_LIMIT 128 // 128 patches per bank
 
-extern const char* VERSION;
+extern const char *VERSION;
 extern const float PROGMEM FILTERFREQS256[256];
 extern const float POWER[128];
 extern const float NOTEFREQS[128];
@@ -53,8 +53,8 @@ extern const float OSCMODMIXERMAX;
 extern const float FILTERMODMIXERMAX;
 extern const float GLIDEFACTOR;
 extern const uint32_t NO_OF_PARAMS;
-extern const char* INITPATCHNAME;
+extern const char *INITPATCHNAME;
 extern const uint32_t HOLD_DURATION;
 extern const uint32_t CLICK_DURATION;
 extern const float ENSEMBLE_LFO[128];
-extern const char* INITPATCH;
+extern const char *INITPATCH;

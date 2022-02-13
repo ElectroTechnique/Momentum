@@ -30,7 +30,6 @@ namespace ButtonTool
         uint32_t starttime[24] = {0};
         boolean buttonHeld[24] = {false};
         inline void readButton(unsigned i);
-
         uint8_t w = 0;
     };
 
@@ -141,10 +140,17 @@ namespace ButtonTool
         {
             buttonHeld[i] = true;
             starttime[i] = millis();
-            // Acceleration of callcacks when button is held down
+            // Acceleration of callbacks when button is held down
             if (w < 6)
                 w++;
-            callback(i, 2); // HELD
+            if (w > 1)
+            {
+                callback(i, HELD_REPEAT); // HELD REPEAT
+            }
+            else
+            {
+                callback(i, HELD); // HELD ONCE
+            }
         }
     }
 }

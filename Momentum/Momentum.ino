@@ -153,14 +153,9 @@ FLASHMEM void setup()
   {
     Serial.println(F("SD card is connected"));
     // Get patch numbers and names from SD card
+    checkSDCardStructure();
     loadPatchNames();
-    if (patches.size() == 0)
-    {
-      // save an initialised patch to SD card using default values in PatchStruct
-      savePatch();
-      loadPatchNames();
-    }
-    recallPatch(patches.first().patchUID); // Load first patch from SD card
+    recallPatch(currentBank, patches.front().patchUID); // Load first patch from SD card
   }
   else
   {
@@ -1090,7 +1085,7 @@ void myControlChange(byte channel, byte control, byte value)
 FLASHMEM void myProgramChange(byte channel, byte program)
 {
   state = PATCH;
-  recallPatch(patches[program].patchUID);
+  recallPatch(currentBank, patches[program].patchUID);
   Serial.print(F("MIDI Pgm Change:"));
   Serial.println(patches[program].patchUID);
   state = PARAMETER;
@@ -1132,17 +1127,17 @@ FLASHMEM void myMIDIClock()
   count++;
 }
 
-FLASHMEM void recallPatch(long patchUID)
+FLASHMEM void recallPatch(uint8_t bank, long patchUID)
 {
   groupvec[activeGroupIndex]->allNotesOff();
   groupvec[activeGroupIndex]->closeEnvelopes();
-  loadPatch(patchUID);
+  loadPatch(bank, patchUID);
   setCurrentPatchData();
 }
 
 FLASHMEM void setCurrentPatchData()
 {
-  updatePatch(currentPatch.PatchName, 0, currentPatch.UID); // TODO remove patchno
+  updatePatch(currentPatch.PatchName, currentPatchIndex + 1, currentPatch.UID);
   myControlChange(midiChannel, CCoscLevelA, currentPatch.OscLevelA);
   myControlChange(midiChannel, CCoscLevelB, currentPatch.OscLevelB);
   myControlChange(midiChannel, CCnoiseLevel, currentPatch.NoiseLevel);
@@ -1496,11 +1491,11 @@ void showSettingsPage()
       break;
     case SAVE:
       //Save as new patch with INITIALPATCH name or overwrite existing keeping name - bypassing patch renaming
-      patchName = patches.last().patchName;
+      patchName = patches.back().patchName;
       state = PATCH;
-      savePatch(String(patches.last().patchNo).c_str(), getCurrentPatchData());
-      showPatchPage(patches.last().patchNo, patches.last().patchName);
-      patchNo = patches.last().patchNo;
+      savePatch(String(patches.back().patchNo).c_str(), getCurrentPatchData());
+      showPatchPage(patches.back().patchNo, patches.back().patchName);
+      patchNo = patches.back().patchNo;
       loadPatches(); //Get rid of pushed patch if it wasn't saved
       setPatchesOrdering(patchNo);
       renamedPatch = "";
@@ -1510,9 +1505,9 @@ void showSettingsPage()
       if (renamedPatch.length() > 0)
         patchName = renamedPatch; //Prevent empty strings
       state = PATCH;
-      savePatch(String(patches.last().patchNo).c_str(), getCurrentPatchData());
-      showPatchPage(patches.last().patchNo, patchName);
-      patchNo = patches.last().patchNo;
+      savePatch(String(patches.back().patchNo).c_str(), getCurrentPatchData());
+      showPatchPage(patches.back().patchNo, patchName);
+      patchNo = patches.back().patchNo;
       loadPatches(); //Get rid of pushed patch if it wasn't saved
       setPatchesOrdering(patchNo);
       renamedPatch = "";
@@ -1548,12 +1543,7 @@ void showSettingsPage()
   }
 
   backButton.update();
-  if (backButton.held())
-  {
-    //If Back button held, Panic - all notes off
-    groupvec[activeGroupIndex]->allNotesOff();
-    groupvec[activeGroupIndex]->closeEnvelopes();
-  }
+
   else if (backButton.numClicks() == 1)
   {
     switch (state)
@@ -1595,7 +1585,7 @@ void showSettingsPage()
     //which clears any changes made
     state = PATCH;
     //Recall the current patch
-    patchNo = patches.first().patchNo;
+    patchNo = patches.front().patchNo;
     recallPatch(patchNo);
     state = PARAMETER;
   }
@@ -1609,15 +1599,11 @@ void showSettingsPage()
     case RECALL:
       state = PATCH;
       //Recall the current patch
-      patchNo = patches.first().patchNo;
+      patchNo = patches.front().patchNo;
       recallPatch(patchNo);
       state = PARAMETER;
       break;
-    case SAVE:
-      showRenamingPage(patches.last().patchName);
-      patchName = patches.last().patchName;
-      state = PATCHNAMING;
-      break;
+
     case PATCHNAMING:
       if (renamedPatch.length() < 12) //actually 12 chars
       {
@@ -1632,13 +1618,13 @@ void showSettingsPage()
       if (patches.size() > 1)
       {
         state = DELETEMSG;
-        patchNo = patches.first().patchNo;    //PatchNo to delete from SD card
+        patchNo = patches.front().patchNo;    //PatchNo to delete from SD card
         patches.shift();                      //Remove patch from circular buffer
         deletePatch(String(patchNo).c_str()); //Delete from SD card
         loadPatches();                        //Repopulate circular buffer to start from lowest Patch No
         renumberPatchesOnSD();
         loadPatches();                     //Repopulate circular buffer again after delete
-        patchNo = patches.first().patchNo; //Go back to 1
+        patchNo = patches.front().patchNo; //Go back to 1
         recallPatch(patchNo);              //Load first patch
       }
       state = PARAMETER;
@@ -1669,9 +1655,7 @@ void showSettingsPage()
     {
     case PARAMETER:
       state = PATCH;
-      patches.push(patches.shift());
-      patchNo = patches.first().patchNo;
-      recallPatch(patchNo);
+      recallPatch(patches[incCurrentPatchIndex()].patchNo);
       state = PARAMETER;
       // Make sure the current setting value is refreshed.
       settings::increment_setting();
@@ -1709,9 +1693,7 @@ void showSettingsPage()
     {
     case PARAMETER:
       state = PATCH;
-      patches.unshift(patches.pop());
-      patchNo = patches.first().patchNo;
-      recallPatch(patchNo);
+      recallPatch(patches[decCurrentPatchIndex()].patchNo);
       state = PARAMETER;
       // Make sure the current setting value is refreshed.
       settings::increment_setting();
@@ -1744,6 +1726,25 @@ void showSettingsPage()
     encPrevious = encRead;
   }
   }
+
+      // switch (state)
+    // {
+
+
+    // case PATCHNAMING:
+    //   if (renamedPatch.length() > 0)
+    //     patchName = renamedPatch; // Prevent empty strings
+    //   state = PATCH;
+    //   savePatch(String(patches.back().patchNo).c_str(), getCurrentPatchData());
+    //   showPatchPage(patches.back().patchNo, patchName);
+    //   patchNo = patches.back().patchNo;
+    //   loadPatches(); // Get rid of pushed patch if it wasn't saved
+    //   setPatchesOrdering(patchNo);
+    //   renamedPatch = "";
+    //   state = PARAMETER;
+    //   break;
+    // }
+    break;
 */
 
 void buttonCallback(unsigned button_idx, int state)
@@ -1769,7 +1770,7 @@ void buttonCallback(unsigned button_idx, int state)
       currentVolume = clampToRange<int>(currentVolume, -1, 0, 127);
       myControlChange(midiChannel, CCvolume, currentVolume);
     }
-    if (state == 2)
+    if (state == HELD || state == HELD_REPEAT)
     {
       currentVolume = clampToRange<int>(currentVolume, -1, 0, 127);
       myControlChange(midiChannel, CCvolume, currentVolume);
@@ -1781,74 +1782,108 @@ void buttonCallback(unsigned button_idx, int state)
       currentVolume = clampToRange<int>(currentVolume, 1, 0, 127);
       myControlChange(midiChannel, CCvolume, currentVolume);
     }
-    if (state == 2)
+    if (state == HELD || state == HELD_REPEAT)
     {
       currentVolume = clampToRange<int>(currentVolume, 1, 0, 127);
       myControlChange(midiChannel, CCvolume, currentVolume);
     }
     break;
+
   case BUTTON_8:
     if (state == HIGH)
     {
+      // RECALL
       singleLED(RED, 8);
+      // switch (state)
+      // {
+      // case PARAMETER:
+      //   state = RECALL; // show patch list
+      //   break;
+      // case RECALL:
+      //   state = PATCH;
+      //   // Recall the current patch
+      //   patchNo = patches.front().patchNo;
+      //   recallPatch(patchNo);
+      //   state = PARAMETER;
+      //   break;
+      // }
     }
-    if (state == 2)
+    if (state == HELD)
     {
-      singleLED(GREEN, 8);
+      // INIT
+      // If recall held, set current patch to match current hardware state
+      // Reinitialise all hardware values to force them to be re-read if different
+      state = REINITIALISE;
+      // reinitialiseToPanel();
+      flashLED(GREEN, 8, 250);
     }
     break;
   case BUTTON_7:
     if (state == HIGH)
     {
+      // SAVE
       singleLED(RED, 7);
+
+      // switch (state)
+      // {
+
+      // case PARAMETER:
+      //   if (patches.size() < PATCHES_LIMIT)
+      //   {
+      //     resetPatchesOrdering(); // Reset order of patches from first patch
+      //     patches.push({patches.size() + 1, INITPATCHNAME});
+      //     state = SAVE;
+      //   }
+      //   break;
+
+      // case SAVE:
+      //   // Save as new patch with INITIALPATCH name or overwrite existing keeping name - bypassing patch renaming
+      //   patchName = patches.back().patchName;
+      //   state = PATCH;
+      //   savePatch(String(patches.back().patchNo).c_str(), getCurrentPatchData());
+      //   showPatchPage(patches.back().patchNo, patches.back().patchName);
+      //   patchNo = patches.back().patchNo;
+      //   loadPatches(); // Get rid of pushed patch if it wasn't saved
+      //   // setPatchesOrdering(patchNo);
+      //   renamedPatch = "";
+      //   state = PARAMETER;
+      //   break;
+
+      //   // From Encoder button
+      //   //  case SAVE:
+      //   //    showRenamingPage(patches.back().patchName);
+      //   //    patchName = patches.back().patchName;
+      //   //    state = PATCHNAMING;
+      //   //    break;
+      // }
     }
-    if (state == 2)
+    if (state == HELD)
     {
+      // DELETE
       singleLED(GREEN, 7);
     }
-    // switch (state)
-    // {
-    // case PARAMETER:
-    //   if (patches.size() < PATCHES_LIMIT)
-    //   {
-    //     resetPatchesOrdering(); // Reset order of patches from first patch
-    //     patches.push({patches.size() + 1, INITPATCHNAME});
-    //     state = SAVE;
-    //   }
-    //   break;
-    // case SAVE:
-    //   // Save as new patch with INITIALPATCH name or overwrite existing keeping name - bypassing patch renaming
-    //   patchName = patches.last().patchName;
-    //   state = PATCH;
-    //   savePatch(String(patches.last().patchNo).c_str(), getCurrentPatchData());
-    //   showPatchPage(patches.last().patchNo, patches.last().patchName);
-    //   patchNo = patches.last().patchNo;
-    //   loadPatches(); // Get rid of pushed patch if it wasn't saved
-    //   // setPatchesOrdering(patchNo);
-    //   renamedPatch = "";
-    //   state = PARAMETER;
-    //   break;
-    // case PATCHNAMING:
-    //   if (renamedPatch.length() > 0)
-    //     patchName = renamedPatch; // Prevent empty strings
-    //   state = PATCH;
-    //   savePatch(String(patches.last().patchNo).c_str(), getCurrentPatchData());
-    //   showPatchPage(patches.last().patchNo, patchName);
-    //   patchNo = patches.last().patchNo;
-    //   loadPatches(); // Get rid of pushed patch if it wasn't saved
-    //   setPatchesOrdering(patchNo);
-    //   renamedPatch = "";
-    //   state = PARAMETER;
-    //   break;
-    // }
     break;
   case BUTTON_5:
     if (state == HIGH)
     {
       singleLED(RED, 5);
     }
-    if (state == 2)
+    if (state == HELD)
     {
+      switch (state)
+      {
+      case PARAMETER:
+        state = SETTINGS;
+        showSettingsPage();
+        break;
+      case SETTINGS:
+        showSettingsPage();
+      case SETTINGSVALUE:
+        settings::save_current_value();
+        state = SETTINGS;
+        showSettingsPage();
+        break;
+      }
       singleLED(GREEN, 5);
     }
     break;
@@ -1857,7 +1892,7 @@ void buttonCallback(unsigned button_idx, int state)
     {
       singleLED(RED, 4);
     }
-    if (state == 2)
+    if (state == HELD)
     {
       singleLED(GREEN, 4);
     }
@@ -1867,17 +1902,21 @@ void buttonCallback(unsigned button_idx, int state)
     {
       singleLED(RED, 6);
     }
-    if (state == 2)
+    if (state == HELD)
     {
-      singleLED(GREEN, 6);
+      // If Back button held, Panic - all notes off
+      groupvec[activeGroupIndex]->allNotesOff();
+      groupvec[activeGroupIndex]->closeEnvelopes();
+      flashLED(GREEN, 6, 250);
     }
     break;
   case BUTTON_2:
     if (state == HIGH)
     {
       singleLED(RED, 2);
+      recallPatch(currentBank, patches[incCurrentPatchIndex()].patchUID);
     }
-    if (state == 2)
+    if (state == HELD)
     {
       singleLED(GREEN, 2);
     }
@@ -1886,8 +1925,9 @@ void buttonCallback(unsigned button_idx, int state)
     if (state == HIGH)
     {
       singleLED(RED, 1);
+      recallPatch(currentBank, patches[decCurrentPatchIndex()].patchUID);
     }
-        if (state == 2)
+    if (state == HELD)
     {
       singleLED(GREEN, 1);
     }
@@ -1897,7 +1937,7 @@ void buttonCallback(unsigned button_idx, int state)
     {
       singleLED(RED, 3);
     }
-    if (state == 2)
+    if (state == HELD)
     {
       singleLED(GREEN, 3);
     }

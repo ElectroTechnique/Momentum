@@ -1,14 +1,23 @@
-// Agileware CircularBuffer available in libraries manager
-#include <CircularBuffer.h>
+// Janelia Array available in libraries manager
+#include <Array.h>
 #include "Constants.h"
 #include <ArduinoJson.h>
 #include <RokkitHash.h>
 
 #define TOTALCHARS 64
 
+const static char *BANKS_FILE_NAME = "Banknames";
+const static char *BANK_FOLDER_NAMES[] = {"Bank1", "Bank2", "Bank3", "Bank4", "Bank5", "Bank6", "Bank7", "Bank8"};
+const static char *BANK_FOLDER_NAMES_SLASH[] = {"Bank1/", "Bank2/", "Bank3/", "Bank4/", "Bank5/", "Bank6/", "Bank7/", "Bank8/"};
+const static char *SEQUENCE_FOLDER_NAME = "Sequences";
+const static char *SEQUENCE_FOLDER_NAME_SLASH = "Sequences/";
+
 const static char CHARACTERS[TOTALCHARS] = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', ' ', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', ' ', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0'};
 int charIndex = 0;
 char currentCharacter = 0;
+
+uint8_t currentBank = 0;
+uint8_t currentPatchIndex = 0;
 
 PatchStruct currentPatch;
 
@@ -18,7 +27,9 @@ struct PatchUIDAndName
   String patchName;
 };
 
-CircularBuffer<PatchUIDAndName, PATCHES_LIMIT> patches;
+typedef Array<PatchUIDAndName, PATCHES_LIMIT> Patches;
+
+Patches patches;
 
 // Computes a hash of the parameter values to create a UID for each patch that is stored with it.
 // This can also be used to identify identical patches. Hash takes about 2.8us on TeensyMM
@@ -113,12 +124,39 @@ FLASHMEM void savePatch()
   }
 }
 
+FLASHMEM void checkSDCardStructure()
+{
+  // Expecting 8 Bank folders,Sequence folder and Bankname file
+  for (uint8_t i; i < 8; i++)
+  {
+    if (!SD.exists(BANK_FOLDER_NAMES_SLASH[i]))
+    {
+      SD.mkdir(BANK_FOLDER_NAMES[i]);
+      // Save default patch file into Bank 1 folder
+      if (i == 0)
+        savePatch();
+    }
+  }
+  if (!SD.exists(SEQUENCE_FOLDER_NAME_SLASH))
+  {
+    SD.mkdir(SEQUENCE_FOLDER_NAME);
+  }
+  if (!SD.exists(BANKS_FILE_NAME))
+  {
+    SD.mkdir(BANKS_FILE_NAME);
+  }
+}
+
 // Filename is UID
-FLASHMEM void loadPatch(uint32_t filename)
+FLASHMEM void loadPatch(uint8_t bank, uint32_t filename)
 {
   // Open file for reading - UID is Filename
   char buf[12];
-  File file = SD.open(utoa(filename, buf, 10));
+  char result[30]; // array to hold the result.
+
+  strcpy(result, *BANK_FOLDER_NAMES_SLASH); // copy string one into the result.
+  strcat(result, utoa(filename, buf, 10));  // append string two to the result
+  File file = SD.open(result);
 
   // Allocate a temporary JsonDocument
   // Don't forget to change the capacity to match your requirements.
@@ -156,7 +194,6 @@ FLASHMEM void loadPatch(uint32_t filename)
   currentPatch.Detune = doc["Detune"];
   currentPatch.NoiseLevel = doc["NoiseLevel"];
   currentPatch.Unison = doc["Unison"];
-  Serial.println(currentPatch.Unison);
   currentPatch.OscFX = doc["OscFX"];
   currentPatch.PitchEnv = doc["PitchEnv"];
   currentPatch.PitchLFOAmt = doc["PitchLFOAmt"];
@@ -219,30 +256,65 @@ char *getPatchName(File file)
   return doc["PatchName"];
 }
 
+void readPatchFile(File patchFile)
+{
+  uint32_t uid = strtoul(patchFile.name(), NULL, 0);
+  patches.push_back(PatchUIDAndName{uid, getPatchName(patchFile)});
+  Serial.println(String(patches.back().patchUID) + ":" + patches.back().patchName);
+}
+
 // Loads Patchnames into circular buffer for display only and uses UID (filename) to recall
 FLASHMEM void loadPatchNames()
 {
   Serial.println("LoadPatchNames()");
-  File file = SD.open("/");
   patches.clear();
-  while (true)
+  for (uint8_t i; i < BANKS_LIMIT; i++)
   {
-    File patchFile = file.openNextFile();
-    if (!patchFile)
+    File bankDir = SD.open(BANK_FOLDER_NAMES_SLASH[i]);
+    File patchFile;
+    while (patchFile = bankDir.openNextFile())
     {
-      break;
+      if (patches.full())
+      {
+        Serial.println("More than max number of patches is being loaded into bank" + String(i + 1));
+        patchFile.close();
+        bankDir.close();
+        break;
+      }
+      else
+      {
+        readPatchFile(patchFile);
+      }
+      patchFile.close();
     }
-    if (patchFile.isDirectory())
-    {
-      Serial.println("Ignoring Dir");
-    }
-    else
-    {
-      uint32_t ui = strtoul(patchFile.name(), NULL, 0);
-      patches.push(PatchUIDAndName{ui, getPatchName(patchFile)});
-      Serial.println(String(patches.last().patchUID) + ":" + patches.last().patchName);
-    }
-    patchFile.close();
+  }
+}
+
+uint8_t incCurrentPatchIndex()
+{
+  if (currentPatchIndex < PATCHES_LIMIT - 1)
+  {
+    return ++currentPatchIndex;
+  }
+  else
+  {
+    // Go back to Start from front of array
+    currentPatchIndex = 0;
+    return currentPatchIndex;
+  }
+}
+
+uint8_t decCurrentPatchIndex()
+{
+  if (currentPatchIndex > 0)
+  {
+    return --currentPatchIndex;
+  }
+  else
+  {
+    // Go to back of array
+    currentPatchIndex = patches.size() - 1;
+    return currentPatchIndex;
   }
 }
 
@@ -250,8 +322,8 @@ FLASHMEM void loadPatchNames()
 // {
 //   if (patches.size() < 2)
 //     return;
-//   while (patches.first().patchNo != no)
+//   while (patches.front().patchNo != no)
 //   {
-//     patches.push(patches.shift());
+//     patches.push_back(patches.shift());
 //   }
 // }

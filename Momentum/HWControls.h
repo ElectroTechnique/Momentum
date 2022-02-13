@@ -45,6 +45,7 @@ typedef enum
 {
   RED,
   GREEN,
+  OFF,
 } ledColour;
 
 typedef enum
@@ -142,15 +143,26 @@ void shiftOutX(uint8_t dataPinR, uint8_t dataPinG, uint8_t clockPin, uint8_t bit
 void singleLED(ledColour color, int8_t ledNo)
 {
   digitalWrite(latchPin, LOW);
-  if (color == RED)
+  switch (color)
   {
+  case RED:
     shiftOutX(dataPinR, dataPinG, clockPin, MSBFIRST, LED_TO_BIN[ledNo], 0);
-  }
-  else
-  {
+    break;
+  case GREEN:
     shiftOutX(dataPinR, dataPinG, clockPin, MSBFIRST, 0, LED_TO_BIN[ledNo]);
+    break;
+  case OFF:
+    shiftOutX(dataPinR, dataPinG, clockPin, MSBFIRST, 0, 0);
+    break;
   }
   digitalWrite(latchPin, HIGH);
+}
+
+void flashLED(ledColour color, int8_t ledNo, int duration)
+{
+  singleLED(color, ledNo);
+  delay(duration);
+  singleLED(OFF, ledNo);
 }
 
 void lightRGLEDs(int8_t ledRNos, int8_t ledGNos)

@@ -3,6 +3,12 @@
 #include "AudioStream.h"
 #include "ILI9341_t3n.h"
 
+uint8_t bufferBlock = 0;
+uint8_t bufcount = 0;
+uint8_t pixel_x = 0;
+int16_t pixel_y = 0;
+int16_t prev_pixel_y = 0;
+
 class Oscilloscope : public AudioStream {
   public:
     Oscilloscope(void) : AudioStream(1, inputQueueArray) {
@@ -23,53 +29,67 @@ void Oscilloscope::ScreenSetup(ILI9341_t3n *screen) {
   display = screen;
 }
 
-void Oscilloscope::Display() {
-  uint8_t pixel_x = ceil(AUDIO_BLOCK_SAMPLES / 4);
-  int16_t prev_pixel_y = 63;
-  for (uint8_t i = 0; i < ceil(AUDIO_BLOCK_SAMPLES / 2) - 1; i++) {
-    int16_t pixel_y = map(buffer[i], 32767, -32768, -120, 120) + 63;
-    if (pixel_y < 30) pixel_y = 30;
-    if (pixel_y > 100)pixel_y = 100;
+void Oscilloscope::Display()
+{
+  pixel_x = 0;
+  prev_pixel_y = map(buffer[0], 32767, -32768, -120, 120) + 63;
+  if (prev_pixel_y < 30)
+    prev_pixel_y = 30;
+  if (prev_pixel_y > 100)
+    prev_pixel_y = 100;
+
+  for (uint8_t i = 0; i < AUDIO_BLOCK_SAMPLES - 1; i++)
+  {
+    pixel_y = map(buffer[i], 32767, -32768, -120, 120) + 63;
+    if (pixel_y < 30)
+      pixel_y = 30;
+    if (pixel_y > 100)
+      pixel_y = 100;
     display->drawLine(pixel_x + 15, prev_pixel_y, pixel_x + 16, pixel_y, 0x07B0);
     prev_pixel_y = pixel_y;
     pixel_x++;
   }
 }
 
-void Oscilloscope::AddtoBuffer(int16_t *audio) {
-  int16_t prev_audio = 0;
-  uint32_t count = 0;
-
-  // Get a rise of the wave between the first and the third quarter of the samples
-  uint8_t quarter_size = ceil(AUDIO_BLOCK_SAMPLES / 4);
-  uint8_t rise_index = 0;
-  prev_audio = *(audio + quarter_size);
-  for (uint8_t i = quarter_size; i < ceil(AUDIO_BLOCK_SAMPLES * 3 / 4); i++) {
-    if (prev_audio < -1 && *(audio + i) > 1) {
-      rise_index = i;
-      break;
+void Oscilloscope::AddtoBuffer(int16_t *audio)
+{
+  audio++;
+  if (bufferBlock == 0)
+  {
+    if (*(audio - 1) > -16 && *(audio + 3) < 16)
+    {
+      bufferBlock = 1;
+      bufcount = 0;
     }
-    prev_audio = *(audio + i);
   }
-
-  // In case no rise is found, just use the middle
-  if (rise_index == 0) {
-    rise_index = ceil(AUDIO_BLOCK_SAMPLES / 2);
-  }
-
-  // Then get half samples arround this rise and add it to the buffer
-  for (uint8_t i = rise_index - quarter_size; i < rise_index + quarter_size - 1; i++) {
-    buffer[count++] = *(audio + i);
+  else
+  {
+    for (uint16_t i = 0; i < 32; i++)
+    {
+      buffer[bufcount++] = *audio;
+      audio += 4;
+    }
+    bufferBlock++;
+    if (bufferBlock >= 5)
+    {
+      bufferBlock = 0;
+    }
   }
 }
 
-void Oscilloscope::update(void) {
-  if (!display) return;
+void Oscilloscope::update(void)
+{
+  if (!display)
+    return;
   audio_block_t *block;
   block = receiveReadOnly(0);
-  if (block) {
+  if (block)
+  {
     AddtoBuffer(block->data);
     release(block);
-    Display();
+    if (bufferBlock == 0)
+    {
+      Display();
+    }
   }
 }

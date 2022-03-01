@@ -1,22 +1,14 @@
 // Janelia Array available in libraries manager
 #include <Array.h>
 #include "Constants.h"
+#include "Utils.h"
 #include <ArduinoJson.h>
-#include <RokkitHash.h>
 
-#define TOTALCHARS 64
-
-const static char *BANKS_FILE_NAME = "Banknames";
-const static char *BANK_FOLDER_NAMES[] = {"Bank1", "Bank2", "Bank3", "Bank4", "Bank5", "Bank6", "Bank7", "Bank8"};
-const static char *BANK_FOLDER_NAMES_SLASH[] = {"Bank1/", "Bank2/", "Bank3/", "Bank4/", "Bank5/", "Bank6/", "Bank7/", "Bank8/"};
-const static char *SEQUENCE_FOLDER_NAME = "Sequences";
-const static char *SEQUENCE_FOLDER_NAME_SLASH = "Sequences/";
-
-const static char CHARACTERS[TOTALCHARS] = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', ' ', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', ' ', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0'};
 int charIndex = 0;
 char currentCharacter = 0;
 
-uint8_t currentBank = 0;
+uint8_t tempBankIndex = 0;
+uint8_t currentBankIndex = 0;
 uint8_t currentPatchIndex = 0;
 
 PatchStruct currentPatch;
@@ -31,14 +23,14 @@ typedef Array<PatchUIDAndName, PATCHES_LIMIT> Patches;
 
 Patches patches;
 
-// Computes a hash of the parameter values to create a UID for each patch that is stored with it.
-// This can also be used to identify identical patches. Hash takes about 2.8us on TeensyMM
-FLASHMEM uint32_t getHash(String tohash)
+FLASHMEM void concatBankAndUID(uint8_t bank, uint32_t filename, char *result)
 {
-  return rokkit(tohash.c_str(), strlen(tohash.c_str()));
+  char buf[12];
+  strcpy(result, BANK_FOLDER_NAMES_SLASH[bank]); // copy string one into the result.
+  strcat(result, utoa(filename, buf, 10));       // append string two to the result
 }
 
-FLASHMEM void savePatch()
+FLASHMEM void savePatch(uint8_t bankIndex)
 {
   StaticJsonDocument<1024> doc;
 
@@ -111,7 +103,9 @@ FLASHMEM void savePatch()
   doc["UID"] = iUID;               // Insert UID
   serializeJson(doc, output);      // Generate complete JSON to save
 
-  File file = SD.open(String(iUID).c_str(), FILE_WRITE);
+  char result[30];
+  concatBankAndUID(bankIndex, iUID, result);
+  File file = SD.open(result, FILE_WRITE);
   if (!file)
   {
     Serial.println(F("Failed to create file"));
@@ -127,35 +121,67 @@ FLASHMEM void savePatch()
 FLASHMEM void checkSDCardStructure()
 {
   // Expecting 8 Bank folders,Sequence folder and Bankname file
-  for (uint8_t i; i < 8; i++)
+  for (uint8_t i = 0; i < 8; i++)
   {
     if (!SD.exists(BANK_FOLDER_NAMES_SLASH[i]))
     {
       SD.mkdir(BANK_FOLDER_NAMES[i]);
       // Save default patch file into Bank 1 folder
       if (i == 0)
-        savePatch();
+        savePatch(i);
     }
   }
   if (!SD.exists(SEQUENCE_FOLDER_NAME_SLASH))
   {
     SD.mkdir(SEQUENCE_FOLDER_NAME);
   }
+  if (!SD.exists(PERFORMANCE_FOLDER_NAME_SLASH))
+  {
+    SD.mkdir(PERFORMANCE_FOLDER_NAME);
+  }
   if (!SD.exists(BANKS_FILE_NAME))
   {
     SD.mkdir(BANKS_FILE_NAME);
+    File banksfile = SD.open(BANKS_FILE_NAME, FILE_WRITE);
+    if (banksfile)
+    {
+      banksfile.println(BANKS_FILE_CONTENTS);
+      banksfile.close();
+    }
   }
+}
+
+FLASHMEM void loadBankNames()
+{
+  File file = SD.open("Banknames");
+  if (!file)
+  {
+    Serial.println(F("Failed to read banknames file"));
+  }
+
+  StaticJsonDocument<512> doc;
+
+  // Deserialize the JSON document
+  DeserializationError error = deserializeJson(doc, file);
+  if (error)
+  {
+    Serial.println(F("Failed to deserialise banknames file"));
+    return;
+  }
+  // Copy values from the JsonDocument to the banknames array
+  for (u_int8_t i = 0; i < 8; i++)
+  {
+    strcpy(bankNames[i], doc[BANK_FOLDER_NAMES[i]]);
+  }
+  file.close();
 }
 
 // Filename is UID
 FLASHMEM void loadPatch(uint8_t bank, uint32_t filename)
 {
   // Open file for reading - UID is Filename
-  char buf[12];
-  char result[30]; // array to hold the result.
-
-  strcpy(result, *BANK_FOLDER_NAMES_SLASH); // copy string one into the result.
-  strcat(result, utoa(filename, buf, 10));  // append string two to the result
+  char result[30];
+  concatBankAndUID(bank, filename, result);
   File file = SD.open(result);
 
   // Allocate a temporary JsonDocument
@@ -238,7 +264,7 @@ FLASHMEM void loadPatch(uint8_t bank, uint32_t filename)
 }
 
 // Patchname from a files and return it
-char *getPatchName(File file)
+FLASHMEM char *getPatchName(File file)
 {
   // Allocate a temporary JsonDocument
   // Don't forget to change the capacity to match your requirements.
@@ -263,36 +289,76 @@ void readPatchFile(File patchFile)
   Serial.println(String(patches.back().patchUID) + ":" + patches.back().patchName);
 }
 
-// Loads Patchnames into circular buffer for display only and uses UID (filename) to recall
-FLASHMEM void loadPatchNames()
+// Loads Patchnames into array for display only and uses UID (filename) to recall
+FLASHMEM void loadPatchNames(uint8_t bankIndex)
 {
-  Serial.println("LoadPatchNames()");
+  Serial.println("LoadPatchNames from Bank" + String(bankIndex + 1));
   patches.clear();
-  for (uint8_t i; i < BANKS_LIMIT; i++)
+  File bankDir = SD.open(BANK_FOLDER_NAMES_SLASH[bankIndex]);
+  File patchFile;
+  while (patchFile = bankDir.openNextFile())
   {
-    File bankDir = SD.open(BANK_FOLDER_NAMES_SLASH[i]);
-    File patchFile;
-    while (patchFile = bankDir.openNextFile())
+    if (patches.full())
     {
-      if (patches.full())
-      {
-        Serial.println("More than max number of patches is being loaded into bank" + String(i + 1));
-        patchFile.close();
-        bankDir.close();
-        break;
-      }
-      else
-      {
-        readPatchFile(patchFile);
-      }
+      Serial.println("More than max number of patches is being loaded into bank" + String(bankIndex + 1));
       patchFile.close();
+      bankDir.close();
+      break;
+    }
+    else
+    {
+      readPatchFile(patchFile);
+    }
+    patchFile.close();
+  }
+  if (patches.empty())
+    patches.push_back(PatchUIDAndName{0, "-Empty-"});
+}
+
+FLASHMEM void reinitialisePatch()
+{
+  Serial.println("reinitialisePatch");
+  PatchStruct ps;
+  currentPatch = ps;
+}
+
+FLASHMEM int8_t findPatchIndex(uint32_t UID)
+{
+  for (uint8_t i = 0; i < patches.size(); i++)
+  {
+    if (UID == patches[i].patchUID)
+    {
+      return i;
+    }
+  }
+  // Could be that patch array isn't for this bank, but patches
+  // can be deleted from SD card from other bank folders
+  Serial.println("UID not found in patch array:" + String(UID));
+  return -1;
+}
+FLASHMEM void deletePatch(uint8_t bank, uint32_t UID)
+{
+  // delete from SD card
+  char result[30];
+  concatBankAndUID(bank, UID, result);
+  if (!SD.remove(result))
+  {
+    Serial.println("Couldn't delete from SD card");
+  }
+  // Remove from array if patch is in current bank
+  if (bank == currentBankIndex)
+  {
+    int8_t ind = findPatchIndex(UID);
+    if (ind > -1)
+    {
+      patches.remove(ind);
     }
   }
 }
 
-uint8_t incCurrentPatchIndex()
+FLASHMEM uint8_t incCurrentPatchIndex()
 {
-  if (currentPatchIndex < PATCHES_LIMIT - 1)
+  if (currentPatchIndex < patches.size() - 1)
   {
     return ++currentPatchIndex;
   }
@@ -304,7 +370,7 @@ uint8_t incCurrentPatchIndex()
   }
 }
 
-uint8_t decCurrentPatchIndex()
+FLASHMEM uint8_t decCurrentPatchIndex()
 {
   if (currentPatchIndex > 0)
   {
@@ -318,12 +384,58 @@ uint8_t decCurrentPatchIndex()
   }
 }
 
-// FLASHMEM void setPatchesOrdering(int no)
-// {
-//   if (patches.size() < 2)
-//     return;
-//   while (patches.front().patchNo != no)
-//   {
-//     patches.push_back(patches.shift());
-//   }
-// }
+FLASHMEM uint8_t incCurrentBankIndex()
+{
+  if (currentBankIndex < 7)
+  {
+    return ++currentBankIndex;
+  }
+  else
+  {
+    // Go back to Start from front of array
+    currentBankIndex = 0;
+    return currentBankIndex;
+  }
+}
+
+FLASHMEM uint8_t decCurrentBankIndex()
+{
+  if (currentBankIndex > 0)
+  {
+    return --currentBankIndex;
+  }
+  else
+  {
+    // Go to back of array
+    currentBankIndex = 7;
+    return currentBankIndex;
+  }
+}
+
+FLASHMEM uint8_t incTempBankIndex()
+{
+  if (tempBankIndex < 7)
+  {
+    return ++tempBankIndex;
+  }
+  else
+  {
+    // Go back to Start from front of array
+    tempBankIndex = 0;
+    return tempBankIndex;
+  }
+}
+
+FLASHMEM uint8_t decTempBankIndex()
+{
+  if (tempBankIndex > 0)
+  {
+    return --tempBankIndex;
+  }
+  else
+  {
+    // Go to back of array
+    tempBankIndex = 7;
+    return tempBankIndex;
+  }
+}

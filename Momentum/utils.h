@@ -2,6 +2,7 @@
 #define MOMENTUM_UTILS_H
 
 #include <Arduino.h>
+#include <RokkitHash.h>
 
 // Clamp a value to the given range.
 template <typename NumericType>
@@ -38,6 +39,13 @@ String milliToString(float milli)
   if (milli < 1000)
     return String(int(milli)) + " ms";
   return String(milli / 1000) + " s";
+}
+
+// Computes a hash of the parameter values to create a UID for each patch/sequence/peformance that is stored with it.
+// This can also be used to identify identical patches. Hash takes about 2.8us on TeensyMM
+FLASHMEM uint32_t getHash(String tohash)
+{
+  return rokkit(tohash.c_str(), strlen(tohash.c_str()));
 }
 
 #endif

@@ -43,7 +43,7 @@
     Mark Tillotson - Special thanks for band-limiting the waveforms in the Audio Library
 
   Additional libraries:
-    Agileware CircularBuffer, Adafruit_GFX (available in Arduino libraries manager)
+    Janila Array, Adafruit_GFX (available in Arduino libraries manager)
 */
 
 #include <Adafruit_GFX.h>
@@ -63,25 +63,19 @@
 #include "Constants.h"
 #include "Parameters.h"
 #include "PatchMgr.h"
+#include "SequenceMgr.h"
+#include "PerformanceMgr.h"
 #include "HWControls.h"
+#include "StringMapping.h"
+#include "EncoderMapping.h"
 #include "EepromMgr.h"
 #include "Detune.h"
 #include "utils.h"
 #include "Voice.h"
 #include "VoiceGroup.h"
+//#include "Sequencer.h"
 
-#define PARAMETER 0     // The main page for displaying the current patch and control (parameter) changes
-#define RECALL 1        // Patches list
-#define SAVE 2          // Save patch page
-#define REINITIALISE 3  // Reinitialise message
-#define PATCH 4         // Show current patch bypassing PARAMETER
-#define PATCHNAMING 5   // Patch naming page
-#define DELETE 6        // Delete patch page
-#define DELETEMSG 7     // Delete patch message page
-#define SETTINGS 8      // Settings page
-#define SETTINGSVALUE 9 // Settings page
-
-uint32_t state = PARAMETER;
+State state = State::PARAMETER;
 
 // Initialize the audio configuration.
 Global global{VOICEMIXERLEVEL};
@@ -154,19 +148,20 @@ FLASHMEM void setup()
     Serial.println(F("SD card is connected"));
     // Get patch numbers and names from SD card
     checkSDCardStructure();
-    loadPatchNames();
-    recallPatch(currentBank, patches.front().patchUID); // Load first patch from SD card
+    loadBankNames();
+    loadPatchNames(currentBankIndex);
+    recallPatch(currentBankIndex, patches.front().patchUID); // Load first patch from SD card
   }
   else
   {
     setCurrentPatchData(); // Initialise to default
     Serial.println(F("SD card is not connected or unusable"));
-    showPatchPage("No SD", "conn'd / usable");
+    showPatchPage(F("SD Card"), F("Not connected or usable"));
   }
 
   // Read MIDI Channel from EEPROM
   midiChannel = getMIDIChannel();
-  Serial.println("MIDI In Ch:" + String(midiChannel) + " (0 is Omni On)");
+  Serial.println(F("MIDI In Channel:") + String(midiChannel) + F(" (0 is Omni On)"));
 
   // USB HOST MIDI Class Compliant
   ledAnimation(70); // Delay to wait to turn on USB Host
@@ -223,6 +218,10 @@ FLASHMEM void setup()
   reloadFiltEnv();
   reloadAmpEnv();
   reloadGlideShape();
+
+  assignStrings();
+
+  setEncodersState(state);
 }
 
 void myNoteOn(byte channel, byte note, byte velocity)
@@ -288,9 +287,9 @@ FLASHMEM String getWaveformStr(int value)
   case WAVEFORM_SAWTOOTH_REVERSE:
     return F("Ramp");
   case WAVEFORM_BANDLIMIT_PULSE:
-    return F("Var. Pulse");
+    return F("Variable Pulse");
   case WAVEFORM_TRIANGLE_VARIABLE:
-    return F("Var. Triangle");
+    return F("Variable Triangle");
   case WAVEFORM_PARABOLIC:
     return F("Parabolic");
   case WAVEFORM_HARMONIC:
@@ -384,11 +383,11 @@ FLASHMEM void updateUnison(uint8_t unison)
   }
   else if (unison == 1)
   {
-    showCurrentParameterPage("Dyn. Unison", "On");
+    showCurrentParameterPage("Dynamic Unison", "On");
   }
   else
   {
-    showCurrentParameterPage("Chd. Unison", "On");
+    showCurrentParameterPage("Chord Unison", "On");
   }
 }
 
@@ -407,27 +406,27 @@ FLASHMEM void updateGlide(float glideSpeed)
 FLASHMEM void updateWaveformA(uint32_t waveform)
 {
   groupvec[activeGroupIndex]->setWaveformA(waveform);
-  showCurrentParameterPage("1. Waveform", getWaveformStr(waveform));
+  showCurrentParameterPage("1 Waveform", getWaveformStr(waveform));
 }
 
 FLASHMEM void updateWaveformB(uint32_t waveform)
 {
   groupvec[activeGroupIndex]->setWaveformB(waveform);
-  showCurrentParameterPage("2. Waveform", getWaveformStr(waveform));
+  showCurrentParameterPage("2 Waveform", getWaveformStr(waveform));
 }
 
 FLASHMEM void updatePitchA(int pitch)
 {
   groupvec[activeGroupIndex]->params().oscPitchA = pitch;
   groupvec[activeGroupIndex]->updateVoices();
-  showCurrentParameterPage("1. Semitones", (pitch > 0 ? "+" : "") + String(pitch));
+  showCurrentParameterPage("1 Semitones", (pitch > 0 ? "+" : "") + String(pitch));
 }
 
 FLASHMEM void updatePitchB(int pitch)
 {
   groupvec[activeGroupIndex]->params().oscPitchB = pitch;
   groupvec[activeGroupIndex]->updateVoices();
-  showCurrentParameterPage("2. Semitones", (pitch > 0 ? "+" : "") + String(pitch));
+  showCurrentParameterPage("2 Semitones", (pitch > 0 ? "+" : "") + String(pitch));
 }
 
 FLASHMEM void updateDetune(float detune, uint32_t chordDetune)
@@ -467,12 +466,12 @@ FLASHMEM void updatePWMRate(float value)
   if (value == PWMRATE_PW_MODE)
   {
     // Set to fixed PW mode
-    showCurrentParameterPage("PW Mode", "On");
+    showCurrentParameterPage("Pulse Width Mode", "On");
   }
   else if (value == PWMRATE_SOURCE_FILTER_ENV)
   {
     // Set to Filter Env Mod source
-    showCurrentParameterPage("PWM Source", "Filter Env");
+    showCurrentParameterPage("PWM Source", "Filter Envelope");
   }
   else
   {
@@ -484,7 +483,7 @@ FLASHMEM void updatePWMAmount(float value)
 {
   // MIDI only - sets both osc PWM
   groupvec[activeGroupIndex]->overridePwmAmount(value);
-  showCurrentParameterPage("PWM Amt", String(value) + " : " + String(value));
+  showCurrentParameterPage("PWM Amount", String(value) + " : " + String(value));
 }
 
 FLASHMEM void updatePWA(float valuePwA, float valuePwmAmtA)
@@ -495,11 +494,11 @@ FLASHMEM void updatePWA(float valuePwA, float valuePwmAmtA)
   {
     if (groupvec[activeGroupIndex]->getWaveformA() == WAVEFORM_TRIANGLE_VARIABLE)
     {
-      showCurrentParameterPage("1. PW Amt", groupvec[activeGroupIndex]->getPwA(), VAR_TRI);
+      showCurrentParameterPage("1 Variable Triangle", groupvec[activeGroupIndex]->getPwA(), VAR_TRI);
     }
     else
     {
-      showCurrentParameterPage("1. PW Amt", groupvec[activeGroupIndex]->getPwA(), PULSE);
+      showCurrentParameterPage("1 Pulse Width", groupvec[activeGroupIndex]->getPwA(), PULSE);
     }
   }
   else
@@ -507,12 +506,12 @@ FLASHMEM void updatePWA(float valuePwA, float valuePwmAmtA)
     if (groupvec[activeGroupIndex]->getPwmSource() == PWMSOURCELFO)
     {
       // PW alters PWM LFO amount for waveform A
-      showCurrentParameterPage("1. PWM Amt", "LFO " + String(groupvec[activeGroupIndex]->getPwmAmtA()));
+      showCurrentParameterPage("1 PWM Amount", "LFO " + String(groupvec[activeGroupIndex]->getPwmAmtA()));
     }
     else
     {
       // PW alters PWM Filter Env amount for waveform A
-      showCurrentParameterPage("1. PWM Amt", "F. Env " + String(groupvec[activeGroupIndex]->getPwmAmtA()));
+      showCurrentParameterPage("1 PWM Amount", "Filter Envelope " + String(groupvec[activeGroupIndex]->getPwmAmtA()));
     }
   }
 }
@@ -525,11 +524,11 @@ FLASHMEM void updatePWB(float valuePwB, float valuePwmAmtB)
   {
     if (groupvec[activeGroupIndex]->getWaveformB() == WAVEFORM_TRIANGLE_VARIABLE)
     {
-      showCurrentParameterPage("2. PW Amt", groupvec[activeGroupIndex]->getPwB(), VAR_TRI);
+      showCurrentParameterPage("2 Variable Triangle", groupvec[activeGroupIndex]->getPwB(), VAR_TRI);
     }
     else
     {
-      showCurrentParameterPage("2. PW Amt", groupvec[activeGroupIndex]->getPwB(), PULSE);
+      showCurrentParameterPage("2 Pulse Width", groupvec[activeGroupIndex]->getPwB(), PULSE);
     }
   }
   else
@@ -537,12 +536,12 @@ FLASHMEM void updatePWB(float valuePwB, float valuePwmAmtB)
     if (groupvec[activeGroupIndex]->getPwmSource() == PWMSOURCELFO)
     {
       // PW alters PWM LFO amount for waveform B
-      showCurrentParameterPage("2. PWM Amt", "LFO " + String(groupvec[activeGroupIndex]->getPwmAmtB()));
+      showCurrentParameterPage("2 PWM Amount", "LFO " + String(groupvec[activeGroupIndex]->getPwmAmtB()));
     }
     else
     {
       // PW alters PWM Filter Env amount for waveform B
-      showCurrentParameterPage("2. PWM Amt", "F. Env " + String(groupvec[activeGroupIndex]->getPwmAmtB()));
+      showCurrentParameterPage("2 PWM Amount", "Filter Envelope " + String(groupvec[activeGroupIndex]->getPwmAmtB()));
     }
   }
 }
@@ -560,7 +559,7 @@ FLASHMEM void updateOscLevelA(float value)
     // osc A sounds with increasing osc B mod
     if (groupvec[activeGroupIndex]->getOscLevelA() == 1.0f && groupvec[activeGroupIndex]->getOscLevelB() <= 1.0f)
     {
-      showCurrentParameterPage("XMod Osc 1", "Osc 2: " + String(1 - groupvec[activeGroupIndex]->getOscLevelB()));
+      showCurrentParameterPage("X-Mod Osc 1", "by Osc 2: " + String(1 - groupvec[activeGroupIndex]->getOscLevelB()));
     }
     break;
   case 0: // None
@@ -582,7 +581,7 @@ FLASHMEM void updateOscLevelB(float value)
     // osc B sounds with increasing osc A mod
     if (groupvec[activeGroupIndex]->getOscLevelB() == 1.0f && groupvec[activeGroupIndex]->getOscLevelA() < 1.0f)
     {
-      showCurrentParameterPage("XMod Osc 2", "Osc 1: " + String(1 - groupvec[activeGroupIndex]->getOscLevelA()));
+      showCurrentParameterPage("X-Mod Osc 2", "by Osc 1: " + String(1 - groupvec[activeGroupIndex]->getOscLevelA()));
     }
     break;
   case 0: // None
@@ -624,7 +623,7 @@ FLASHMEM void updateNoiseLevel(float value)
 FLASHMEM void updateFilterFreq(float value)
 {
   groupvec[activeGroupIndex]->setCutoff(value);
-  showCurrentParameterPage("Cutoff", String(int(value)) + " Hz");
+  showCurrentParameterPage("Cutoff Frequency", String(int(value)) + " Hz");
 }
 
 FLASHMEM void updateFilterRes(float value)
@@ -655,7 +654,7 @@ FLASHMEM void updateFilterMixer(float value)
     }
     else
     {
-      filterStr = "LP " + String(100 - int(100 * value)) + " - " + String(int(100 * value)) + " HP";
+      filterStr = "Low " + String(100 - int(100 * value)) + " - " + String(int(100 * value)) + " High";
     }
   }
 
@@ -665,13 +664,13 @@ FLASHMEM void updateFilterMixer(float value)
 FLASHMEM void updateFilterEnv(float value)
 {
   groupvec[activeGroupIndex]->setFilterEnvelope(value);
-  showCurrentParameterPage("Filter Env.", String(value));
+  showCurrentParameterPage("Filter Envelope", String(value));
 }
 
 FLASHMEM void updatePitchEnv(float value)
 {
   groupvec[activeGroupIndex]->setPitchEnvelope(value);
-  showCurrentParameterPage("Pitch Env Amt", String(value));
+  showCurrentParameterPage("Pitch Env Amount", String(value));
 }
 
 FLASHMEM void updateKeyTracking(float value)
@@ -708,7 +707,7 @@ FLASHMEM void updatePitchLFOWaveform(uint32_t waveform)
 FLASHMEM void updatePitchLFOMidiClkSync(bool value)
 {
   groupvec[activeGroupIndex]->setPitchLfoMidiClockSync(value);
-  showCurrentParameterPage("P. LFO Sync", value ? "On" : "Off");
+  showCurrentParameterPage("Pitch LFO Sync", value ? "On" : "Off");
 }
 
 FLASHMEM void updateFilterLfoRate(float value, String timeDivStr)
@@ -717,18 +716,18 @@ FLASHMEM void updateFilterLfoRate(float value, String timeDivStr)
 
   if (timeDivStr.length() > 0)
   {
-    showCurrentParameterPage("LFO Time Div", timeDivStr);
+    showCurrentParameterPage("LFO Time Division", timeDivStr);
   }
   else
   {
-    showCurrentParameterPage("F. LFO Rate", String(value) + " Hz");
+    showCurrentParameterPage("Filter LFO Rate", String(value) + " Hz");
   }
 }
 
 FLASHMEM void updateFilterLfoAmt(float value)
 {
   groupvec[activeGroupIndex]->setFilterLfoAmt(value);
-  showCurrentParameterPage("F. LFO Amt", String(value));
+  showCurrentParameterPage("Filter LFO Amount", String(value));
 }
 
 FLASHMEM void updateFilterLFOWaveform(uint32_t waveform)
@@ -740,13 +739,13 @@ FLASHMEM void updateFilterLFOWaveform(uint32_t waveform)
 FLASHMEM void updatePitchLFORetrig(bool value)
 {
   groupvec[activeGroupIndex]->setPitchLfoRetrig(value);
-  showCurrentParameterPage("P. LFO Retrig", value ? "On" : "Off");
+  showCurrentParameterPage("Pitch LFO Retrigger", value ? "On" : "Off");
 }
 
 FLASHMEM void updateFilterLFORetrig(bool value)
 {
   groupvec[activeGroupIndex]->setFilterLfoRetrig(value);
-  showCurrentParameterPage("F. LFO Retrig", groupvec[activeGroupIndex]->getFilterLfoRetrig() ? "On" : "Off");
+  showCurrentParameterPage("Filter LFO Retrigger", groupvec[activeGroupIndex]->getFilterLfoRetrig() ? "On" : "Off");
 }
 
 FLASHMEM void updateFilterLFOMidiClkSync(bool value)
@@ -781,14 +780,16 @@ FLASHMEM void updateFilterRelease(float value)
 
 FLASHMEM void updateAttack(float value)
 {
-  groupvec[activeGroupIndex]->setAmpAttack(value);
-  showCurrentParameterPage("Attack", milliToString(value), AMP_ENV);
+  currentPatch.Attack = value;
+  groupvec[activeGroupIndex]->setAmpAttack(currentPatch.Attack);
+  showCurrentParameterPage("Attack", milliToString(currentPatch.Attack), AMP_ENV);
 }
 
 FLASHMEM void updateDecay(float value)
 {
-  groupvec[activeGroupIndex]->setAmpDecay(value);
-  showCurrentParameterPage("Decay", milliToString(value), AMP_ENV);
+  currentPatch.Decay = value;
+  groupvec[activeGroupIndex]->setAmpDecay(currentPatch.Decay);
+  showCurrentParameterPage("Decay", milliToString(currentPatch.Decay), AMP_ENV);
 }
 
 FLASHMEM void updateSustain(float value)
@@ -808,22 +809,22 @@ FLASHMEM void updateOscFX(uint8_t value)
   groupvec[activeGroupIndex]->setOscFX(value);
   if (value == 2)
   {
-    showCurrentParameterPage("Osc FX", "On - X Mod");
+    showCurrentParameterPage("Osc Effect", "X Mod");
   }
   else if (value == 1)
   {
-    showCurrentParameterPage("Osc FX", "On - XOR");
+    showCurrentParameterPage("Osc Effect", "XOR Mod");
   }
   else
   {
-    showCurrentParameterPage("Osc FX", "Off");
+    showCurrentParameterPage("Osc Effect", "Off");
   }
 }
 
 FLASHMEM void updateEffectAmt(float value)
 {
   groupvec[activeGroupIndex]->setEffectAmount(value);
-  showCurrentParameterPage("Effect Amt", String(value) + " Hz");
+  showCurrentParameterPage("Effect Amount", String(value) + " Hz");
 }
 
 FLASHMEM void updateEffectMix(float value)
@@ -852,109 +853,148 @@ void myControlChange(byte channel, byte control, byte value)
   switch (control)
   {
   case CCvolume:
-    updateVolume(LINEAR[value]);
+    currentVolume = value;
+    updateVolume(LINEAR[currentVolume]);
     break;
   case CCunison:
-    updateUnison(inRangeOrDefault<int>(value, 2, 0, 2));
+    currentPatch.Unison = value;
+    updateUnison(inRangeOrDefault<int>(currentPatch.Unison, 2, 0, 2));
     break;
 
   case CCglide:
+    currentPatch.Glide = value;
     updateGlide(POWER[value]);
     break;
 
   case CCpitchenv:
+    currentPatch.PitchEnv = value;
     updatePitchEnv(LINEARCENTREZERO[value] * OSCMODMIXERMAX);
     break;
 
   case CCoscwaveformA:
+    currentPatch.WaveformA = value;
     updateWaveformA(getWaveformA(value));
     break;
 
   case CCoscwaveformB:
+    currentPatch.WaveformB = value;
     updateWaveformB(getWaveformB(value));
     break;
 
   case CCpitchA:
+    currentPatch.PitchA = value;
     updatePitchA(PITCH[value]);
     break;
 
   case CCpitchB:
+    currentPatch.PitchB = value;
     updatePitchB(PITCH[value]);
     break;
 
   case CCdetune:
+    currentPatch.Detune = value;
     updateDetune(1.0f - (MAXDETUNE * POWER[value]), value);
     break;
 
   case CCpwmSource:
+    currentPatch.PWMSource = value;
     updatePWMSource(value > 0 ? PWMSOURCEFENV : PWMSOURCELFO);
     break;
 
   case CCpwmRate:
+    currentPatch.PWMRate = value;
     // Uses combination of PWMRate, PWa and PWb
     updatePWMRate(PWMRATE[value]);
     break;
 
   case CCpwmAmt:
-    // NO FRONT PANEL CONTROL - MIDI CC ONLY
+    currentPatch.PWMA_Amount = value;
+    currentPatch.PWMB_Amount = value;
     // Total PWM amount for both oscillators
     updatePWMAmount(LINEAR[value]);
     break;
 
   case CCpwmAmtA:
+    currentPatch.PWMA_Amount = value;
     // Need to set both PW amount and PWM amount due to a choice of PWM source switching between them
     updatePWA(groupvec[activeGroupIndex]->getPwA(), LINEAR[value]);
     break;
 
   case CCpwmAmtB:
+    currentPatch.PWMB_Amount = value;
     // Need to set both PW amount and PWM amount due to a choice of PWM source switching between them
     updatePWB(groupvec[activeGroupIndex]->getPwB(), LINEAR[value]);
     break;
 
   case CCpwA:
+    currentPatch.PWA_Amount = value;
     updatePWA(LINEARCENTREZERO[value], LINEAR[value]);
     break;
 
   case CCpwB:
+    currentPatch.PWB_Amount = value;
     updatePWB(LINEARCENTREZERO[value], LINEAR[value]);
     break;
 
   case CCoscLevelA:
+    currentPatch.OscLevelA = value;
     updateOscLevelA(LINEAR[value]);
     break;
 
   case CCoscLevelB:
+    currentPatch.OscLevelB = value;
     updateOscLevelB(LINEAR[value]);
     break;
 
   case CCnoiseLevel:
+    currentPatch.NoiseLevel = value;
     updateNoiseLevel(LINEARCENTREZERO[value]);
+    break;
+
+  case CCbankselectLSB:
+    if (value < BANKS_LIMIT)
+    {
+      Serial.println(value);
+      currentBankIndex = value;
+      loadPatchNames(currentBankIndex);
+      if (patches.size() > 0 && patches[0].patchUID > 0)
+      {
+        currentPatchIndex = 0;
+        recallPatch(currentBankIndex, patches[0].patchUID);
+      }
+    }
     break;
 
   case CCfilterfreq:
     // MIDI is 7 bit, 128 values and needs to choose alternate filterfreqs(8 bit) by multiplying by 2
-    updateFilterFreq(FILTERFREQS256[value * 2]);
+    currentPatch.FilterFreq = value << 1; // FilterFreq is 8 bit
+    Serial.println(currentPatch.FilterFreq);
+    updateFilterFreq(FILTERFREQS256[currentPatch.FilterFreq]);
     break;
 
   case filterfreq256:
-    // 8 bit from panel controls for smoothness
-    updateFilterFreq(FILTERFREQS256[value]);
+    // 8 bit from panel control for smoothness
+    currentPatch.FilterFreq = value;
+    updateFilterFreq(FILTERFREQS256[currentPatch.FilterFreq]);
     break;
 
   case CCfilterres:
-    // If <1.1 there is noise at high cutoff freq
+    currentPatch.FilterRes = value;
     updateFilterRes((14.29f * POWER[value]) + 0.71f);
     break;
 
   case CCfiltermixer:
+    currentPatch.FilterMixer = value;
     updateFilterMixer(LINEAR_FILTERMIXER[value]);
     break;
 
   case CCfilterenv:
+    currentPatch.FilterEnv = value;
     updateFilterEnv(LINEARCENTREZERO[value] * FILTERMODMIXERMAX);
     break;
 
   case CCkeytracking:
+    currentPatch.KeyTracking = value;
     updateKeyTracking(KEYTRACKINGAMT[value]);
     break;
 
@@ -964,11 +1004,13 @@ void myControlChange(byte channel, byte control, byte value)
     break;
 
   case CCosclfoamt:
+    currentPatch.PitchLFOAmt = value;
     updatePitchLFOAmt(POWER[value]);
     break;
 
   case CCoscLfoRate:
   {
+    currentPatch.PitchLFORate = value;
     float rate = 0.0;
     if (groupvec[activeGroupIndex]->getPitchLfoMidiClockSync())
     {
@@ -986,19 +1028,23 @@ void myControlChange(byte channel, byte control, byte value)
   }
 
   case CCoscLfoWaveform:
+    currentPatch.PitchLFOWaveform = value;
     updatePitchLFOWaveform(getLFOWaveform(value));
     break;
 
   case CCosclforetrig:
+    currentPatch.PitchLFORetrig = value;
     updatePitchLFORetrig(value > 0);
     break;
 
   case CCfilterLFOMidiClkSync:
+    currentPatch.FilterLFOMidiClkSync = value;
     updateFilterLFOMidiClkSync(value > 0);
     break;
 
   case CCfilterlforate:
   {
+    currentPatch.FilterLFORate = value;
     float rate;
     String timeDivStr = "";
     if (groupvec[activeGroupIndex]->getFilterLfoMidiClockSync())
@@ -1017,62 +1063,77 @@ void myControlChange(byte channel, byte control, byte value)
   }
 
   case CCfilterlfoamt:
+    currentPatch.FilterLfoAmt = value;
     updateFilterLfoAmt(LINEAR[value] * FILTERMODMIXERMAX);
     break;
 
   case CCfilterlfowaveform:
+    currentPatch.FilterLFOWaveform = value;
     updateFilterLFOWaveform(getLFOWaveform(value));
     break;
 
   case CCfilterlforetrig:
+    currentPatch.FilterLFORetrig = value;
     updateFilterLFORetrig(value > 0);
     break;
 
   case CCoscLFOMidiClkSync:
+    currentPatch.PitchLFOMidiClkSync = value;
     updatePitchLFOMidiClkSync(value > 0);
     break;
 
   case CCfilterattack:
+    currentPatch.FilterAttack = value;
     updateFilterAttack(ENVTIMES[value]);
     break;
 
   case CCfilterdecay:
+    currentPatch.FilterDecay = value;
     updateFilterDecay(ENVTIMES[value]);
     break;
 
   case CCfiltersustain:
+    currentPatch.FilterSustain = value;
     updateFilterSustain(LINEAR[value]);
     break;
 
   case CCfilterrelease:
+    currentPatch.FilterRelease = value;
     updateFilterRelease(ENVTIMES[value]);
     break;
 
   case CCampattack:
+    currentPatch.Attack = value;
     updateAttack(ENVTIMES[value]);
     break;
 
   case CCampdecay:
+    currentPatch.Decay = value;
     updateDecay(ENVTIMES[value]);
     break;
 
   case CCampsustain:
+    currentPatch.Sustain = value;
     updateSustain(LINEAR[value]);
     break;
 
   case CCamprelease:
+    currentPatch.Release = value;
     updateRelease(ENVTIMES[value]);
     break;
 
   case CCoscfx:
+    currentPatch.OscFX = value;
     updateOscFX(inRangeOrDefault<int>(value, 2, 0, 2));
     break;
 
   case CCfxamt:
+    currentPatch.EffectAmt = value;
     updateEffectAmt(ENSEMBLE_LFO[value]);
     break;
 
   case CCfxmix:
+    currentPatch.EffectMix = value;
     updateEffectMix(LINEAR[value]);
     break;
 
@@ -1084,11 +1145,15 @@ void myControlChange(byte channel, byte control, byte value)
 
 FLASHMEM void myProgramChange(byte channel, byte program)
 {
-  state = PATCH;
-  recallPatch(currentBank, patches[program].patchUID);
-  Serial.print(F("MIDI Pgm Change:"));
-  Serial.println(patches[program].patchUID);
-  state = PARAMETER;
+  if (program < patches.size())
+  {
+    // state = PATCH;
+    currentPatchIndex = program;
+    recallPatch(currentBankIndex, patches[currentPatchIndex].patchUID);
+    Serial.print(F("MIDI Pgm Change:"));
+    Serial.println(patches[currentPatchIndex].patchUID);
+    // state = PARAMETER;
+  }
 }
 
 FLASHMEM void myMIDIClockStart()
@@ -1129,6 +1194,8 @@ FLASHMEM void myMIDIClock()
 
 FLASHMEM void recallPatch(uint8_t bank, long patchUID)
 {
+  if (patchUID == 0)
+    return;
   groupvec[activeGroupIndex]->allNotesOff();
   groupvec[activeGroupIndex]->closeEnvelopes();
   loadPatch(bank, patchUID);
@@ -1138,6 +1205,7 @@ FLASHMEM void recallPatch(uint8_t bank, long patchUID)
 FLASHMEM void setCurrentPatchData()
 {
   updatePatch(currentPatch.PatchName, currentPatchIndex + 1, currentPatch.UID);
+  updateDisplay = false; // Don't show each parameter on the display as they are all updated.
   myControlChange(midiChannel, CCoscLevelA, currentPatch.OscLevelA);
   myControlChange(midiChannel, CCoscLevelB, currentPatch.OscLevelB);
   myControlChange(midiChannel, CCnoiseLevel, currentPatch.NoiseLevel);
@@ -1158,7 +1226,7 @@ FLASHMEM void setCurrentPatchData()
   myControlChange(midiChannel, CCpwmAmtB, currentPatch.PWMB_Amount);
   myControlChange(midiChannel, CCpwmRate, currentPatch.PWMRate);
   myControlChange(midiChannel, CCfilterres, currentPatch.FilterRes);
-  myControlChange(midiChannel, CCfilterfreq, currentPatch.FilterFreq);
+  myControlChange(midiChannel, filterfreq256, currentPatch.FilterFreq); // 8 bit
   myControlChange(midiChannel, CCfiltermixer, currentPatch.FilterMixer);
   myControlChange(midiChannel, CCfilterenv, currentPatch.FilterEnv);
   myControlChange(midiChannel, CCosclfoamt, currentPatch.PitchLFOAmt);
@@ -1185,6 +1253,7 @@ FLASHMEM void setCurrentPatchData()
   velocitySens = currentPatch.VelocitySensitivity;
   groupvec[activeGroupIndex]->params().chordDetune = currentPatch.ChordDetune;
   groupvec[activeGroupIndex]->setMonophonic(currentPatch.MonophonicMode);
+  updateDisplay = true;
 
   Serial.print(F("Set Patch: "));
   Serial.print(currentPatch.PatchName);
@@ -1367,11 +1436,12 @@ FLASHMEM String getCurrentPatchDataWithoutPatchname()
   }
 */
 
-uint8_t update(uint8_t currentParameter, int value, int8_t delta, uint8_t range)
+FLASHMEM uint8_t update(uint8_t currentParameter, int8_t delta, uint8_t range)
 {
-  // if(range<25){
-  //   uint8_t val = map(value, 0, 127, 0, 24);
-  // }
+  if (range < 25)
+  {
+    // TODO
+  }
   if ((currentParameter + delta > -1) && (currentParameter + delta < range + 1))
   {
     currentParameter += delta;
@@ -1379,103 +1449,89 @@ uint8_t update(uint8_t currentParameter, int value, int8_t delta, uint8_t range)
   return currentParameter;
 }
 
-void encoderCallback(unsigned enc_idx, int value, int delta)
+FLASHMEM void encoderCallback(unsigned enc_idx, int value, int delta)
 {
   Serial.printf("enc[%u]: v=%d, d=%d\n", enc_idx, value, delta);
-  switch (enc_idx)
+  // Subtract 4 from encoder index due to numbering on shift registers
+  enc_idx -= 4;
+  if (encMap[enc_idx].active)
   {
-  case ENC_TR:
-    currentPatch.FilterFreq = update(currentPatch.FilterFreq, value, delta, 255);
-    myControlChange(midiChannel, filterfreq256, currentPatch.FilterFreq); // 8 bit
-    midiCCOut(CCfilterfreq, currentPatch.FilterFreq >> 1);                // Convert 8 bit to 7 bit
-    break;
-  case ENC_BR:
-    currentPatch.FilterRes = update(currentPatch.FilterRes, value, delta, 127);
-    midiCCOut(CCfilterres, currentPatch.FilterRes);
-    myControlChange(midiChannel, CCfilterres, currentPatch.FilterRes);
-    break;
-  case ENC_TL:
-    currentPatch.Unison = update(currentPatch.Unison, value, delta, 2);
-    midiCCOut(CCunison, currentPatch.Unison);
-    myControlChange(midiChannel, CCunison, currentPatch.Unison);
-    break;
-  case ENC_BL:
-    break;
+    encMap[enc_idx].Value = update(encMap[enc_idx].Value, delta, encMap[enc_idx].Range);
+    switch (encMap[enc_idx].Parameter)
+    {
+    case patchselect:
+      recallPatch(currentBankIndex, patches[delta > 0 ? incCurrentPatchIndex() : decCurrentPatchIndex()].patchUID);
+      break;
+    case CCbankselectLSB:
+      loadPatchNames(delta > 0 ? incTempBankIndex() : decTempBankIndex());
+      if (state == State::RECALL)
+      {
+        currentBankIndex = tempBankIndex;
+        currentPatchIndex = 0;
+        recallPatch(currentBankIndex, patches[0].patchUID);
+      }
+      else
+      {
+        while (patches[0].patchUID == 0)
+        {
+          loadPatchNames(delta > 0 ? incTempBankIndex() : decTempBankIndex());
+        }
+        currentBankIndex = tempBankIndex;
+        currentPatchIndex = 0;
+        recallPatch(currentBankIndex, patches[0].patchUID);
+      }
+      break;
+    default:
+      myControlChange(midiChannel, encMap[enc_idx].Parameter, encMap[enc_idx].Value);
+      midiCCOut(encMap[enc_idx].Parameter, encMap[enc_idx].Value);
+      break;
+    }
   }
 }
 
-void encoderButtonCallback(unsigned enc_idx, int state)
+FLASHMEM void encoderButtonCallback(unsigned enc_idx, int buttonState)
 {
-  switch (enc_idx)
+  // Subtract 4 from encoder index due to numbering on shift registers
+  enc_idx -= 4;
+  if (encMap[enc_idx].Push)
   {
-  case 4:
-    // Encoder TR
-    Serial.println("Encoder TR");
-    break;
-  case 5:
-    // Encoder BR
-    Serial.println("Encoder BR");
-    break;
-  case 6:
-    // Encoder TL
-    Serial.println("Encoder TL");
-    break;
-  case 7:
-    // Encoder BL
-    Serial.println("Encoder BL");
-    break;
+    state = encMap[enc_idx].PushActionState;
   }
 }
 
-void showSettingsPage()
+FLASHMEM void showSettingsPage()
 {
   showSettingsPage(settings::current_setting(), settings::current_setting_value(), state);
 }
 /*
-  void checkSwitches()
   {
-  unisonSwitch.update();
-  if (unisonSwitch.numClicks() == 1)
-  {
+  unisonSwitch
     //Cycle through each option
     midiCCOut(CCunison, groupvec[activeGroupIndex]->params().unisonMode == 2 ? 0 : groupvec[activeGroupIndex]->params().unisonMode + 1);
     myControlChange(midiChannel, CCunison, groupvec[activeGroupIndex]->params().unisonMode == 2 ? 0 : groupvec[activeGroupIndex]->params().unisonMode + 1);
-  }
 
-  oscFXSwitch.update();
-  if (oscFXSwitch.numClicks() == 1)
-  {
+  oscFXSwitch
     //Cycle through each option
     midiCCOut(CCoscfx, groupvec[activeGroupIndex]->getOscFX() == 2 ? 0 : groupvec[activeGroupIndex]->getOscFX() + 1);
     myControlChange(midiChannel, CCoscfx, groupvec[activeGroupIndex]->getOscFX() == 2 ? 0 : groupvec[activeGroupIndex]->getOscFX() + 1);
-  }
 
-  filterLFORetrigSwitch.update();
-  if (filterLFORetrigSwitch.numClicks() == 1)
-  {
+
+  filterLFORetrigSwitch
     bool value = !groupvec[activeGroupIndex]->getFilterLfoRetrig();
     midiCCOut(CCfilterlforetrig, value);
     myControlChange(midiChannel, CCfilterlforetrig, value);
-  }
 
-  tempoSwitch.update();
-  if (tempoSwitch.numClicks() == 1)
-  {
+
+  tempoSwitch
     bool value = !groupvec[activeGroupIndex]->getFilterLfoMidiClockSync();
     midiCCOut(CCfilterLFOMidiClkSync, value);
     myControlChange(midiChannel, CCfilterLFOMidiClkSync, value);
-  }
+
 
   saveButton.update();
   if (saveButton.held())
   {
-    switch (state)
-    {
-    case PARAMETER:
-    case PATCH:
-      state = DELETE;
-      break;
-    }
+
   }
   else if (saveButton.numClicks() == 1)
   {
@@ -1484,8 +1540,7 @@ void showSettingsPage()
     case PARAMETER:
       if (patches.size() < PATCHES_LIMIT)
       {
-        resetPatchesOrdering(); //Reset order of patches from first patch
-        patches.push({patches.size() + 1, INITPATCHNAME});
+        patches.push_back(UID);
         state = SAVE;
       }
       break;
@@ -1747,7 +1802,7 @@ void showSettingsPage()
     break;
 */
 
-void buttonCallback(unsigned button_idx, int state)
+void buttonCallback(unsigned button_idx, int button)
 {
   /*
     Button1 SR1 D4  10
@@ -1764,184 +1819,272 @@ void buttonCallback(unsigned button_idx, int state)
 
   switch (button_idx)
   {
-  case VOL_DOWN:
-    if (state == HIGH)
-    {
-      currentVolume = clampToRange<int>(currentVolume, -1, 0, 127);
-      myControlChange(midiChannel, CCvolume, currentVolume);
-    }
-    if (state == HELD || state == HELD_REPEAT)
-    {
-      currentVolume = clampToRange<int>(currentVolume, -1, 0, 127);
-      myControlChange(midiChannel, CCvolume, currentVolume);
-    }
-    break;
   case VOL_UP:
-    if (state == HIGH)
+    if (button == HIGH)
     {
-      currentVolume = clampToRange<int>(currentVolume, 1, 0, 127);
-      myControlChange(midiChannel, CCvolume, currentVolume);
-    }
-    if (state == HELD || state == HELD_REPEAT)
-    {
-      currentVolume = clampToRange<int>(currentVolume, 1, 0, 127);
-      myControlChange(midiChannel, CCvolume, currentVolume);
-    }
-    break;
-
-  case BUTTON_8:
-    if (state == HIGH)
-    {
-      // RECALL
-      singleLED(RED, 8);
-      // switch (state)
-      // {
-      // case PARAMETER:
-      //   state = RECALL; // show patch list
-      //   break;
-      // case RECALL:
-      //   state = PATCH;
-      //   // Recall the current patch
-      //   patchNo = patches.front().patchNo;
-      //   recallPatch(patchNo);
-      //   state = PARAMETER;
-      //   break;
-      // }
-    }
-    if (state == HELD)
-    {
-      // INIT
-      // If recall held, set current patch to match current hardware state
-      // Reinitialise all hardware values to force them to be re-read if different
-      state = REINITIALISE;
-      // reinitialiseToPanel();
-      flashLED(GREEN, 8, 250);
-    }
-    break;
-  case BUTTON_7:
-    if (state == HIGH)
-    {
-      // SAVE
-      singleLED(RED, 7);
-
-      // switch (state)
-      // {
-
-      // case PARAMETER:
-      //   if (patches.size() < PATCHES_LIMIT)
-      //   {
-      //     resetPatchesOrdering(); // Reset order of patches from first patch
-      //     patches.push({patches.size() + 1, INITPATCHNAME});
-      //     state = SAVE;
-      //   }
-      //   break;
-
-      // case SAVE:
-      //   // Save as new patch with INITIALPATCH name or overwrite existing keeping name - bypassing patch renaming
-      //   patchName = patches.back().patchName;
-      //   state = PATCH;
-      //   savePatch(String(patches.back().patchNo).c_str(), getCurrentPatchData());
-      //   showPatchPage(patches.back().patchNo, patches.back().patchName);
-      //   patchNo = patches.back().patchNo;
-      //   loadPatches(); // Get rid of pushed patch if it wasn't saved
-      //   // setPatchesOrdering(patchNo);
-      //   renamedPatch = "";
-      //   state = PARAMETER;
-      //   break;
-
-      //   // From Encoder button
-      //   //  case SAVE:
-      //   //    showRenamingPage(patches.back().patchName);
-      //   //    patchName = patches.back().patchName;
-      //   //    state = PATCHNAMING;
-      //   //    break;
-      // }
-    }
-    if (state == HELD)
-    {
-      // DELETE
-      singleLED(GREEN, 7);
-    }
-    break;
-  case BUTTON_5:
-    if (state == HIGH)
-    {
-      singleLED(RED, 5);
-    }
-    if (state == HELD)
-    {
-      switch (state)
+      if (state == State::PARAMETER)
       {
-      case PARAMETER:
-        state = SETTINGS;
-        showSettingsPage();
-        break;
-      case SETTINGS:
-        showSettingsPage();
-      case SETTINGSVALUE:
-        settings::save_current_value();
-        state = SETTINGS;
-        showSettingsPage();
+        myControlChange(midiChannel, CCvolume, clampToRange<int>(currentVolume, 1, 0, 127));
+      }
+    }
+    if (button == HELD || button == HELD_REPEAT)
+    {
+      if (state == State::PARAMETER)
+      {
+        myControlChange(midiChannel, CCvolume, clampToRange<int>(currentVolume, 1, 0, 127));
+      }
+      break;
+
+    case VOL_DOWN:
+      if (button == HIGH)
+      {
+        if (state == State::PARAMETER)
+        {
+          myControlChange(midiChannel, CCvolume, clampToRange<int>(currentVolume, -1, 0, 127));
+        }
+      }
+      if (button == HELD || button == HELD_REPEAT)
+      {
+        if (state == State::PARAMETER)
+        {
+          myControlChange(midiChannel, CCvolume, clampToRange<int>(currentVolume, -1, 0, 127));
+        }
+      }
+      break;
+
+      // Osc / Multi
+    case BUTTON_1:
+      if (button == HIGH)
+      {
+        singleLED(RED, 1);
+        switch (state)
+        {
+        case State::PARAMETER:
+          state = State::OSCPAGE; // show osc parameters
+          singleLED(RED, 1);
+          break;
+        case State::OSCPAGE:
+          state = State::OSCPAGE2;
+          singleLED(RED, 1);
+          break;
+        case State::OSCPAGE2:
+          state = State::PARAMETER;
+          singleLED(OFF, 1);
+          break;
+        default:
+          break;
+        }
+      }
+      if (button == HELD)
+      {
+        singleLED(GREEN, 1);
+      }
+      break;
+
+      // Osc Mod / Arp
+    case BUTTON_2:
+      if (button == HIGH)
+      {
+        switch (state)
+        {
+        case State::PARAMETER:
+          state = State::OSCMODPAGE; // show osc mod parameters
+          singleLED(RED, 2);
+          break;
+        case State::OSCPAGE:
+          state = State::OSCMODPAGE2;
+          singleLED(RED, 2);
+          break;
+        case State::OSCMODPAGE2:
+          state = State::PARAMETER;
+          singleLED(OFF, 2);
+          break;
+        default:
+          break;
+        }
+      }
+      if (button == HELD)
+      {
+        singleLED(GREEN, 2);
+      }
+      break;
+
+      // Filter / Seq
+    case BUTTON_3:
+      if (button == HIGH)
+      {
+        singleLED(RED, 3);
+        loadPatchNames(decTempBankIndex());
+        if (patches[0].patchUID > 0)
+        {
+          currentBankIndex = tempBankIndex;
+          currentPatchIndex = 0;
+          recallPatch(currentBankIndex, patches[0].patchUID);
+        }
+      }
+      if (button == HELD)
+      {
+        singleLED(GREEN, 3);
+      }
+      break;
+
+      // Filter Mod / MIDI
+    case BUTTON_4:
+      if (button == HIGH)
+      {
+        singleLED(RED, 4);
+        loadPatchNames(incTempBankIndex());
+        if (patches[0].patchUID > 0)
+        {
+          currentBankIndex = tempBankIndex;
+          currentPatchIndex = 0;
+          recallPatch(currentBankIndex, patches[0].patchUID);
+        }
+        if (button == HELD)
+        {
+          singleLED(GREEN, 4);
+        }
         break;
       }
-      singleLED(GREEN, 5);
+      // Amp / Settings
+    case BUTTON_5:
+      if (button == HIGH)
+      {
+        singleLED(RED, 5);
+      }
+      if (button == HELD)
+      {
+        switch (state)
+        {
+        case State::PARAMETER:
+          state = SETTINGS;
+          showSettingsPage();
+          break;
+        case SETTINGS:
+          showSettingsPage();
+        case SETTINGSVALUE:
+          settings::save_current_value();
+          state = SETTINGS;
+          showSettingsPage();
+          break;
+        default:
+          break;
+        }
+        singleLED(GREEN, 5);
+      }
+      break;
+
+      // FX / Panic
+    case BUTTON_6:
+      if (button == HIGH)
+      {
+        singleLED(RED, 6);
+      }
+      if (button == HELD)
+      {
+        // If Back button held, Panic - all notes off
+        groupvec[activeGroupIndex]->allNotesOff();
+        groupvec[activeGroupIndex]->closeEnvelopes();
+        flashLED(GREEN, 6, 250);
+      }
+      break;
+
+      // Save / Del
+    case BUTTON_7:
+      if (button == HIGH)
+      {
+        // SAVE
+        singleLED(RED, 7);
+
+        // switch (state)
+        // {
+
+        // case PARAMETER:
+        //   if (patches.size() < PATCHES_LIMIT)
+        //   {
+        //     resetPatchesOrdering(); // Reset order of patches from first patch
+        //     patches.push({patches.size() + 1, INITPATCHNAME});
+        //     state = SAVE;
+        //   }
+        //   break;
+
+        // case SAVE:
+        //   // Save as new patch with INITIALPATCH name or overwrite existing keeping name - bypassing patch renaming
+        //   patchName = patches.back().patchName;
+        //   state = PATCH;
+        //   savePatch(String(patches.back().patchNo).c_str(), getCurrentPatchData());
+        //   showPatchPage(patches.back().patchNo, patches.back().patchName);
+        //   patchNo = patches.back().patchNo;
+        //   loadPatches(); // Get rid of pushed patch if it wasn't saved
+        //   // setPatchesOrdering(patchNo);
+        //   renamedPatch = "";
+        //   state = PARAMETER;
+        //   break;
+
+        //   // From Encoder button
+        //   //  case SAVE:
+        //   //    showRenamingPage(patches.back().patchName);
+        //   //    patchName = patches.back().patchName;
+        //   //    state = PATCHNAMING;
+        //   //    break;
+        // }
+      }
+      if (button == HELD)
+      {
+        // DELETE
+        switch (state)
+        {
+        case State::PARAMETER:
+        case PATCH:
+          state = DELETE;
+          break;
+        default:
+          break;
+        }
+        singleLED(GREEN, 7);
+      }
+      break;
+
+      // Recall / Init
+    case BUTTON_8:
+      if (button == HIGH)
+      {
+        // RECALL
+        singleLED(RED, 8);
+        switch (state)
+        {
+        case State::PARAMETER:
+          tempBankIndex = currentBankIndex;
+          loadPatchNames(tempBankIndex);
+          state = State::RECALL; // show patch list
+          break;
+        case State::RECALL:
+          // If current patch is empty in this bank, go to previous bank with valid patch
+          while (patches[0].patchUID == 0)
+          {
+            tempBankIndex = decTempBankIndex();
+            loadPatchNames(tempBankIndex);
+          }
+          currentBankIndex = tempBankIndex;
+          currentPatchIndex = 0;
+          recallPatch(currentBankIndex, patches[0].patchUID);
+          state = State::PARAMETER;
+          singleLED(OFF, 8);
+          break;
+        default:
+          break;
+        }
+      }
+      if (button == HELD)
+      {
+        // Reinitialise to default patch
+        state = REINITIALISE;
+        reinitialisePatch();
+        setCurrentPatchData();
+        flashLED(GREEN, 8, 250);
+      }
+      break;
     }
-    break;
-  case BUTTON_4:
-    if (state == HIGH)
-    {
-      singleLED(RED, 4);
-    }
-    if (state == HELD)
-    {
-      singleLED(GREEN, 4);
-    }
-    break;
-  case BUTTON_6:
-    if (state == HIGH)
-    {
-      singleLED(RED, 6);
-    }
-    if (state == HELD)
-    {
-      // If Back button held, Panic - all notes off
-      groupvec[activeGroupIndex]->allNotesOff();
-      groupvec[activeGroupIndex]->closeEnvelopes();
-      flashLED(GREEN, 6, 250);
-    }
-    break;
-  case BUTTON_2:
-    if (state == HIGH)
-    {
-      singleLED(RED, 2);
-      recallPatch(currentBank, patches[incCurrentPatchIndex()].patchUID);
-    }
-    if (state == HELD)
-    {
-      singleLED(GREEN, 2);
-    }
-    break;
-  case BUTTON_1:
-    if (state == HIGH)
-    {
-      singleLED(RED, 1);
-      recallPatch(currentBank, patches[decCurrentPatchIndex()].patchUID);
-    }
-    if (state == HELD)
-    {
-      singleLED(GREEN, 1);
-    }
-    break;
-  case BUTTON_3:
-    if (state == HIGH)
-    {
-      singleLED(RED, 3);
-    }
-    if (state == HELD)
-    {
-      singleLED(GREEN, 3);
-    }
-    break;
   }
 }
 
@@ -1955,6 +2098,12 @@ void midiCCOut(byte cc, byte value)
 {
   if (midiOutCh > 0)
   {
+    if (cc == filterfreq256)
+    {
+      // Turn cutoff freq back to 7 bit for MIDI
+      cc = CCfilterfreq;
+      value = value >> 1;
+    }
     usbMIDI.sendControlChange(cc, value, midiOutCh);
     midi1.sendControlChange(cc, value, midiOutCh);
     if (MIDIThru == midi::Thru::Off)

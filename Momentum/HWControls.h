@@ -4,10 +4,10 @@ using namespace ButtonTool;
 using namespace EncoderTool;
 
 // Encoder Shift Register numbering
-#define ENC_TL 6
-#define ENC_BL 7
-#define ENC_TR 4
-#define ENC_BR 5
+#define ENC_TL 2
+#define ENC_BL 3
+#define ENC_TR 0
+#define ENC_BR 1
 
 // Button numbering
 #define VOL_DOWN 0
@@ -41,14 +41,14 @@ ButtonPlex74165 buttons(buttonCount, pinLD, pinCLK, srB, srA, srC);
 
 // TeensyMM pins
 #define BACKLIGHT 24 // A10/I2C_SCL1
-typedef enum
+typedef enum ledColour
 {
   RED,
   GREEN,
   OFF,
 } ledColour;
 
-typedef enum
+typedef enum controlParameter
 {
   control_noiseLevel,
   control_pitchLfoRate,
@@ -102,10 +102,6 @@ FLASHMEM void setupHardware(EncoderTool::allCallback_t ec, EncoderTool::allBtnCa
   encoders.attachCallback(ec);
   encoders.attachBtnCallback(ebc);
 
-  // for (uint8_t i = 0; i < encoderCount; i++)
-  // {
-  //   encoders[i].setLimits(0, 127);
-  // }
   buttons.begin(bc);
 
   // Display backlight - Can be used to turn off or dim using PWM

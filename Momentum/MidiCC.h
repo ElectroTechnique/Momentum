@@ -17,6 +17,7 @@
 #define CCpitchenv 28
 #define CCosclforetrig 30    // Off/On
 #define CCfilterlforetrig 31 // Off/On
+#define CCbankselectLSB 32
 #define CCfilterres 71
 #define CCamprelease 72
 #define CCampattack 73

@@ -23,7 +23,7 @@ const static char *BANK_FOLDER_NAMES_SLASH[] = {"Bank1/", "Bank2/", "Bank3/", "B
 const static char *BANKS_FILE_CONTENTS = "{\"Bank1\": \"Strings\",\"Bank2\": \"Basses\", \"Bank3\": \"Keys\",\"Bank4\": \"FX\",\"Bank5\": \"User 1\",\"Bank6\": \"User 2\",\"Bank7\": \"User 3\",\"Bank8\": \"User 4\"}";
 
 // Friendly bank names from Banknames file - defaults
-const static char *bankNames[] = {"Strings", "Basses", "Keys", "FX", "User 1", "User 2", "User 3", "User 4"};
+static char *bankNames[] = {"Strings", "Basses", "Keys", "FX", "User 1", "User 2", "User 3", "User 4"};
 
 const static char *PERFORMANCE_FOLDER_NAME = "Performances";
 const static char *PERFORMANCE_FOLDER_NAME_SLASH = "Performances/";

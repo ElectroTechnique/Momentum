@@ -11,8 +11,9 @@
 #define dc 5     // D1
 #define rst 4    // D0
 #define miso 255 // Unused
-#define SPI_SPEED 60000000
-#define SPICLOCK_READ 40000000
+
+#define SPI_SPEED 100000000
+#define SPICLOCK_READ 80000000
 
 #define DISPLAYTIMEOUT 700
 
@@ -47,7 +48,7 @@ String newPatchName = "";
 const char *currentSettingsOption = "";
 const char *currentSettingsValue = "";
 uint32_t currentSettingsPart = State::SETTINGS;
-uint32_t paramType = State::PARAMETER;
+uint32_t paramType = State::MAIN;
 
 boolean MIDIClkSignal = false;
 uint32_t peakCount = 0;
@@ -55,7 +56,7 @@ uint16_t prevLen = 0;
 
 const uint32_t colourPriority[5] = {ILI9341_BLACK, ILI9341_BLUE, ILI9341_YELLOW, ILI9341_ORANGE, ILI9341_MAROON};
 
-const uint32_t encTriColour[4] = {ILI9341_LIGHTBLUE, ILI9341_YELLOW, ILI9341_GREEN, ILI9341_ORANGE};
+const uint32_t encTriColour[4] = {ILI9341_LIGHTBLUE, ILI9341_YELLOW, ILI9341_WHITE, ILI9341_ORANGE};
 
 unsigned long timer = 0;
 
@@ -63,7 +64,7 @@ boolean updateDisplay = true;
 
 void startTimer()
 {
-  if (state == State::PARAMETER)
+  if (state == State::MAIN)
   {
     timer = millis();
   }
@@ -130,7 +131,7 @@ FLASHMEM void renderMIDI()
 
 FLASHMEM void renderCorners()
 {
-      tft.setFont(&FreeSans9pt7b);
+  tft.setFont(&FreeSans9pt7b);
   // ENC_TL
   if (encMap[ENC_TL].active)
   {
@@ -142,8 +143,12 @@ FLASHMEM void renderCorners()
     tft.setCursor(14, 7);
     tft.setTextColor(encTriColour[ENC_TL]);
     tft.println(encMap[ENC_TL].ParameterStr);
+    if (encMap[ENC_TL].ShowValue)
+    {
+      tft.setCursor(14, 27);
+      tft.println(encMap[ENC_TL].ValueStr);
+    }
   }
-
   // ENC_TR
   if (encMap[ENC_TR].active)
   {
@@ -155,8 +160,12 @@ FLASHMEM void renderCorners()
     tft.setCursor(180, 7);
     tft.setTextColor(encTriColour[ENC_TR]);
     tft.println(encMap[ENC_TR].ParameterStr);
+    if (encMap[ENC_TR].ShowValue)
+    {
+      tft.setCursor(180, 27);
+      tft.println(encMap[ENC_TR].ValueStr);
+    }
   }
-
   // ENC_BR
   if (encMap[ENC_BR].active)
   {
@@ -168,6 +177,11 @@ FLASHMEM void renderCorners()
     tft.setCursor(200, 207);
     tft.setTextColor(encTriColour[ENC_BR]);
     tft.println(encMap[ENC_BR].ParameterStr);
+    if (encMap[ENC_BR].ShowValue)
+    {
+      tft.setCursor(200, 187);
+      tft.println(encMap[ENC_BR].ValueStr);
+    }
   }
 
   // ENC_BL
@@ -181,6 +195,11 @@ FLASHMEM void renderCorners()
     tft.setCursor(14, 207);
     tft.setTextColor(encTriColour[ENC_BL]);
     tft.println(encMap[ENC_BL].ParameterStr);
+    if (encMap[ENC_BL].ShowValue)
+    {
+      tft.setCursor(14, 187);
+      tft.println(encMap[ENC_BL].ValueStr);
+    }
   }
 }
 
@@ -325,7 +344,7 @@ FLASHMEM void renderVarTriangle(float value)
 
 FLASHMEM void renderEnv(float att, float dec, float sus, float rel)
 {
-  tft.setOrigin(-40, -30);
+  // tft.setOrigin(-40, -30); //Set origin before calling
 
   const uint16_t a = 200;
   const uint16_t b = 188;
@@ -347,14 +366,15 @@ FLASHMEM void renderCurrentParameterPage()
 {
   switch (state)
   {
-  case PARAMETER:
+  case MAIN:
     tft.fillRect(40, 30, 230, 150, ILI9341_DARKRED);
     tft.drawRect(40, 30, 230, 150, ILI9341_RED);
-    tft.setFont(&FreeSansBold12pt7b);
+    tft.setFont(&FreeSansBold9pt7b);
     tft.setCursor(60, 70);
     tft.setTextColor(ILI9341_YELLOW);
     tft.setTextSize(1);
     tft.println(currentParameter);
+    tft.setFont(&FreeSansBold12pt7b);
     tft.setCursor(60, 120);
     tft.setTextColor(ILI9341_WHITE);
     tft.println(currentValue);
@@ -367,9 +387,11 @@ FLASHMEM void renderCurrentParameterPage()
       renderVarTriangle(currentFloatValue);
       break;
     case FILTER_ENV:
+      tft.setOrigin(-40, -30);
       renderEnv(groupvec[activeGroupIndex]->getFilterAttack() * 0.0001f, groupvec[activeGroupIndex]->getFilterDecay() * 0.0001f, groupvec[activeGroupIndex]->getFilterSustain(), groupvec[activeGroupIndex]->getFilterRelease() * 0.0001f);
       break;
     case AMP_ENV:
+      tft.setOrigin(-40, -30);
       renderEnv(groupvec[activeGroupIndex]->getAmpAttack() * 0.0001f, groupvec[activeGroupIndex]->getAmpDecay() * 0.0001f, groupvec[activeGroupIndex]->getAmpSustain(), groupvec[activeGroupIndex]->getAmpRelease() * 0.0001f);
       break;
     }
@@ -494,15 +516,119 @@ FLASHMEM void renderRecallPage()
     tft.println(patches[i].patchName);
   }
 }
-FLASHMEM void renderOscPage(uint8_t osc)
+
+FLASHMEM void renderOscPage(uint8_t no)
 {
   tft.fillScreen(ILI9341_BLACK);
-  tft.setFont(&FreeSans9pt7b);
-  tft.setTextColor(ILI9341_WHITE);
-  renderCorners();
+  tft.setFont(&FreeSans12pt7b);
+  tft.setTextColor(ILI9341_RED);
   tft.setCursor(110, 150);
-  tft.print("Oscillator ");
-  tft.println(osc);
+  if (no > 2)
+  {
+    tft.print("Noise");
+  }
+  else
+  {
+    tft.print("Oscillator ");
+    tft.println(no);
+  }
+  renderCorners();
+}
+
+FLASHMEM void renderOscModPage(uint8_t no)
+{
+  tft.fillScreen(ILI9341_BLACK);
+  tft.setFont(&FreeSans12pt7b);
+  tft.setTextColor(ILI9341_RED);
+  tft.setCursor(110, 150);
+  tft.print("Oscillator Modulation ");
+  tft.println(no);
+  renderCorners();
+}
+
+FLASHMEM void renderFilterPage(uint8_t no)
+{
+  tft.fillScreen(ILI9341_BLACK);
+  tft.setFont(&FreeSans12pt7b);
+  tft.setTextColor(ILI9341_RED);
+  tft.setCursor(110, 150);
+  tft.print("Filter ");
+  tft.println(no);
+  renderCorners();
+  if (no == 2)
+  {
+    tft.setOrigin(-80, -55);
+    renderEnv(groupvec[activeGroupIndex]->getFilterAttack() * 0.0001f,
+              groupvec[activeGroupIndex]->getFilterDecay() * 0.0001f,
+              groupvec[activeGroupIndex]->getFilterSustain(),
+              groupvec[activeGroupIndex]->getFilterRelease() * 0.0001f);
+  }
+}
+
+FLASHMEM void renderFilterModPage(uint8_t no)
+{
+  tft.fillScreen(ILI9341_BLACK);
+  tft.setFont(&FreeSans12pt7b);
+  tft.setTextColor(ILI9341_RED);
+  tft.setCursor(110, 150);
+  tft.print("Filter Modulation ");
+  tft.println(no);
+  renderCorners();
+}
+
+FLASHMEM void renderAmpPage()
+{
+  tft.fillScreen(ILI9341_BLACK);
+  tft.setFont(&FreeSans12pt7b);
+  tft.setTextColor(ILI9341_RED);
+  tft.setCursor(110, 150);
+  tft.print("Amplifier");
+  renderCorners();
+  tft.setOrigin(-80, -55);
+  renderEnv(groupvec[activeGroupIndex]->getAmpAttack() * 0.0001f,
+            groupvec[activeGroupIndex]->getAmpDecay() * 0.0001f,
+            groupvec[activeGroupIndex]->getAmpSustain(),
+            groupvec[activeGroupIndex]->getAmpRelease() * 0.0001f);
+}
+
+FLASHMEM void renderSequencerPage()
+{
+  tft.fillScreen(ILI9341_BLACK);
+  tft.setFont(&FreeSans12pt7b);
+  tft.setTextColor(ILI9341_RED);
+  tft.setCursor(110, 150);
+  tft.print("Sequencer");
+  renderCorners();
+}
+
+FLASHMEM void renderMIDIPage()
+{
+  tft.fillScreen(ILI9341_BLACK);
+  tft.setFont(&FreeSans12pt7b);
+  tft.setTextColor(ILI9341_RED);
+  tft.setCursor(110, 150);
+  tft.print("MIDI");
+  renderCorners();
+}
+
+FLASHMEM void renderArpPage()
+{
+  tft.fillScreen(ILI9341_BLACK);
+  tft.setFont(&FreeSans12pt7b);
+  tft.setTextColor(ILI9341_RED);
+  tft.setCursor(110, 150);
+  tft.print("Arpeggiator");
+  renderCorners();
+}
+
+FLASHMEM void renderPerformancePage()
+{
+  tft.fillScreen(ILI9341_BLACK);
+  tft.setFont(&FreeSans12pt7b);
+  tft.setTextColor(ILI9341_RED);
+  tft.setCursor(110, 150);
+  tft.print("Performance");
+  renderCorners();
 }
 
 FLASHMEM void showRenamingPage(String newName)
@@ -547,21 +673,19 @@ FLASHMEM void showCurrentParameterPage(const char *param, float val, int pType)
   startTimer();
 }
 
-FLASHMEM void showCurrentParameterPage(const char *param, String val, int pType)
+FLASHMEM void showCurrentParameterOverlay(const char *param, String val, int pType)
 {
   if (!updateDisplay)
     return;
-  if (state == State::SETTINGS || state == State::SETTINGSVALUE)
-    state = State::PARAMETER; // Exit settings page if showing
   currentParameter = param;
   currentValue = val;
   paramType = pType;
   startTimer();
 }
 
-FLASHMEM void showCurrentParameterPage(const char *param, String val)
+FLASHMEM void showCurrentParameterOverlay(const char *param, String val)
 {
-  showCurrentParameterPage(param, val, State::PARAMETER);
+  showCurrentParameterOverlay(param, val, State::MAIN);
 }
 
 FLASHMEM void showPatchPage(String number, String patchName)
@@ -589,7 +713,7 @@ void displayThread()
   {
     switch (state)
     {
-    case State::PARAMETER:
+    case State::MAIN:
       if ((millis() - timer) > DISPLAYTIMEOUT)
       {
         renderCurrentPatchPage();
@@ -599,7 +723,7 @@ void displayThread()
         renderCurrentParameterPage();
       }
       break;
-    case State::RECALL:
+    case State::PATCHLIST:
       renderRecallPage();
       break;
     case State::SAVE:
@@ -609,14 +733,14 @@ void displayThread()
       renderReinitialisePage();
       tft.updateScreen(); // update before delay
       threads.delay(1000);
-      state = State::PARAMETER;
+      state = State::MAIN;
       break;
     case State::PATCHNAMING:
       renderPatchNamingPage();
       break;
-    case State::PATCH:
-      renderCurrentPatchPage();
-      break;
+    // case State::PATCH:
+    //   renderCurrentPatchPage();
+    //   break;
     case State::DELETE:
       renderDeletePatchPage();
       break;
@@ -627,11 +751,41 @@ void displayThread()
     case State::SETTINGSVALUE:
       renderSettingsPage();
       break;
-    case State::OSCPAGE:
+    case State::OSCPAGE1:
       renderOscPage(1);
       break;
     case State::OSCPAGE2:
       renderOscPage(2);
+      break;
+    case State::OSCPAGE3:
+      renderOscPage(3);
+      break;
+    case State::FILTERPAGE1:
+      renderFilterPage(1);
+      break;
+    case State::FILTERPAGE2:
+      renderFilterPage(2);
+      break;
+    case State::FILTERMODPAGE1:
+      renderFilterModPage(1);
+      break;
+    case State::FILTERMODPAGE2:
+      renderFilterModPage(2);
+      break;
+    case State::AMPPAGE:
+      renderAmpPage();
+      break;
+    case State::SEQPAGE:
+      renderSequencerPage();
+      break;
+    case State::ARPPAGE:
+      renderArpPage();
+      break;
+    case State::MIDIPAGE:
+      renderMIDIPage();
+      break;
+    case State::PERFORMANCEPAGE:
+      renderPerformancePage();
       break;
     default:
       break;

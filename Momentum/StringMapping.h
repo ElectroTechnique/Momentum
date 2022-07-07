@@ -1,56 +1,95 @@
 #include <Arduino.h>
+#include "Constants.h"
 #include "MidiCC.h"
 
-String StrMap[256] = {};
+const char *ParameterStrMap[256] = {};
 
 FLASHMEM void assignStrings()
 {
-    StrMap[CCosclfoamt] = "Pitch LFO Amount";
-    StrMap[CCglide] = "Glide Time";
-    StrMap[CCvolume] = "Volume";
-    StrMap[CCoscwaveformA] = "Osc1 Waveform";
-    StrMap[CCoscwaveformB] = "Osc2 Waveform";
-    StrMap[CCfilterenv] = "Filter Envelope";
-    StrMap[CCfiltermixer] = "Filter Type";
-    StrMap[CCoscLevelA] = "Osc1 Level";
-    StrMap[CCoscLevelB] = "Osc2 Level";
-    StrMap[CCnoiseLevel] = "Noise Level";
-    StrMap[CCoscfx] = "Osc Effects";
-    StrMap[CCpitchA] = "Osc1 Pitch";
-    StrMap[CCpitchB] = "Osc2 Pitch";
-    StrMap[CCpitchenv] = "Pitch Envelope";
-    StrMap[CCosclforetrig] = "Pitch LFO Retrigger";
-    StrMap[CCfilterlforetrig] = "Filter LFO Retrigger";
-    StrMap[CCfilterres] = "Resonance";
-    StrMap[CCamprelease] = "Release";
-    StrMap[CCampattack] = "Attack";
-    StrMap[CCfilterfreq] = "Cutoff Frequency";
-    StrMap[CCampdecay] = "Decay";
-    StrMap[CCfilterlforate] = "Filter LFO Rate";
-    StrMap[CCfilterlfoamt] = "Filter LFO Level";
-    StrMap[CCampsustain] = "Sustain";
-    StrMap[CCfilterattack] = "Filter Attack";
-    StrMap[CCfilterdecay] = "Filter Decay";
-    StrMap[CCfiltersustain] = "Filter Sustain";
-    StrMap[CCfilterrelease] = "Filter Release";
-    StrMap[CCpwA] = "Osc1 Pulse Width";
-    StrMap[CCpwB] = "Osc2 Pulse Width";
-    StrMap[CCpwmRate] = "PWM LFO Rate";
-    StrMap[CCpwmAmt] = "PWM Level";
-    StrMap[CCkeytracking] = "Key Tracking";
-    StrMap[CCfilterlfowaveform] = "Filter LFO Waveform";
-    StrMap[CCfxamt] = "Effects Amount";
-    StrMap[CCfxmix] = "Effects Mix";
-    StrMap[CCdetune] = "Detune";
-    StrMap[CCpwmAmtA] = "Osc1 PWM Level";
-    StrMap[CCpwmAmtB] = "Osc2 PWM Level";
-    StrMap[CCoscLfoRate] = "Pitch LFO Rate";
-    StrMap[CCoscLfoWaveform] = "Pitch LFO Waveform";
-    StrMap[CCfilterLFOMidiClkSync] = "Filter LFO MIDI Clk Sync";
-    StrMap[CCoscLFOMidiClkSync] = "Pitch LFO MIDI Clk Sync";
-    StrMap[CCpwmSource] = "PWM Source";
-    StrMap[CCunison] = "Unison";
-    StrMap[CCmonomode] = "Monophonic";
-    StrMap[patchselect] = "Patch";
-    StrMap[CCbankselectLSB] = "Bank";
+    ParameterStrMap[CCosclfoamt] = "Pitch LFO Amount";
+    ParameterStrMap[CCglide] = "Glide Time";
+    ParameterStrMap[CCvolume] = "Volume";
+    ParameterStrMap[CCoscwaveformA] = "Osc1 Waveform";
+    ParameterStrMap[CCoscwaveformB] = "Osc2 Waveform";
+    ParameterStrMap[CCfilterenv] = "Filter Envelope";
+    ParameterStrMap[CCfiltermixer] = "Filter Type";
+    ParameterStrMap[CCoscLevelA] = "Osc1 Level";
+    ParameterStrMap[CCoscLevelB] = "Osc2 Level";
+    ParameterStrMap[CCnoiseLevel] = "Noise Level";
+    ParameterStrMap[CCoscfx] = "Osc Effect";
+    ParameterStrMap[CCpitchA] = "Osc1 Pitch";
+    ParameterStrMap[CCpitchB] = "Osc2 Pitch";
+    ParameterStrMap[CCpitchenv] = "Pitch Envelope";
+    ParameterStrMap[CCosclforetrig] = "Pitch LFO Retrigger";
+    ParameterStrMap[CCfilterlforetrig] = "Filter LFO Retrigger";
+    ParameterStrMap[CCfilterres] = "Resonance";
+    ParameterStrMap[CCamprelease] = "Release";
+    ParameterStrMap[CCampattack] = "Attack";
+    ParameterStrMap[CCfilterfreq] = "Cutoff Frequency";
+    ParameterStrMap[CCampdecay] = "Decay";
+    ParameterStrMap[CCfilterlforate] = "Filter LFO Rate";
+    ParameterStrMap[CCfilterlfoamt] = "Filter LFO Level";
+    ParameterStrMap[CCampsustain] = "Sustain";
+    ParameterStrMap[CCfilterattack] = "Filter Attack";
+    ParameterStrMap[CCfilterdecay] = "Filter Decay";
+    ParameterStrMap[CCfiltersustain] = "Filter Sustain";
+    ParameterStrMap[CCfilterrelease] = "Filter Release";
+    ParameterStrMap[CCpwA] = "Osc1 Pulse Width";
+    ParameterStrMap[CCpwB] = "Osc2 Pulse Width";
+    ParameterStrMap[CCpwmRate] = "PWM LFO Rate";
+    ParameterStrMap[CCpwmAmt] = "PWM Level";
+    ParameterStrMap[CCkeytracking] = "Key Tracking";
+    ParameterStrMap[CCfilterlfowaveform] = "Filter LFO Waveform";
+    ParameterStrMap[CCfxamt] = "Effects Amount";
+    ParameterStrMap[CCfxmix] = "Effects Mix";
+    ParameterStrMap[CCdetune] = "Detune";
+    ParameterStrMap[CCpwmAmtA] = "Osc1 PWM Level";
+    ParameterStrMap[CCpwmAmtB] = "Osc2 PWM Level";
+    ParameterStrMap[CCoscLfoRate] = "Pitch LFO Rate";
+    ParameterStrMap[CCoscLfoWaveform] = "Pitch LFO Waveform";
+    ParameterStrMap[CCfilterLFOMidiClkSync] = "Filter LFO MIDI Clk Sync";
+    ParameterStrMap[CCoscLFOMidiClkSync] = "Pitch LFO MIDI Clk Sync";
+    ParameterStrMap[CCpwmSource] = "PWM Source";
+    ParameterStrMap[CCunison] = "Unison";
+    ParameterStrMap[CCmonomode] = "Monophonic";
+    ParameterStrMap[patchselect] = "Patch";
+    ParameterStrMap[CCbankselectLSB] = "Bank";
+    ParameterStrMap[savepatch] = "Save";
+    ParameterStrMap[deletepatch] = "Delete";
+    ParameterStrMap[renamepatch] = "Rename";
 }
+
+FLASHMEM String getWaveformStr(int value)
+{
+    switch (value)
+    {
+    case WAVEFORM_SILENT:
+        return F("Off");
+    case WAVEFORM_SAMPLE_HOLD:
+        return F("Sample & Hold");
+    case WAVEFORM_SINE:
+        return F("Sine");
+    case WAVEFORM_BANDLIMIT_SQUARE:
+    case WAVEFORM_SQUARE:
+        return F("Square");
+    case WAVEFORM_TRIANGLE:
+        return F("Triangle");
+    case WAVEFORM_BANDLIMIT_SAWTOOTH:
+    case WAVEFORM_SAWTOOTH:
+        return F("Sawtooth");
+    case WAVEFORM_SAWTOOTH_REVERSE:
+        return F("Ramp");
+    case WAVEFORM_BANDLIMIT_PULSE:
+        return F("Variable Pulse");
+    case WAVEFORM_TRIANGLE_VARIABLE:
+        return F("Variable Triangle");
+    case WAVEFORM_PARABOLIC:
+        return F("Parabolic");
+    case WAVEFORM_HARMONIC:
+        return F("Harmonic");
+    default:
+        return F("ERR_WAVE");
+    }
+}
+
+const char *CDT_STR[128] = {"Major", "Major", "Major", "Major", "Major", "Major", "Major", "Minor", "Minor", "Minor", "Minor", "Minor", "Minor", "Minor", "Diminished", "Diminished", "Diminished", "Diminished", "Diminished", "Diminished", "Diminished", "Augmented", "Augmented", "Augmented", "Augmented", "Augmented", "Augmented", "Augmented", "Sus 2nd", "Sus 2nd", "Sus 2nd", "Sus 2nd", "Sus 2nd", "Sus 2nd", "Sus 2nd", "Sus 4th", "Sus 4th", "Sus 4th", "Sus 4th", "Sus 4th", "Sus 4th", "Sus 4th", "7th Sus 2nd", "7th Sus 2nd", "7th Sus 2nd", "7th Sus 2nd", "7th Sus 2nd", "7th Sus 2nd", "7th Sus 2nd", "7th Sus 4th", "7th Sus 4th", "7th Sus 4th", "7th Sus 4th", "7th Sus 4th", "7th Sus 4th", "7th Sus 4th", "6th", "6th", "6th", "6th", "6th", "6th", "6th", "7th", "7th", "7th", "7th", "7th", "7th", "7th", "9th", "9th", "9th", "9th", "9th", "9th", "9th", "Major 7th", "Major 7th", "Major 7th", "Major 7th", "Major 7th", "Major 7th", "Major 7th", "Major 9th", "Major 9th", "Major 9th", "Major 9th", "Major 9th", "Major 9th", "Major 9th", "Major 11th", "Major 11th", "Major 11th", "Major 11th", "Major 11th", "Major 11th", "Major 11th", "Minor 6th", "Minor 6th", "Minor 6th", "Minor 6th", "Minor 6th", "Minor 6th", "Minor 6th", "Minor 7th", "Minor 7th", "Minor 7th", "Minor 7th", "Minor 7th", "Minor 7th", "Minor 7th", "Minor 9th", "Minor 9th", "Minor 9th", "Minor 9th", "Minor 9th", "Minor 9th", "Minor 9th", "Minor 11th", "Minor 11th", "Minor 11th", "Minor 11th", "Minor 11th", "Minor 11th", "Minor 11th", "All 12", "All 12"};

@@ -4,7 +4,6 @@
 
 // global settings buffer
 std::vector<settings::SettingsOption> settingsOptions;
-//CircularBuffer<settings::SettingsOption, SETTINGSOPTIONSNO>  settingsOptions;
 
 // currently selected settings option value index
 int selectedSettingIndex = 0;

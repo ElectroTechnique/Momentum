@@ -1,5 +1,6 @@
 // MIDI CC control numbers
 // These broadly follow standard CC assignments
+#define CCbankselectMSB 0
 #define CCmodwheel 1  // pitch LFO amount - less from mod wheel
 #define CCosclfoamt 3 // pitch LFO amount - panel control
 #define CCglide 5

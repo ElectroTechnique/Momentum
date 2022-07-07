@@ -1,8 +1,8 @@
-//#pragma once
+#pragma once
 #include <stdint.h>
 #include <MIDI.h>
 
-// Globals used for LCD Settings
+// Globals used for Settings
 extern byte midiChannel;
 extern byte midiOutCh;
 extern midi::Thru::Mode MIDIThru;
@@ -32,7 +32,7 @@ typedef struct PatchStruct
 {
     uint32_t UID = 0;
     char PatchName[64] = "Solina";
-    uint8_t OscLevelA = 127; 
+    uint8_t OscLevelA = 127;
     uint8_t OscLevelB = 103;
     uint8_t NoiseLevel = 63; // Centre off
     uint8_t Unison = 0;

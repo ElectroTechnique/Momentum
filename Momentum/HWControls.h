@@ -156,6 +156,8 @@ void singleLED(ledColour color, int8_t ledNo)
 
 void flashLED(ledColour color, int8_t ledNo, int duration)
 {
+  singleLED(OFF, ledNo);
+  delay(100);
   singleLED(color, ledNo);
   delay(duration);
   singleLED(OFF, ledNo);

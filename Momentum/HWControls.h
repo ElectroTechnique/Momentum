@@ -39,14 +39,15 @@ const int dataPinR = 43; // Red LEDs data
 EncPlex74165 encoders(encoderCount, pinLD, pinCLK, srB, srA, srC);
 ButtonPlex74165 buttons(buttonCount, pinLD, pinCLK, srB, srA, srC);
 
+void ledAnimation(long millis);
+
 // TeensyMM pins
 #define BACKLIGHT 24 // A10/I2C_SCL1
-typedef enum ledColour
-{
-  RED,
-  GREEN,
-  OFF,
-} ledColour;
+    typedef enum ledColour {
+      RED,
+      GREEN,
+      OFF,
+    } ledColour;
 
 typedef enum controlParameter
 {
@@ -103,6 +104,8 @@ FLASHMEM void setupHardware(EncoderTool::allCallback_t ec, EncoderTool::allBtnCa
   encoders.attachBtnCallback(ebc);
 
   buttons.begin(bc);
+
+  ledAnimation(70);
 
   // Display backlight - Can be used to turn off or dim using PWM
   // Not used but you never know

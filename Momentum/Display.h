@@ -34,7 +34,7 @@
 #define AMP_ENV 4
 
 // https://trolsoft.ru/en/articles/rgb565-color-picker
-#define ILI9341_LIGHTBLUE 0x853B
+#define ILI9341_LIGHTBLUE 0x853E
 #define ILI9341_DARKRED 0x6000
 
 ILI9341_t3n tft = ILI9341_t3n(cs, dc, rst, mosi, sclk, miso);
@@ -48,7 +48,7 @@ String newPatchName = "";
 const char *currentSettingsOption = "";
 const char *currentSettingsValue = "";
 uint32_t currentSettingsPart = State::SETTINGS;
-uint32_t paramType = State::MAIN;
+uint32_t paramType = 0;
 
 boolean MIDIClkSignal = false;
 uint32_t peakCount = 0;
@@ -64,10 +64,10 @@ boolean updateDisplay = true;
 
 void startTimer()
 {
-  if (state == State::MAIN)
-  {
-    timer = millis();
-  }
+  // if (state == State::MAIN)
+  // {
+  timer = millis();
+  // }
 }
 
 FLASHMEM void setMIDIClkSignal(bool val)
@@ -362,41 +362,34 @@ FLASHMEM void renderEnv(float att, float dec, float sus, float rel)
   tft.setOrigin(0, 0);
 }
 
-FLASHMEM void renderCurrentParameterPage()
+FLASHMEM void renderCurrentParameterOverlay()
 {
-  switch (state)
+  tft.fillRect(40, 30, 230, 150, ILI9341_DARKRED);
+  tft.drawRect(40, 30, 230, 150, ILI9341_RED);
+  tft.setFont(&FreeSansBold9pt7b);
+  tft.setCursor(60, 70);
+  tft.setTextColor(ILI9341_YELLOW);
+  tft.setTextSize(1);
+  tft.println(currentParameter);
+  tft.setFont(&FreeSansBold12pt7b);
+  tft.setCursor(60, 120);
+  tft.setTextColor(ILI9341_WHITE);
+  tft.println(currentValue);
+  switch (paramType)
   {
-  case MAIN:
-    tft.fillRect(40, 30, 230, 150, ILI9341_DARKRED);
-    tft.drawRect(40, 30, 230, 150, ILI9341_RED);
-    tft.setFont(&FreeSansBold9pt7b);
-    tft.setCursor(60, 70);
-    tft.setTextColor(ILI9341_YELLOW);
-    tft.setTextSize(1);
-    tft.println(currentParameter);
-    tft.setFont(&FreeSansBold12pt7b);
-    tft.setCursor(60, 120);
-    tft.setTextColor(ILI9341_WHITE);
-    tft.println(currentValue);
-    switch (paramType)
-    {
-    case PULSE:
-      renderPulseWidth(currentFloatValue);
-      break;
-    case VAR_TRI:
-      renderVarTriangle(currentFloatValue);
-      break;
-    case FILTER_ENV:
-      tft.setOrigin(-40, -30);
-      renderEnv(groupvec[activeGroupIndex]->getFilterAttack() * 0.0001f, groupvec[activeGroupIndex]->getFilterDecay() * 0.0001f, groupvec[activeGroupIndex]->getFilterSustain(), groupvec[activeGroupIndex]->getFilterRelease() * 0.0001f);
-      break;
-    case AMP_ENV:
-      tft.setOrigin(-40, -30);
-      renderEnv(groupvec[activeGroupIndex]->getAmpAttack() * 0.0001f, groupvec[activeGroupIndex]->getAmpDecay() * 0.0001f, groupvec[activeGroupIndex]->getAmpSustain(), groupvec[activeGroupIndex]->getAmpRelease() * 0.0001f);
-      break;
-    }
+  case PULSE:
+    renderPulseWidth(currentFloatValue);
     break;
-  default:
+  case VAR_TRI:
+    renderVarTriangle(currentFloatValue);
+    break;
+  case FILTER_ENV:
+    tft.setOrigin(-40, -30);
+    renderEnv(groupvec[activeGroupIndex]->getFilterAttack() * 0.0001f, groupvec[activeGroupIndex]->getFilterDecay() * 0.0001f, groupvec[activeGroupIndex]->getFilterSustain(), groupvec[activeGroupIndex]->getFilterRelease() * 0.0001f);
+    break;
+  case AMP_ENV:
+    tft.setOrigin(-40, -30);
+    renderEnv(groupvec[activeGroupIndex]->getAmpAttack() * 0.0001f, groupvec[activeGroupIndex]->getAmpDecay() * 0.0001f, groupvec[activeGroupIndex]->getAmpSustain(), groupvec[activeGroupIndex]->getAmpRelease() * 0.0001f);
     break;
   }
 }
@@ -523,9 +516,9 @@ FLASHMEM void renderOscPage(uint8_t no)
   tft.setFont(&FreeSans12pt7b);
   tft.setTextColor(ILI9341_RED);
   tft.setCursor(110, 150);
-  if (no > 2)
+  if (no == 3)
   {
-    tft.print("Noise");
+    tft.print("Noise & Unison");
   }
   else
   {
@@ -540,9 +533,22 @@ FLASHMEM void renderOscModPage(uint8_t no)
   tft.fillScreen(ILI9341_BLACK);
   tft.setFont(&FreeSans12pt7b);
   tft.setTextColor(ILI9341_RED);
-  tft.setCursor(110, 150);
-  tft.print("Oscillator Modulation ");
-  tft.println(no);
+  tft.setCursor(60, 150);
+  switch (no)
+  {
+  case 1:
+    tft.print("Osc 1 PWM");
+    break;
+  case 2:
+    tft.print("Osc 2 PWM");
+    break;
+  case 3:
+    tft.print("Osc Pitch");
+    break;
+  case 4:
+    tft.print("Osc Effects");
+    break;
+  }
   renderCorners();
 }
 
@@ -552,17 +558,8 @@ FLASHMEM void renderFilterPage(uint8_t no)
   tft.setFont(&FreeSans12pt7b);
   tft.setTextColor(ILI9341_RED);
   tft.setCursor(110, 150);
-  tft.print("Filter ");
-  tft.println(no);
+  tft.print("Filter");
   renderCorners();
-  if (no == 2)
-  {
-    tft.setOrigin(-80, -55);
-    renderEnv(groupvec[activeGroupIndex]->getFilterAttack() * 0.0001f,
-              groupvec[activeGroupIndex]->getFilterDecay() * 0.0001f,
-              groupvec[activeGroupIndex]->getFilterSustain(),
-              groupvec[activeGroupIndex]->getFilterRelease() * 0.0001f);
-  }
 }
 
 FLASHMEM void renderFilterModPage(uint8_t no)
@@ -574,21 +571,43 @@ FLASHMEM void renderFilterModPage(uint8_t no)
   tft.print("Filter Modulation ");
   tft.println(no);
   renderCorners();
+  if (no == 1)
+  {
+    tft.setOrigin(-80, -55);
+    renderEnv(groupvec[activeGroupIndex]->getFilterAttack() * 0.0001f,
+              groupvec[activeGroupIndex]->getFilterDecay() * 0.0001f,
+              groupvec[activeGroupIndex]->getFilterSustain(),
+              groupvec[activeGroupIndex]->getFilterRelease() * 0.0001f);
+  }
 }
 
-FLASHMEM void renderAmpPage()
+FLASHMEM void renderAmpPage(uint8_t no)
 {
   tft.fillScreen(ILI9341_BLACK);
   tft.setFont(&FreeSans12pt7b);
   tft.setTextColor(ILI9341_RED);
   tft.setCursor(110, 150);
-  tft.print("Amplifier");
+  tft.print("Amplifier ");
+  tft.println(no);
   renderCorners();
-  tft.setOrigin(-80, -55);
-  renderEnv(groupvec[activeGroupIndex]->getAmpAttack() * 0.0001f,
-            groupvec[activeGroupIndex]->getAmpDecay() * 0.0001f,
-            groupvec[activeGroupIndex]->getAmpSustain(),
-            groupvec[activeGroupIndex]->getAmpRelease() * 0.0001f);
+  if (no == 1)
+  {
+    tft.setOrigin(-80, -55);
+    renderEnv(groupvec[activeGroupIndex]->getAmpAttack() * 0.0001f,
+              groupvec[activeGroupIndex]->getAmpDecay() * 0.0001f,
+              groupvec[activeGroupIndex]->getAmpSustain(),
+              groupvec[activeGroupIndex]->getAmpRelease() * 0.0001f);
+  }
+}
+
+FLASHMEM void renderFXPage()
+{
+  tft.fillScreen(ILI9341_BLACK);
+  tft.setFont(&FreeSans12pt7b);
+  tft.setTextColor(ILI9341_RED);
+  tft.setCursor(110, 150);
+  tft.print("Effects");
+  renderCorners();
 }
 
 FLASHMEM void renderSequencerPage()
@@ -662,7 +681,7 @@ FLASHMEM void renderSettingsPage()
     renderUpDown(140, 80, ILI9341_WHITE);
 }
 
-FLASHMEM void showCurrentParameterPage(const char *param, float val, int pType)
+FLASHMEM void showCurrentParameterOverlay(const char *param, float val, int pType)
 {
   if (!updateDisplay)
     return;
@@ -675,6 +694,7 @@ FLASHMEM void showCurrentParameterPage(const char *param, float val, int pType)
 
 FLASHMEM void showCurrentParameterOverlay(const char *param, String val, int pType)
 {
+  // Prevents all the changing parameters showing when a patch is loaded
   if (!updateDisplay)
     return;
   currentParameter = param;
@@ -685,7 +705,7 @@ FLASHMEM void showCurrentParameterOverlay(const char *param, String val, int pTy
 
 FLASHMEM void showCurrentParameterOverlay(const char *param, String val)
 {
-  showCurrentParameterOverlay(param, val, State::MAIN);
+  showCurrentParameterOverlay(param, val, 0);
 }
 
 FLASHMEM void showPatchPage(String number, String patchName)
@@ -711,84 +731,103 @@ void displayThread()
   threads.delay(2000); // Give bootup page chance to display
   while (1)
   {
-    switch (state)
+
+    if ((millis() - timer) > DISPLAYTIMEOUT)
     {
-    case State::MAIN:
-      if ((millis() - timer) > DISPLAYTIMEOUT)
+      switch (state)
       {
+      case State::MAIN:
         renderCurrentPatchPage();
+        break;
+      case State::PATCHLIST:
+        renderRecallPage();
+        break;
+      case State::SAVE:
+        renderSavePage();
+        break;
+      case State::REINITIALISE:
+        renderReinitialisePage();
+        tft.updateScreen(); // update before delay
+        threads.delay(1000);
+        // state = State::MAIN; //Now sets previous state
+        break;
+      case State::PATCHNAMING:
+        renderPatchNamingPage();
+        break;
+      // case State::PATCH:
+      //   renderCurrentPatchPage();
+      //   break;
+      case State::DELETE:
+        renderDeletePatchPage();
+        break;
+      case State::DELETEMSG:
+        renderDeleteMessagePage();
+        break;
+      case State::SETTINGS:
+      case State::SETTINGSVALUE:
+        renderSettingsPage();
+        break;
+      case State::OSCPAGE1:
+        renderOscPage(1);
+        break;
+      case State::OSCPAGE2:
+        renderOscPage(2);
+        break;
+      case State::OSCPAGE3:
+        renderOscPage(3);
+        break;
+      case State::OSCMODPAGE1:
+        renderOscModPage(1);
+        break;
+      case State::OSCMODPAGE2:
+        renderOscModPage(2);
+        break;
+      case State::OSCMODPAGE3:
+        renderOscModPage(3);
+        break;
+      case State::OSCMODPAGE4:
+        renderOscModPage(4);
+        break;
+      case State::FILTERPAGE1:
+        renderFilterPage(1);
+        break;
+      case State::FILTERMODPAGE1:
+        renderFilterModPage(1);
+        break;
+      case State::FILTERMODPAGE2:
+        renderFilterModPage(2);
+        break;
+      case State::FILTERMODPAGE3:
+        renderFilterModPage(3);
+        break;
+      case State::AMPPAGE1:
+        renderAmpPage(1);
+        break;
+      case State::AMPPAGE2:
+        renderAmpPage(2);
+        break;
+      case State::FXPAGE:
+        renderFXPage();
+        break;
+      case State::SEQPAGE:
+        renderSequencerPage();
+        break;
+      case State::ARPPAGE:
+        renderArpPage();
+        break;
+      case State::MIDIPAGE:
+        renderMIDIPage();
+        break;
+      case State::PERFORMANCEPAGE:
+        renderPerformancePage();
+        break;
+      default:
+        break;
       }
-      else
-      {
-        renderCurrentParameterPage();
-      }
-      break;
-    case State::PATCHLIST:
-      renderRecallPage();
-      break;
-    case State::SAVE:
-      renderSavePage();
-      break;
-    case State::REINITIALISE:
-      renderReinitialisePage();
-      tft.updateScreen(); // update before delay
-      threads.delay(1000);
-      state = State::MAIN;
-      break;
-    case State::PATCHNAMING:
-      renderPatchNamingPage();
-      break;
-    // case State::PATCH:
-    //   renderCurrentPatchPage();
-    //   break;
-    case State::DELETE:
-      renderDeletePatchPage();
-      break;
-    case State::DELETEMSG:
-      renderDeleteMessagePage();
-      break;
-    case State::SETTINGS:
-    case State::SETTINGSVALUE:
-      renderSettingsPage();
-      break;
-    case State::OSCPAGE1:
-      renderOscPage(1);
-      break;
-    case State::OSCPAGE2:
-      renderOscPage(2);
-      break;
-    case State::OSCPAGE3:
-      renderOscPage(3);
-      break;
-    case State::FILTERPAGE1:
-      renderFilterPage(1);
-      break;
-    case State::FILTERPAGE2:
-      renderFilterPage(2);
-      break;
-    case State::FILTERMODPAGE1:
-      renderFilterModPage(1);
-      break;
-    case State::FILTERMODPAGE2:
-      renderFilterModPage(2);
-      break;
-    case State::AMPPAGE:
-      renderAmpPage();
-      break;
-    case State::SEQPAGE:
-      renderSequencerPage();
-      break;
-    case State::ARPPAGE:
-      renderArpPage();
-      break;
-    case State::MIDIPAGE:
-      renderMIDIPage();
-      break;
-    case State::PERFORMANCEPAGE:
-      renderPerformancePage();
-      break;
-    default:
-      break;
+    }
+    else
+    {
+      renderCurrentParameterOverlay();
     }
     tft.updateScreen();
   }

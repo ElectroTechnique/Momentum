@@ -26,14 +26,14 @@ extern int8_t glideShape;
 
 extern uint8_t currentVolume;
 
-// Patch parameters to store 7-bit values (Cutoff freq 8-bit) for patch store and modification by the encoders
+// Patch parameters to store the relative 7-bit values (Cutoff freq 8-bit) for patch store and modification by the encoders
 // Initialised with a default patch to store when there are no patches on SD card
 typedef struct PatchStruct
 {
     uint32_t UID = 0;
     char PatchName[64] = "Solina";
     uint8_t OscLevelA = 127;
-    uint8_t OscLevelB = 103;
+    uint8_t OscLevelB = 127;
     uint8_t NoiseLevel = 63; // Centre off
     uint8_t Unison = 0;
     uint8_t OscFX = 0;
@@ -43,14 +43,16 @@ typedef struct PatchStruct
     uint8_t LFOTempoValue = 0;
     uint8_t KeyTracking = 0;
     uint8_t Glide = 0;
-    uint8_t PitchA = 6;
-    uint8_t PitchB = 6;
+    uint8_t PitchA = 0;
+    uint8_t PitchB = 8;
     uint8_t WaveformA = 75;
     uint8_t WaveformB = 75;
-    uint8_t PWMSource = 0;
-    uint8_t PWMA_Amount = 105;
-    uint8_t PWMB_Amount = 89;
-    uint8_t PWMRate = 10;
+    uint8_t PWMSourceA = 0;
+    uint8_t PWMSourceB = 0;
+    uint8_t PWMA_Amount = 63;
+    uint8_t PWMB_Amount = 63;
+    uint8_t PWMRateA = 10;
+    uint8_t PWMRateB = 10;
     uint8_t PWA_Amount = 0;
     uint8_t PWB_Amount = 0;
     uint8_t FilterRes = 10;

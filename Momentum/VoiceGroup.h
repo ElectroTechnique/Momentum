@@ -52,12 +52,14 @@ private:
     uint8_t waveformA;
     uint8_t waveformB;
     float pitchEnvelope;
-    uint8_t pwmSource;
+    uint8_t pwmSourceA;
+    uint8_t pwmSourceB;
     float pwmAmtA;
     float pwmAmtB;
     float pwA;
     float pwB;
-    float pwmRate;
+    float pwmRateA;
+    float pwmRateB;
     uint8_t oscFX;
     float oscLevelA;
     float oscLevelB;
@@ -103,12 +105,14 @@ public:
                                        waveformA(WAVEFORM_SQUARE),
                                        waveformB(WAVEFORM_SQUARE),
                                        pitchEnvelope(0.0),
-                                       pwmSource(PWMSOURCELFO),
+                                       pwmSourceA(PWMSOURCELFO),
+                                       pwmSourceB(PWMSOURCELFO),
                                        pwmAmtA(1.0),
                                        pwmAmtB(1.0),
                                        pwA(0.0),
                                        pwB(0.0),
-                                       pwmRate(0.5),
+                                       pwmRateA(0.5),
+                                       pwmRateB(0.5),
                                        oscFX(0),
                                        oscLevelA(1.0),
                                        oscLevelB(1.0),
@@ -173,12 +177,14 @@ public:
     uint32_t getWaveformA() { return waveformA; }
     uint32_t getWaveformB() { return waveformB; }
     float getPitchEnvelope() { return pitchEnvelope; }
-    uint8_t getPwmSource() { return pwmSource; }
+    uint8_t getPwmSourceA() { return pwmSourceA; }
+    uint8_t getPwmSourceB() { return pwmSourceB; }
     float getPwA() { return pwA; }
     float getPwB() { return pwB; }
     float getPwmAmtA() { return pwmAmtA; }
     float getPwmAmtB() { return pwmAmtB; }
-    float getPwmRate() { return pwmRate; }
+    float getPwmRateA() { return pwmRateA; }
+    float getPwmRateB() { return pwmRateB; }
     uint8_t getOscFX() { return oscFX; }
     float getOscLevelA() { return oscLevelA; }
     float getOscLevelB() { return oscLevelB; }
@@ -265,36 +271,50 @@ public:
         VG_FOR_EACH_OSC(waveformMod_b.begin(temp))
     }
 
-    void setPwmRate(float value)
+    void setPwmRateA(float value)
     {
-        pwmRate = value;
+        pwmRateA = value;
 
-        shared.pwmLfoA.frequency(pwmRate);
-        shared.pwmLfoB.frequency(pwmRate);
+        shared.pwmLfoA.frequency(pwmRateA);
 
-        if (pwmRate == PWMRATE_PW_MODE)
+        if (pwmSourceA == PWMSOURCEFIXED)
         {
             // Set to fixed PW mode
-            this->setPwmMixerALFO(0); // LFO Source off
-            this->setPwmMixerBLFO(0);
+            this->setPwmMixerALFO(0);  // LFO Source off
             this->setPwmMixerAFEnv(0); // Filter Env Source off
-            this->setPwmMixerBFEnv(0);
-            this->setPwmMixerAPW(1); // Manually adjustable pulse width on
-            this->setPwmMixerBPW(1);
+            this->setPwmMixerAPW(1);   // Manually adjustable pulse width on
         }
-        else if (pwmRate == PWMRATE_SOURCE_FILTER_ENV)
+        else if (pwmSourceA == PWMSOURCEFENV)
         {
-            // Set to Filter Env Mod source
-            this->setPWMSource(PWMSOURCEFENV);
             this->setPwmMixerAFEnv(this->getPwmAmtA());
-            this->setPwmMixerBFEnv(this->getPwmAmtB());
             this->setPwmMixerAPW(0);
+        }
+        else
+        {
+            this->setPwmMixerAPW(0);
+        }
+    }
+
+    void setPwmRateB(float value)
+    {
+        pwmRateB = value;
+
+        shared.pwmLfoB.frequency(pwmRateB);
+
+        if (pwmSourceB == PWMSOURCEFIXED)
+        {
+            // Set to fixed PW mode
+            this->setPwmMixerBLFO(0);  // LFO Source off
+            this->setPwmMixerBFEnv(0); // Filter Env Source off
+            this->setPwmMixerBPW(1);   // Manually adjustable pulse width on
+        }
+        else if (pwmSourceB == PWMSOURCEFENV)
+        {
+            this->setPwmMixerBFEnv(this->getPwmAmtB());
             this->setPwmMixerBPW(0);
         }
         else
         {
-            this->setPWMSource(PWMSOURCELFO);
-            this->setPwmMixerAPW(0);
             this->setPwmMixerBPW(0);
         }
     }
@@ -336,47 +356,9 @@ public:
         VG_FOR_EACH_OSC(pwMixer_b.gain(2, value));
     }
 
-    // MIDI-CC Only
-    void overridePwmAmount(float value)
-    {
-        pwmAmtA = value;
-        pwmAmtB = value;
-        pwA = 0;
-        pwB = 0;
-        this->setPwmMixerALFO(value);
-        this->setPwmMixerBLFO(value);
-    }
-
-    void setPWA(float valuePwA, float valuePwmAmtA)
+    void setPWA(float valuePwA)
     {
         pwA = valuePwA;
-        pwmAmtA = valuePwmAmtA;
-        if (pwmRate == PWMRATE_PW_MODE)
-        {
-            // fixed PW is enabled
-            this->setPwmMixerALFO(0);
-            this->setPwmMixerBLFO(0);
-            this->setPwmMixerAFEnv(0);
-            this->setPwmMixerBFEnv(0);
-            this->setPwmMixerAPW(1);
-            this->setPwmMixerBPW(1);
-        }
-        else
-        {
-            this->setPwmMixerAPW(0);
-            this->setPwmMixerBPW(0);
-            if (pwmSource == PWMSOURCELFO)
-            {
-                // PW alters PWM LFO amount for waveform A
-                this->setPwmMixerALFO(pwmAmtA);
-            }
-            else
-            {
-                // PW alters PWM Filter Env amount for waveform A
-                this->setPwmMixerAFEnv(pwmAmtA);
-            }
-        }
-
         // Prevent silence when pw = +/-1.0 on pulse
         float pwA_Adj = pwA;
         if (pwA > 0.98)
@@ -386,36 +368,9 @@ public:
         shared.pwa.amplitude(pwA_Adj);
     }
 
-    void setPWB(float valuePwA, float valuePwmAmtA)
+    void setPWB(float valuePwB)
     {
-        pwB = valuePwA;
-        pwmAmtB = valuePwmAmtA;
-        if (pwmRate == PWMRATE_PW_MODE)
-        {
-            // fixed PW is enabled
-            this->setPwmMixerALFO(0);
-            this->setPwmMixerBLFO(0);
-            this->setPwmMixerAFEnv(0);
-            this->setPwmMixerBFEnv(0);
-            this->setPwmMixerAPW(1);
-            this->setPwmMixerBPW(1);
-        }
-        else
-        {
-            this->setPwmMixerAPW(0);
-            this->setPwmMixerBPW(0);
-            if (pwmSource == PWMSOURCELFO)
-            {
-                // PW alters PWM LFO amount for waveform B
-                this->setPwmMixerBLFO(pwmAmtB);
-            }
-            else
-            {
-                // PW alters PWM Filter Env amount for waveform B
-                this->setPwmMixerBFEnv(pwmAmtB);
-            }
-        }
-
+        pwB = valuePwB;
         // Prevent silence when pw = +/-1.0 on pulse
         float pwB_Adj = pwB;
         if (pwB > 0.98)
@@ -425,31 +380,51 @@ public:
         shared.pwb.amplitude(pwB_Adj);
     }
 
-    void setPWMSource(uint8_t value)
+    void setPWMSourceA(uint8_t value)
     {
-        pwmSource = value;
+        pwmSourceA = value;
         if (value == PWMSOURCELFO)
         {
-            // Set filter mod to zero
-            this->setPwmMixerAFEnv(0);
-            this->setPwmMixerBFEnv(0);
-
-            // Set LFO mod
-            if (pwmRate > PWMRATE_SOURCE_FILTER_ENV)
-            {
-                this->setPwmMixerALFO(pwmAmtA); // Set LFO mod
-                this->setPwmMixerBLFO(pwmAmtB); // Set LFO mod
-            }
+            this->setPwmMixerAPW(0);        // Set PW man to zero
+            this->setPwmMixerAFEnv(0);      // Set filter mod to zero
+            this->setPwmMixerALFO(pwmAmtA); // Set LFO mod
+        }
+        else if (value == PWMSOURCEFENV)
+        {
+            this->setPwmMixerAPW(0);         // Set PW man to zero
+            this->setPwmMixerALFO(0);        // Set LFO mod to zero
+            this->setPwmMixerAFEnv(pwmAmtA); // Set filter mod
         }
         else
         {
-            this->setPwmMixerALFO(0); // Set LFO mod to zero
-            this->setPwmMixerBLFO(0); // Set LFO mod to zero
-            if (pwmRate > PWMRATE_SOURCE_FILTER_ENV)
-            {
-                this->setPwmMixerAFEnv(pwmAmtA); // Set filter mod
-                this->setPwmMixerBFEnv(pwmAmtB); // Set filter mod
-            }
+            // PW fixed manual
+            this->setPwmMixerAPW(1);   // Set PW man to on
+            this->setPwmMixerALFO(0);  // Set LFO mod to zero
+            this->setPwmMixerAFEnv(0); // Set filter mod zero
+        }
+    }
+
+    void setPWMSourceB(uint8_t value)
+    {
+        pwmSourceB = value;
+        if (value == PWMSOURCELFO)
+        {
+            this->setPwmMixerBPW(0);        // Set PW man to zero
+            this->setPwmMixerBFEnv(0);      // Set filter mod to zero
+            this->setPwmMixerBLFO(pwmAmtB); // Set LFO mod
+        }
+        else if (value == PWMSOURCEFENV)
+        {
+            this->setPwmMixerBPW(0);         // Set PW man to zero
+            this->setPwmMixerBLFO(0);        // Set LFO mod to zero
+            this->setPwmMixerBFEnv(pwmAmtB); // Set filter mod
+        }
+        else
+        {
+            // PW fixed manual
+            this->setPwmMixerBPW(1);   // Set PW man to on
+            this->setPwmMixerBLFO(0);  // Set LFO mod to zero
+            this->setPwmMixerBFEnv(0); // Set filter mod zero
         }
     }
 

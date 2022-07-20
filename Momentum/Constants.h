@@ -15,6 +15,7 @@
 #define savepatch 130
 #define renamepatch 131
 #define deletepatch 132
+#define temposync 133
 
 const static char *SEQUENCE_FOLDER_NAME = "Sequences";
 const static char *SEQUENCE_FOLDER_NAME_SLASH = "Sequences/";
@@ -60,14 +61,16 @@ extern const int16_t PROGMEM PARABOLIC_WAVE[256];
 extern const int16_t PROGMEM HARMONIC_WAVE[256];
 extern const int16_t PROGMEM PPG_WAVE[256];
 extern const float AWFREQ;
-extern const float PWMRATE_PW_MODE;
-extern const float PWMRATE_SOURCE_FILTER_ENV;
 extern const float PWMRATE[128];
 extern const float PITCHLFOOCTAVERANGE;
 extern const uint32_t MINUNISONVOICES;
 extern const float LFOMAXRATE;
-extern const uint8_t PWMSOURCELFO;
-extern const uint8_t PWMSOURCEFENV;
+#define PWMSOURCELFO 0
+#define PWMSOURCEFENV 1
+#define PWMSOURCEFIXED 2
+#define OSCFXOFF 0
+#define OSCFXXOR 1
+#define OSCFXXMOD 2
 extern const float ONE;
 extern const float SGTL_MAXVOLUME;
 extern const float WAVEFORMLEVEL;
@@ -101,11 +104,15 @@ typedef enum State
   OSCPAGE3,       // Osc parameters 2
   OSCMODPAGE1,    // Osc Mod parameters 1
   OSCMODPAGE2,    // Osc Mod parameters 2
+  OSCMODPAGE3,    // Osc Mod parameters 3
+  OSCMODPAGE4,    // Osc Mod parameters 4
   FILTERPAGE1,    // Filter parameters 1
   FILTERPAGE2,    // Filter parameters 2
   FILTERMODPAGE1, // Filter Mod parameters 1
   FILTERMODPAGE2, // Filter Mod parameters 2
-  AMPPAGE,        // Amplifier parameters
+  FILTERMODPAGE3, // Filter Mod parameters 3
+  AMPPAGE1,       // Amplifier parameters 1
+  AMPPAGE2,       // Amplifier parameters 2
   FXPAGE,         // FX parameters
   MIDIPAGE,       // MIDI parameters
   ARPPAGE,        // Arpeggiator parameters

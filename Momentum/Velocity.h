@@ -7,3 +7,5 @@
 //4 - Curve to flatten at 70, then maximum to 127 - - (0-70)^0.5
 //
 extern const float VELOCITY[5][128];
+
+extern const char *velocityStr[5];

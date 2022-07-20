@@ -9,16 +9,16 @@ FLASHMEM void assignStrings()
     ParameterStrMap[CCosclfoamt] = "Pitch LFO Amount";
     ParameterStrMap[CCglide] = "Glide Time";
     ParameterStrMap[CCvolume] = "Volume";
-    ParameterStrMap[CCoscwaveformA] = "Osc1 Waveform";
-    ParameterStrMap[CCoscwaveformB] = "Osc2 Waveform";
+    ParameterStrMap[CCoscwaveformA] = "1 Waveform";
+    ParameterStrMap[CCoscwaveformB] = "2 Waveform";
     ParameterStrMap[CCfilterenv] = "Filter Envelope";
     ParameterStrMap[CCfiltermixer] = "Filter Type";
     ParameterStrMap[CCoscLevelA] = "Osc1 Level";
     ParameterStrMap[CCoscLevelB] = "Osc2 Level";
     ParameterStrMap[CCnoiseLevel] = "Noise Level";
     ParameterStrMap[CCoscfx] = "Osc Effect";
-    ParameterStrMap[CCpitchA] = "Osc1 Pitch";
-    ParameterStrMap[CCpitchB] = "Osc2 Pitch";
+    ParameterStrMap[CCpitchA] = "1 Pitch";
+    ParameterStrMap[CCpitchB] = "2 Pitch";
     ParameterStrMap[CCpitchenv] = "Pitch Envelope";
     ParameterStrMap[CCosclforetrig] = "Pitch LFO Retrigger";
     ParameterStrMap[CCfilterlforetrig] = "Filter LFO Retrigger";
@@ -26,6 +26,7 @@ FLASHMEM void assignStrings()
     ParameterStrMap[CCamprelease] = "Release";
     ParameterStrMap[CCampattack] = "Attack";
     ParameterStrMap[CCfilterfreq] = "Cutoff Frequency";
+    ParameterStrMap[filterfreq256] = "Cutoff Frequency";
     ParameterStrMap[CCampdecay] = "Decay";
     ParameterStrMap[CCfilterlforate] = "Filter LFO Rate";
     ParameterStrMap[CCfilterlfoamt] = "Filter LFO Level";
@@ -34,22 +35,23 @@ FLASHMEM void assignStrings()
     ParameterStrMap[CCfilterdecay] = "Filter Decay";
     ParameterStrMap[CCfiltersustain] = "Filter Sustain";
     ParameterStrMap[CCfilterrelease] = "Filter Release";
-    ParameterStrMap[CCpwA] = "Osc1 Pulse Width";
-    ParameterStrMap[CCpwB] = "Osc2 Pulse Width";
-    ParameterStrMap[CCpwmRate] = "PWM LFO Rate";
-    ParameterStrMap[CCpwmAmt] = "PWM Level";
+    ParameterStrMap[CCpwA] = "1 Pulse Width";
+    ParameterStrMap[CCpwB] = "2 Pulse Width";
+    ParameterStrMap[CCpwmRateA] = "1 PWM LFO Rate";
+    ParameterStrMap[CCpwmRateB] = "2 PWM LFO Rate";
+    ParameterStrMap[CCpwmAmtA] = "1 PWM Level";
+    ParameterStrMap[CCpwmAmtB] = "2 PWM Level";
     ParameterStrMap[CCkeytracking] = "Key Tracking";
     ParameterStrMap[CCfilterlfowaveform] = "Filter LFO Waveform";
     ParameterStrMap[CCfxamt] = "Effects Amount";
     ParameterStrMap[CCfxmix] = "Effects Mix";
     ParameterStrMap[CCdetune] = "Detune";
-    ParameterStrMap[CCpwmAmtA] = "Osc1 PWM Level";
-    ParameterStrMap[CCpwmAmtB] = "Osc2 PWM Level";
     ParameterStrMap[CCoscLfoRate] = "Pitch LFO Rate";
     ParameterStrMap[CCoscLfoWaveform] = "Pitch LFO Waveform";
     ParameterStrMap[CCfilterLFOMidiClkSync] = "Filter LFO MIDI Clk Sync";
     ParameterStrMap[CCoscLFOMidiClkSync] = "Pitch LFO MIDI Clk Sync";
-    ParameterStrMap[CCpwmSource] = "PWM Source";
+    ParameterStrMap[CCpwmSourceA] = "1 PWM Source";
+    ParameterStrMap[CCpwmSourceB] = "2 PWM Source";
     ParameterStrMap[CCunison] = "Unison";
     ParameterStrMap[CCmonomode] = "Monophonic";
     ParameterStrMap[patchselect] = "Patch";
@@ -57,6 +59,8 @@ FLASHMEM void assignStrings()
     ParameterStrMap[savepatch] = "Save";
     ParameterStrMap[deletepatch] = "Delete";
     ParameterStrMap[renamepatch] = "Rename";
+    ParameterStrMap[temposync] = "Tempo Sync";
+    ParameterStrMap[CCvelocitySens] = "Velocity Sensitivity";
 }
 
 FLASHMEM String getWaveformStr(int value)

@@ -166,7 +166,7 @@ private:
     //decay_target=(1.0L-k)*sustain_target;
   }
   
-  FLASHMEM void updateExpAttack() // This is needed in case env type changes.
+   void updateExpAttack() // This is needed in case env type changes.
   {
    double k1,k2; 
     if(env_type>8 || env_type<-8) return; // Anything outside this range is a linear envelope.

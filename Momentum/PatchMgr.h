@@ -42,6 +42,8 @@ FLASHMEM void savePatch(uint8_t bankIndex)
   OSC1["Level"] = currentPatch.OscLevelA;
   OSC1["PWAmount"] = currentPatch.PWA_Amount;
   OSC1["PWMAmount"] = currentPatch.PWMA_Amount;
+  OSC1["PWMSource"] = currentPatch.PWMSourceA;
+  OSC1["PWMRate"] = currentPatch.PWMRateA;
 
   JsonObject OSC2 = doc.createNestedObject("OSC2");
   OSC2["Pitch"] = currentPatch.PitchB;
@@ -49,9 +51,9 @@ FLASHMEM void savePatch(uint8_t bankIndex)
   OSC2["Level"] = currentPatch.OscLevelB;
   OSC2["PWAmount"] = currentPatch.PWB_Amount;
   OSC2["PWMAmount"] = currentPatch.PWMB_Amount;
+  OSC2["PWMSource"] = currentPatch.PWMSourceB;
+  OSC2["PWMRate"] = currentPatch.PWMRateB;
 
-  doc["PWMSource"] = currentPatch.PWMSource;
-  doc["PWMRate"] = currentPatch.PWMRate;
   doc["Detune"] = currentPatch.Detune;
   doc["NoiseLevel"] = currentPatch.NoiseLevel;
   doc["Unison"] = currentPatch.Unison;
@@ -207,6 +209,8 @@ FLASHMEM void loadPatch(uint8_t bank, uint32_t filename)
   currentPatch.OscLevelA = OSC1["Level"];
   currentPatch.PWA_Amount = OSC1["PWAmount"];
   currentPatch.PWMA_Amount = OSC1["PWMAmount"];
+  currentPatch.PWMSourceA = OSC1["PWMSource"];
+  currentPatch.PWMRateA = OSC1["PWMRate"];
 
   JsonObject OSC2 = doc["OSC2"];
   currentPatch.PitchB = OSC2["Pitch"];
@@ -214,9 +218,9 @@ FLASHMEM void loadPatch(uint8_t bank, uint32_t filename)
   currentPatch.OscLevelB = OSC2["Level"];
   currentPatch.PWB_Amount = OSC2["PWAmount"];
   currentPatch.PWMB_Amount = OSC2["PWMAmount"];
+  currentPatch.PWMSourceB = OSC2["PWMSource"];
+  currentPatch.PWMRateB = OSC2["PWMRate"];
 
-  currentPatch.PWMSource = doc["PWMSource"];
-  currentPatch.PWMRate = doc["PWMRate"];
   currentPatch.Detune = doc["Detune"];
   currentPatch.NoiseLevel = doc["NoiseLevel"];
   currentPatch.Unison = doc["Unison"];

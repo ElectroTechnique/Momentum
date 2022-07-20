@@ -33,21 +33,23 @@
 #define CCfilterrelease 83
 #define CCpwA 85
 #define CCpwB 86
-#define CCpwmRate 87
-#define CCpwmAmt 88
+#define CCpwmRateA 87
+#define CCpwmAmtA 88
 #define CCkeytracking 89
 #define CCfilterlfowaveform 90
 #define CCfxamt 91
 #define CCfxmix 93
 #define CCdetune 94
-#define CCpwmAmtA 95
-#define CCpwmAmtB 96
+#define CCpwmAmtB 95
+#define CCpwmRateB 96
 #define CCoscLfoRate 102
 #define CCoscLfoWaveform 103
 #define CCfilterLFOMidiClkSync 104 // Off/On
 #define CCoscLFOMidiClkSync 105    // Off/On
-#define CCpwmSource 106            // LFO/Filter Env
+#define CCpwmSourceA 106            //Osc1 LFO/Filter Env
 #define CCunison 107
+#define CCpwmSourceB 108            //Osc2 LFO/Filter Env
+#define CCvelocitySens 109            // Velocity sensitiviy
 #define CCallnotesoff 123 // Panic button includes sound off
 #define CCmonomode 126
 

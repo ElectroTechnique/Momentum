@@ -1,0 +1,21 @@
+{
+  "PerformanceName": "String Symphony",
+  "UID": 12345678,
+  "Mode": "Layer",
+  "Patches": [
+    {
+      "Bank": "Bank1",
+      "UID": 1234567,
+      "Channel": 0,
+	  "Min": 0,
+	  "Max": 127
+    },
+    {
+      "Bank": "Bank4",
+      "UID": 987654,
+      "Channel": 0,
+	  "Min": 0,
+	  "Max": 127
+    }
+  ]
+}

@@ -46,7 +46,8 @@ FLASHMEM void loadPerformance(uint32_t filename)
     // Copy values from the JsonDocument to the PerformanceStruct
     strncpy(currentPerformance.PerformanceName, doc["PerformanceName"], sizeof(currentPerformance.PerformanceName));
     currentPerformance.UID = doc["UID"];
-
+    currentPerformance.mode = doc["Mode"];
+    // TODO
     file.close();
 }
 

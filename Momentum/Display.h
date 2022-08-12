@@ -27,6 +27,7 @@
 #include "Fonts/FreeSansOblique24pt7b.h"
 #include "Fonts/FreeSansBoldOblique24pt7b.h"
 #include "Fonts/FreeSansBold9pt7b.h"
+#include <ili9341_t3n_font_Arial.h>
 
 #define PULSE 1
 #define VAR_TRI 2
@@ -98,7 +99,7 @@ FLASHMEM void renderBootUpPage()
   tft.setTextColor(ILI9341_YELLOW);
   tft.println("MOMENTUM");
   tft.setTextColor(ILI9341_ORANGE);
-  tft.setFont(&FreeSans12pt7b);
+  tft.setFont(Arial_16);
   tft.setCursor(140, 120);
   tft.println(VERSION);
 }
@@ -131,7 +132,6 @@ FLASHMEM void renderMIDI()
 
 FLASHMEM void renderCorners()
 {
-  tft.setFont(&FreeSans9pt7b);
   // ENC_TL
   if (encMap[ENC_TL].active)
   {
@@ -140,13 +140,14 @@ FLASHMEM void renderCorners()
     {
       tft.fillTriangle(2, 2, 2, 10, 10, 2, ILI9341_BLACK);
     }
-    tft.setCursor(14, 7);
     tft.setTextColor(encTriColour[ENC_TL]);
-    tft.println(encMap[ENC_TL].ParameterStr);
+    tft.setTextDatum(TL_DATUM);
+    tft.setFont(Arial_13);
+    tft.drawString(encMap[ENC_TL].ParameterStr, 14, 7);
     if (encMap[ENC_TL].ShowValue)
     {
-      tft.setCursor(14, 27);
-      tft.println(encMap[ENC_TL].ValueStr);
+      tft.setFont(Arial_16);
+      tft.drawString(encMap[ENC_TL].ValueStr, 4, 27);
     }
   }
   // ENC_TR
@@ -157,13 +158,14 @@ FLASHMEM void renderCorners()
     {
       tft.fillTriangle(309, 2, 317, 2, 317, 10, ILI9341_BLACK);
     }
-    tft.setCursor(180, 7);
     tft.setTextColor(encTriColour[ENC_TR]);
-    tft.println(encMap[ENC_TR].ParameterStr);
+    tft.setTextDatum(TR_DATUM);
+    tft.setFont(Arial_13);
+    tft.drawString(encMap[ENC_TR].ParameterStr, 303, 7);
     if (encMap[ENC_TR].ShowValue)
     {
-      tft.setCursor(180, 27);
-      tft.println(encMap[ENC_TR].ValueStr);
+      tft.setFont(Arial_16);
+      tft.drawString(encMap[ENC_TR].ValueStr, 310, 27);
     }
   }
   // ENC_BR
@@ -174,13 +176,14 @@ FLASHMEM void renderCorners()
     {
       tft.fillTriangle(309, 237, 317, 237, 317, 229, ILI9341_BLACK);
     }
-    tft.setCursor(200, 207);
+    tft.setTextDatum(TR_DATUM);
     tft.setTextColor(encTriColour[ENC_BR]);
-    tft.println(encMap[ENC_BR].ParameterStr);
+    tft.setFont(Arial_13);
+    tft.drawString(encMap[ENC_BR].ParameterStr, 303, 220);
     if (encMap[ENC_BR].ShowValue)
     {
-      tft.setCursor(200, 187);
-      tft.println(encMap[ENC_BR].ValueStr);
+      tft.setFont(Arial_16);
+      tft.drawString(encMap[ENC_BR].ValueStr, 310, 200);
     }
   }
 
@@ -192,20 +195,21 @@ FLASHMEM void renderCorners()
     {
       tft.fillTriangle(2, 229, 2, 237, 10, 237, ILI9341_BLACK);
     }
-    tft.setCursor(14, 207);
+    tft.setTextDatum(TL_DATUM);
     tft.setTextColor(encTriColour[ENC_BL]);
-    tft.println(encMap[ENC_BL].ParameterStr);
+    tft.setFont(Arial_13);
+    tft.drawString(encMap[ENC_BL].ParameterStr, 14, 220);
     if (encMap[ENC_BL].ShowValue)
     {
-      tft.setCursor(14, 187);
-      tft.println(encMap[ENC_BL].ValueStr);
+      tft.setFont(Arial_16);
+      tft.drawString(encMap[ENC_BL].ValueStr, 4, 200);
     }
   }
 }
 
 FLASHMEM void renderPeak()
 {
-  vuMeter = true;
+  //vuMeter = true;
   if (vuMeter && global.peak.available())
   {
     uint16_t len = 0;
@@ -228,7 +232,7 @@ FLASHMEM void renderPeak()
 FLASHMEM void renderCurrentPatchPage()
 {
   tft.fillScreen(ILI9341_BLACK);
-  tft.setFont(&FreeSans12pt7b);
+  tft.setFont(Arial_16);
   tft.setCursor(45, 94);
   tft.setTextColor(ILI9341_YELLOW);
   tft.setTextSize(1);
@@ -240,7 +244,7 @@ FLASHMEM void renderCurrentPatchPage()
   tft.println(bankNames[currentBankIndex]);
 
   tft.setTextColor(ILI9341_BLACK);
-  tft.setFont(&FreeSans12pt7b);
+  tft.setFont(Arial_16);
 
   if (MIDIClkSignal)
   {
@@ -292,7 +296,7 @@ FLASHMEM void renderCurrentPatchPage()
       }
     }
   }
-  tft.setFont(&FreeSans12pt7b);
+  tft.setFont(Arial_16);
   tft.setTextColor(ILI9341_YELLOW);
   tft.setCursor(45, 120);
   tft.setTextColor(ILI9341_WHITE);
@@ -397,13 +401,13 @@ FLASHMEM void renderCurrentParameterOverlay()
 FLASHMEM void renderDeletePatchPage()
 {
   tft.fillScreen(ILI9341_BLACK);
-  tft.setFont(&FreeSans12pt7b);
+  tft.setFont(Arial_16);
   tft.setCursor(5, 53);
   tft.setTextColor(ILI9341_YELLOW);
   tft.setTextSize(1);
   tft.println("Delete?");
   tft.drawFastHLine(10, 60, tft.width() - 20, ILI9341_RED);
-  tft.setFont(&FreeSans12pt7b);
+  tft.setFont(Arial_16);
   tft.setCursor(0, 78);
   tft.setTextColor(ILI9341_YELLOW);
   tft.println(patches.back().patchUID);
@@ -422,7 +426,7 @@ FLASHMEM void renderDeletePatchPage()
 FLASHMEM void renderDeleteMessagePage()
 {
   tft.fillScreen(ILI9341_BLACK);
-  tft.setFont(&FreeSans12pt7b);
+  tft.setFont(Arial_16);
   tft.setCursor(2, 53);
   tft.setTextColor(ILI9341_YELLOW);
   tft.setTextSize(1);
@@ -434,13 +438,13 @@ FLASHMEM void renderDeleteMessagePage()
 FLASHMEM void renderSavePage()
 {
   tft.fillScreen(ILI9341_BLACK);
-  tft.setFont(&FreeSans12pt7b);
+  tft.setFont(Arial_16);
   tft.setCursor(5, 53);
   tft.setTextColor(ILI9341_YELLOW);
   tft.setTextSize(1);
   tft.println("Save?");
   tft.drawFastHLine(10, 60, tft.width() - 20, ILI9341_RED);
-  tft.setFont(&FreeSans12pt7b);
+  tft.setFont(Arial_16);
   tft.setCursor(0, 78);
   tft.setTextColor(ILI9341_YELLOW);
   tft.println(patches[patches.size() - 2].patchUID);
@@ -459,71 +463,100 @@ FLASHMEM void renderSavePage()
 FLASHMEM void renderReinitialisePage()
 {
   tft.fillScreen(ILI9341_BLACK);
-  tft.setFont(&FreeSans12pt7b);
+  tft.setFont(Arial_16);
   tft.setTextColor(ILI9341_YELLOW);
   tft.setTextSize(1);
   tft.setCursor(ILI9341_t3n::CENTER, ILI9341_t3n::CENTER);
   tft.println("Initialise Patch Settings");
 }
 
-FLASHMEM void renderPatchNamingPage()
+FLASHMEM void renderPatchSavingPage()
 {
   tft.fillScreen(ILI9341_BLACK);
-  tft.setFont(&FreeSans12pt7b);
+  tft.setFont(Arial_16);
   tft.setTextColor(ILI9341_YELLOW);
   tft.setTextSize(1);
-  tft.setCursor(0, 53);
-  tft.println("Rename Patch");
-  tft.drawFastHLine(10, 63, tft.width() - 20, ILI9341_RED);
-  tft.setTextColor(ILI9341_WHITE);
-  tft.setCursor(5, 90);
-  tft.println(newPatchName);
-}
+  tft.setCursor(10, 15);
+  tft.println("Save Patch");
+  tft.drawFastHLine(10, 35, tft.width() - 20, ILI9341_RED);
 
-FLASHMEM void renderRecallPage()
-{
   // tft.setTextDatum(MC_DATUM);
   // Bank list - 8 banks
-  tft.fillScreen(ILI9341_BLACK);
   tft.setFont(&FreeSans9pt7b);
   tft.setTextColor(ILI9341_RED);
   for (uint8_t i = 0; i < 8; i++)
   {
-    tft.setCursor(0, 30 + (20 * i));
+    tft.setCursor(0, 44 + (20 * i));
     tempBankIndex == i ? tft.setTextColor(ILI9341_ORANGE)
                        : tft.setTextColor(ILI9341_RED);
     tft.println(bankNames[i]);
   }
 
   // Patches -  up to 128 in each bank
-
   tft.setFont(&FreeSans9pt7b);
   tft.setTextColor(ILI9341_LIGHTGREY);
   for (uint8_t i = 0; i < patches.size(); i++)
   {
-    tft.setCursor(110, 30 + (20 * i));
-    currentPatchIndex == i ? tft.setTextColor(ILI9341_WHITE)
-                           : tft.setTextColor(ILI9341_LIGHTGREY);
+    tft.setCursor(110, 44 + (20 * i));
+    toSavePatchIndex == i ? tft.setTextColor(ILI9341_WHITE)
+                          : tft.setTextColor(ILI9341_LIGHTGREY);
     tft.print(i + 1);
     tft.print(" ");
     tft.println(patches[i].patchName);
   }
+  renderCorners();
+}
+
+FLASHMEM void renderRecallPage()
+{
+  tft.fillScreen(ILI9341_BLACK);
+  tft.setFont(Arial_16);
+  tft.setTextColor(ILI9341_YELLOW);
+  tft.setTextSize(1);
+  tft.setCursor(10, 15);
+  tft.println("Recall Patch");
+  tft.drawFastHLine(10, 35, tft.width() - 20, ILI9341_RED);
+
+  // tft.setTextDatum(MC_DATUM);
+  // Bank list - 8 banks
+  tft.setFont(&FreeSans9pt7b);
+  tft.setTextColor(ILI9341_RED);
+  for (uint8_t i = 0; i < 8; i++)
+  {
+    tft.setCursor(0, 44 + (20 * i));
+    tempBankIndex == i ? tft.setTextColor(ILI9341_ORANGE)
+                       : tft.setTextColor(ILI9341_RED);
+    tft.println(bankNames[i]);
+  }
+
+  // Patches -  up to 128 in each bank
+  tft.setFont(&FreeSans9pt7b);
+  tft.setTextColor(ILI9341_LIGHTGREY);
+  for (uint8_t i = 0; i < patches.size(); i++)
+  {
+    tft.setCursor(110, 44 + (20 * i));
+    toSavePatchIndex == i ? tft.setTextColor(ILI9341_WHITE)
+                          : tft.setTextColor(ILI9341_LIGHTGREY);
+    tft.print(i + 1);
+    tft.print(" ");
+    tft.println(patches[i].patchName);
+  }
+  renderCorners();
 }
 
 FLASHMEM void renderOscPage(uint8_t no)
 {
   tft.fillScreen(ILI9341_BLACK);
-  tft.setFont(&FreeSans12pt7b);
-  tft.setTextColor(ILI9341_RED);
-  tft.setCursor(110, 150);
+  tft.setFont(Arial_16);
+  tft.setTextColor(ILI9341_BLUE);
+  tft.setTextDatum(TC_DATUM);
   if (no == 3)
   {
-    tft.print("Noise & Unison");
+    tft.drawString("Noise & Unison", 160, 150);
   }
   else
   {
-    tft.print("Oscillator ");
-    tft.println(no);
+    tft.drawString("Oscillator " + String(no), 160, 150);
   }
   renderCorners();
 }
@@ -531,22 +564,22 @@ FLASHMEM void renderOscPage(uint8_t no)
 FLASHMEM void renderOscModPage(uint8_t no)
 {
   tft.fillScreen(ILI9341_BLACK);
-  tft.setFont(&FreeSans12pt7b);
-  tft.setTextColor(ILI9341_RED);
-  tft.setCursor(60, 150);
+  tft.setFont(Arial_16);
+  tft.setTextColor(ILI9341_BLUE);
+  tft.setTextDatum(TC_DATUM);
   switch (no)
   {
   case 1:
-    tft.print("Osc 1 PWM");
+    tft.drawString("Osc 1 PWM", 160, 150);
     break;
   case 2:
-    tft.print("Osc 2 PWM");
+    tft.drawString("Osc 2 PWM", 160, 150);
     break;
   case 3:
-    tft.print("Osc Pitch");
+    tft.drawString("Osc Pitch", 160, 150);
     break;
   case 4:
-    tft.print("Osc Effects");
+    tft.drawString("Osc Effects", 160, 150);
     break;
   }
   renderCorners();
@@ -555,21 +588,20 @@ FLASHMEM void renderOscModPage(uint8_t no)
 FLASHMEM void renderFilterPage(uint8_t no)
 {
   tft.fillScreen(ILI9341_BLACK);
-  tft.setFont(&FreeSans12pt7b);
-  tft.setTextColor(ILI9341_RED);
-  tft.setCursor(110, 150);
-  tft.print("Filter");
+  tft.setFont(Arial_16);
+  tft.setTextColor(ILI9341_BLUE);
+  tft.setTextDatum(TC_DATUM);
+  tft.drawString("Filter", 160, 150);
   renderCorners();
 }
 
 FLASHMEM void renderFilterModPage(uint8_t no)
 {
   tft.fillScreen(ILI9341_BLACK);
-  tft.setFont(&FreeSans12pt7b);
-  tft.setTextColor(ILI9341_RED);
-  tft.setCursor(110, 150);
-  tft.print("Filter Modulation ");
-  tft.println(no);
+  tft.setFont(Arial_16);
+  tft.setTextColor(ILI9341_BLUE);
+  tft.setTextDatum(TC_DATUM);
+  tft.drawString("Filter Modulation" + String(no), 160, 150);
   renderCorners();
   if (no == 1)
   {
@@ -584,11 +616,10 @@ FLASHMEM void renderFilterModPage(uint8_t no)
 FLASHMEM void renderAmpPage(uint8_t no)
 {
   tft.fillScreen(ILI9341_BLACK);
-  tft.setFont(&FreeSans12pt7b);
-  tft.setTextColor(ILI9341_RED);
-  tft.setCursor(110, 150);
-  tft.print("Amplifier ");
-  tft.println(no);
+  tft.setFont(Arial_16);
+  tft.setTextColor(ILI9341_BLUE);
+  tft.setTextDatum(TC_DATUM);
+  tft.drawString("Amplifier " + String(no), 160,150);
   renderCorners();
   if (no == 1)
   {
@@ -603,50 +634,62 @@ FLASHMEM void renderAmpPage(uint8_t no)
 FLASHMEM void renderFXPage()
 {
   tft.fillScreen(ILI9341_BLACK);
-  tft.setFont(&FreeSans12pt7b);
-  tft.setTextColor(ILI9341_RED);
-  tft.setCursor(110, 150);
-  tft.print("Effects");
+  tft.setFont(Arial_16);
+  tft.setTextColor(ILI9341_BLUE);
+  tft.setTextDatum(TC_DATUM);
+  tft.drawString("Effects", 160, 150);
   renderCorners();
 }
 
 FLASHMEM void renderSequencerPage()
 {
   tft.fillScreen(ILI9341_BLACK);
-  tft.setFont(&FreeSans12pt7b);
-  tft.setTextColor(ILI9341_RED);
-  tft.setCursor(110, 150);
-  tft.print("Sequencer");
+  tft.setFont(Arial_16);
+  tft.setTextColor(ILI9341_BLUE);
+  tft.setTextDatum(TC_DATUM);
+  tft.drawString("Sequencer", 160, 150);
   renderCorners();
 }
 
 FLASHMEM void renderMIDIPage()
 {
   tft.fillScreen(ILI9341_BLACK);
-  tft.setFont(&FreeSans12pt7b);
-  tft.setTextColor(ILI9341_RED);
-  tft.setCursor(110, 150);
-  tft.print("MIDI");
+  tft.setFont(Arial_16);
+  tft.setTextColor(ILI9341_BLUE);
+  tft.setTextDatum(TC_DATUM);
+  tft.drawString("MIDI", 160, 150);
   renderCorners();
 }
 
 FLASHMEM void renderArpPage()
 {
   tft.fillScreen(ILI9341_BLACK);
-  tft.setFont(&FreeSans12pt7b);
-  tft.setTextColor(ILI9341_RED);
-  tft.setCursor(110, 150);
-  tft.print("Arpeggiator");
+  tft.setFont(Arial_16);
+  tft.setTextColor(ILI9341_BLUE);
+  tft.setTextDatum(TC_DATUM);
+  tft.drawString("Arpeggiator", 160, 150);
   renderCorners();
 }
 
 FLASHMEM void renderPerformancePage()
 {
   tft.fillScreen(ILI9341_BLACK);
-  tft.setFont(&FreeSans12pt7b);
+  tft.setFont(Arial_16);
+  tft.setTextColor(ILI9341_YELLOW);
+  tft.setTextSize(1);
+  tft.setCursor(10, 15);
+  tft.println("Recall Performance");
+  tft.drawFastHLine(10, 35, tft.width() - 20, ILI9341_RED);
+
+  tft.setFont(&FreeSans9pt7b);
   tft.setTextColor(ILI9341_RED);
-  tft.setCursor(110, 150);
-  tft.print("Performance");
+  for (uint8_t i = 0; i < performances.size(); i++)
+  {
+    tft.setCursor(0, 44 + (20 * i));
+    tempBankIndex == i ? tft.setTextColor(ILI9341_ORANGE)
+                       : tft.setTextColor(ILI9341_RED);
+    tft.println(performances[i].performanceName);
+  }
   renderCorners();
 }
 
@@ -666,9 +709,8 @@ FLASHMEM void renderUpDown(uint16_t x, uint16_t y, uint16_t colour)
 FLASHMEM void renderSettingsPage()
 {
   tft.fillScreen(ILI9341_BLACK);
-  tft.setFont(&FreeSans12pt7b);
+  tft.setFont(Arial_16);
   tft.setTextColor(ILI9341_YELLOW);
-  tft.setTextSize(1);
   tft.setCursor(0, 53);
   tft.println(currentSettingsOption);
   if (currentSettingsPart == State::SETTINGS)
@@ -751,8 +793,8 @@ void displayThread()
         threads.delay(1000);
         // state = State::MAIN; //Now sets previous state
         break;
-      case State::PATCHNAMING:
-        renderPatchNamingPage();
+      case State::PATCHSAVING:
+        renderPatchSavingPage();
         break;
       // case State::PATCH:
       //   renderCurrentPatchPage();

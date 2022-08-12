@@ -20,13 +20,13 @@ FLASHMEM void assignStrings()
     ParameterStrMap[CCpitchA] = "1 Pitch";
     ParameterStrMap[CCpitchB] = "2 Pitch";
     ParameterStrMap[CCpitchenv] = "Pitch Envelope";
-    ParameterStrMap[CCosclforetrig] = "Pitch LFO Retrigger";
-    ParameterStrMap[CCfilterlforetrig] = "Filter LFO Retrigger";
+    ParameterStrMap[CCosclforetrig] = "Pitch LFO Retrig";
+    ParameterStrMap[CCfilterlforetrig] = "Filter LFO Retrig";
     ParameterStrMap[CCfilterres] = "Resonance";
     ParameterStrMap[CCamprelease] = "Release";
     ParameterStrMap[CCampattack] = "Attack";
-    ParameterStrMap[CCfilterfreq] = "Cutoff Frequency";
-    ParameterStrMap[filterfreq256] = "Cutoff Frequency";
+    ParameterStrMap[CCfilterfreq] = "Cutoff Freq";
+    ParameterStrMap[filterfreq256] = "Cutoff Freq";
     ParameterStrMap[CCampdecay] = "Decay";
     ParameterStrMap[CCfilterlforate] = "Filter LFO Rate";
     ParameterStrMap[CCfilterlfoamt] = "Filter LFO Level";
@@ -42,14 +42,14 @@ FLASHMEM void assignStrings()
     ParameterStrMap[CCpwmAmtA] = "1 PWM Level";
     ParameterStrMap[CCpwmAmtB] = "2 PWM Level";
     ParameterStrMap[CCkeytracking] = "Key Tracking";
-    ParameterStrMap[CCfilterlfowaveform] = "Filter LFO Waveform";
+    ParameterStrMap[CCfilterlfowaveform] = "Filter LFO Wave";
     ParameterStrMap[CCfxamt] = "Effects Amount";
     ParameterStrMap[CCfxmix] = "Effects Mix";
     ParameterStrMap[CCdetune] = "Detune";
     ParameterStrMap[CCoscLfoRate] = "Pitch LFO Rate";
-    ParameterStrMap[CCoscLfoWaveform] = "Pitch LFO Waveform";
-    ParameterStrMap[CCfilterLFOMidiClkSync] = "Filter LFO MIDI Clk Sync";
-    ParameterStrMap[CCoscLFOMidiClkSync] = "Pitch LFO MIDI Clk Sync";
+    ParameterStrMap[CCoscLfoWaveform] = "Pitch LFO Wave";
+    ParameterStrMap[CCfilterLFOMidiClkSync] = "Filter LFO Clk Sync";
+    ParameterStrMap[CCoscLFOMidiClkSync] = "Pitch LFO Clk Sync";
     ParameterStrMap[CCpwmSourceA] = "1 PWM Source";
     ParameterStrMap[CCpwmSourceB] = "2 PWM Source";
     ParameterStrMap[CCunison] = "Unison";
@@ -60,7 +60,18 @@ FLASHMEM void assignStrings()
     ParameterStrMap[deletepatch] = "Delete";
     ParameterStrMap[renamepatch] = "Rename";
     ParameterStrMap[temposync] = "Tempo Sync";
-    ParameterStrMap[CCvelocitySens] = "Velocity Sensitivity";
+    ParameterStrMap[CCvelocitySens] = "Velocity Sens";
+    ParameterStrMap[ampenvshape] = "Amp. Env. Shape";
+    ParameterStrMap[filterenvshape] = "Filter Env. Shape";
+    ParameterStrMap[glideshape] = "Glide Shape";
+    ParameterStrMap[pitchbendrange] = "Pitch Bend";
+    ParameterStrMap[modwheeldepth] = "Mod Wheel Depth";
+    ParameterStrMap[savebankselect] = "Bank";
+    ParameterStrMap[savepatchselect] = "Patch";
+    ParameterStrMap[MIDIChIn] = "Channel In";
+    ParameterStrMap[MIDIChOut] = "Channel Out";
+    ParameterStrMap[MIDIThruMode] = "MIDI Thru Mode";
+    ParameterStrMap[PerfSelect] = "Performance";
 }
 
 FLASHMEM String getWaveformStr(int value)

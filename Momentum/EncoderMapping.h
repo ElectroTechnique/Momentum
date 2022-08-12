@@ -300,11 +300,11 @@ FLASHMEM void setEncodersState(State s)
         encMap[ENC_BL].Push = true;
         encMap[ENC_BL].PushAction = State::OSCMODPAGE2;
 
-        encMap[ENC_BR].active = true;
+        currentPatch.PWMSourceA != PWMSOURCEFIXED ? encMap[ENC_BR].active = true : encMap[ENC_BR].active = false;
         encMap[ENC_BR].Parameter = CCpwmAmtA;
         encMap[ENC_BR].ShowValue = true;
         encMap[ENC_BR].Value = currentPatch.PWMA_Amount;
-        encMap[ENC_BR].ValueStr = String(groupvec[activeGroupIndex]->getPwmAmtA());
+        encMap[ENC_BR].ValueStr = String(LINEAR[currentPatch.PWMA_Amount]);
         encMap[ENC_BR].Range = 127;
         encMap[ENC_BR].ParameterStr = ParameterStrMap[CCpwmAmtA];
         encMap[ENC_BR].Push = true;
@@ -314,13 +314,13 @@ FLASHMEM void setEncodersState(State s)
         encMap[ENC_TL].Parameter = CCpwmRateA;
         encMap[ENC_TL].ShowValue = true;
         encMap[ENC_TL].Value = currentPatch.PWMRateA;
-        encMap[ENC_TL].ValueStr = String(groupvec[activeGroupIndex]->getPwmRateA());
+        encMap[ENC_TL].ValueStr = String(groupvec[activeGroupIndex]->getPwmRateA()) + "Hz";
         encMap[ENC_TL].Range = 127;
         encMap[ENC_TL].ParameterStr = ParameterStrMap[CCpwmRateA];
         encMap[ENC_TL].Push = true;
         encMap[ENC_TL].PushAction = State::OSCMODPAGE2;
 
-        currentPatch.PWMSourceB == PWMSOURCELFO ? encMap[ENC_TR].active = true : encMap[ENC_TR].active = false;
+        currentPatch.PWMSourceA == PWMSOURCEFIXED ? encMap[ENC_TR].active = true : encMap[ENC_TR].active = false;
         encMap[ENC_TR].Parameter = CCpwA;
         encMap[ENC_TR].ParameterStr = ParameterStrMap[CCpwA];
         encMap[ENC_TR].ShowValue = true;
@@ -356,15 +356,15 @@ FLASHMEM void setEncodersState(State s)
             break;
         }
         encMap[ENC_BL].Range = 2;
-        encMap[ENC_BL].ParameterStr = ParameterStrMap[CCpwmAmtA];
+        encMap[ENC_BL].ParameterStr = ParameterStrMap[CCpwmSourceB];
         encMap[ENC_BL].Push = true;
         encMap[ENC_BL].PushAction = State::OSCMODPAGE3;
 
-        encMap[ENC_BR].active = true;
+        currentPatch.PWMSourceB != PWMSOURCEFIXED ? encMap[ENC_BR].active = true : encMap[ENC_BR].active = false;
         encMap[ENC_BR].Parameter = CCpwmAmtB;
         encMap[ENC_BR].ShowValue = true;
         encMap[ENC_BR].Value = currentPatch.PWMB_Amount;
-        encMap[ENC_BR].ValueStr = String(groupvec[activeGroupIndex]->getPwmAmtB());
+        encMap[ENC_BR].ValueStr = String(LINEAR[currentPatch.PWMB_Amount]);
         encMap[ENC_BR].Range = 127;
         encMap[ENC_BR].ParameterStr = ParameterStrMap[CCpwmAmtB];
         encMap[ENC_BR].Push = true;
@@ -374,13 +374,13 @@ FLASHMEM void setEncodersState(State s)
         encMap[ENC_TL].Parameter = CCpwmRateB;
         encMap[ENC_TL].ShowValue = true;
         encMap[ENC_TL].Value = currentPatch.PWMRateB;
-        encMap[ENC_TL].ValueStr = String(groupvec[activeGroupIndex]->getPwmRateB());
+        encMap[ENC_TL].ValueStr = String(groupvec[activeGroupIndex]->getPwmRateB()) + "Hz";
         encMap[ENC_TL].Range = 127;
         encMap[ENC_TL].ParameterStr = ParameterStrMap[CCpwmRateB];
         encMap[ENC_TL].Push = true;
         encMap[ENC_TL].PushAction = State::OSCMODPAGE3;
 
-        currentPatch.PWMSourceB == PWMSOURCELFO ? encMap[ENC_TR].active = true : encMap[ENC_TR].active = false;
+        currentPatch.PWMSourceB == PWMSOURCEFIXED ? encMap[ENC_TR].active = true : encMap[ENC_TR].active = false;
         encMap[ENC_TR].Parameter = CCpwB;
         encMap[ENC_TR].ParameterStr = ParameterStrMap[CCpwB];
         encMap[ENC_TR].ShowValue = true;
@@ -422,19 +422,19 @@ FLASHMEM void setEncodersState(State s)
         encMap[ENC_TL].Parameter = CCoscLfoRate;
         encMap[ENC_TL].ShowValue = true;
         encMap[ENC_TL].Value = currentPatch.PitchLFORate;
-        encMap[ENC_TL].ValueStr = String(groupvec[activeGroupIndex]->getPitchLfoRate());
+        encMap[ENC_TL].ValueStr = String(groupvec[activeGroupIndex]->getPitchLfoRate()) + " Hz";
         encMap[ENC_TL].Range = 127;
         encMap[ENC_TL].ParameterStr = ParameterStrMap[CCoscLfoRate];
         encMap[ENC_TL].Push = true;
         encMap[ENC_TL].PushAction = State::OSCMODPAGE4;
 
         encMap[ENC_TR].active = true;
-        encMap[ENC_TR].Parameter = CCpitchenv;
+        encMap[ENC_TR].Parameter = CCosclforetrig;
         encMap[ENC_TR].ShowValue = true;
-        encMap[ENC_TR].Value = currentPatch.PitchEnv;
-        encMap[ENC_TR].ValueStr = String(groupvec[activeGroupIndex]->getPitchEnvelope());
-        encMap[ENC_TR].Range = 127;
-        encMap[ENC_TR].ParameterStr = ParameterStrMap[CCpitchenv];
+        encMap[ENC_TR].Value = currentPatch.PitchLFORetrig;
+        encMap[ENC_TR].ValueStr = groupvec[activeGroupIndex]->getPitchLfoRetrig() > 0 ? "On" : "Off";
+        encMap[ENC_TR].Range = 1;
+        encMap[ENC_TR].ParameterStr = ParameterStrMap[CCosclforetrig];
         encMap[ENC_TR].Push = true;
         encMap[ENC_TR].PushAction = State::OSCMODPAGE4;
         break;
@@ -472,9 +472,16 @@ FLASHMEM void setEncodersState(State s)
         encMap[ENC_BL].Push = true;
         encMap[ENC_BL].PushAction = State::OSCMODPAGE1;
 
-        encMap[ENC_TL].active = false;
+        encMap[ENC_TL].active = true;
+        encMap[ENC_TL].Parameter = CCpitchenv;
+        encMap[ENC_TL].ShowValue = true;
+        encMap[ENC_TL].Value = currentPatch.PitchEnv;
+        encMap[ENC_TL].ValueStr = String(groupvec[activeGroupIndex]->getPitchEnvelope());
+        encMap[ENC_TL].Range = 127;
+        encMap[ENC_TL].ParameterStr = ParameterStrMap[CCpitchenv];
+        encMap[ENC_TL].Push = true;
+        encMap[ENC_TL].PushAction = State::OSCMODPAGE1;
 
-        // showCurrentParameterOverlay("Osc Mix 1:2", "   " + String(groupvec[activeGroupIndex]->getOscLevelA()) + " : " + String(groupvec[activeGroupIndex]->getOscLevelB()));
         currentPatch.OscFX == OSCFXXMOD ? encMap[ENC_TR].active = true : encMap[ENC_TR].active = false;
         encMap[ENC_TR].Parameter = CCoscLevelA;
         encMap[ENC_TR].ShowValue = true;
@@ -614,19 +621,19 @@ FLASHMEM void setEncodersState(State s)
         encMap[ENC_TL].Parameter = CCfilterlforate;
         encMap[ENC_TL].ShowValue = true;
         encMap[ENC_TL].Value = currentPatch.PitchLFORate;
-        encMap[ENC_TL].ValueStr = String(groupvec[activeGroupIndex]->getPitchLfoRate());
+        encMap[ENC_TL].ValueStr = String(groupvec[activeGroupIndex]->getPitchLfoRate()) + " Hz";
         encMap[ENC_TL].Range = 127;
         encMap[ENC_TL].ParameterStr = ParameterStrMap[CCfilterlforate];
         encMap[ENC_TL].Push = true;
         encMap[ENC_TL].PushAction = State::FILTERMODPAGE3;
 
         encMap[ENC_TR].active = true;
-        encMap[ENC_TR].Parameter = CCfilterenv;
+        encMap[ENC_TR].Parameter = CCfilterlforetrig;
         encMap[ENC_TR].ShowValue = true;
-        encMap[ENC_TR].Value = currentPatch.FilterEnv;
-        encMap[ENC_TR].ValueStr = String(groupvec[activeGroupIndex]->getFilterEnvelope());
-        encMap[ENC_TR].Range = 127;
-        encMap[ENC_TR].ParameterStr = ParameterStrMap[CCfilterenv];
+        encMap[ENC_TR].Value = currentPatch.FilterLFORetrig;
+        encMap[ENC_TR].ValueStr = groupvec[activeGroupIndex]->getFilterLfoRetrig() > 0 ? "On" : "off";
+        encMap[ENC_TR].Range = 1;
+        encMap[ENC_TR].ParameterStr = ParameterStrMap[CCfilterlforetrig];
         encMap[ENC_TR].Push = true;
         encMap[ENC_TR].PushAction = State::FILTERMODPAGE3;
         break;
@@ -641,7 +648,15 @@ FLASHMEM void setEncodersState(State s)
         encMap[ENC_BL].Push = true;
         encMap[ENC_BL].PushAction = State::FILTERMODPAGE1;
 
-        encMap[ENC_BR].active = false;
+        encMap[ENC_BR].active = true;
+        encMap[ENC_BR].Parameter = CCfilterenv;
+        encMap[ENC_BR].ShowValue = true;
+        encMap[ENC_BR].Value = currentPatch.FilterEnv;
+        encMap[ENC_BR].ValueStr = String(groupvec[activeGroupIndex]->getFilterEnvelope());
+        encMap[ENC_BR].Range = 127;
+        encMap[ENC_BR].ParameterStr = ParameterStrMap[CCfilterenv];
+        encMap[ENC_BR].Push = true;
+        encMap[ENC_BR].PushAction = State::FILTERMODPAGE1;
 
         encMap[ENC_TL].active = false;
 
@@ -691,9 +706,25 @@ FLASHMEM void setEncodersState(State s)
         break;
 
     case State::AMPPAGE2:
-        encMap[ENC_TL].active = false;
+        encMap[ENC_TL].active = true;
+        encMap[ENC_TL].Parameter = pitchbendrange;
+        encMap[ENC_TL].ShowValue = true;
+        encMap[ENC_TL].Value = currentPatch.PitchBend;
+        encMap[ENC_TL].ValueStr = String(currentPatch.PitchBend);
+        encMap[ENC_TL].Range = 11;
+        encMap[ENC_TL].ParameterStr = ParameterStrMap[pitchbendrange];
+        encMap[ENC_TL].Push = true;
+        encMap[ENC_TL].PushAction = State::MAIN;
 
-        encMap[ENC_TR].active = false;
+        encMap[ENC_TR].active = true;
+        encMap[ENC_TR].Parameter = modwheeldepth;
+        encMap[ENC_TR].ShowValue = true;
+        encMap[ENC_TR].Value = currentPatch.ModWheelDepth;
+        encMap[ENC_TR].ValueStr = String(currentPatch.ModWheelDepth);
+        encMap[ENC_TR].Range = 9;
+        encMap[ENC_TR].ParameterStr = ParameterStrMap[modwheeldepth];
+        encMap[ENC_TR].Push = true;
+        encMap[ENC_TR].PushAction = State::MAIN;
 
         encMap[ENC_BL].active = true;
         encMap[ENC_BL].Parameter = CCvelocitySens;
@@ -705,7 +736,15 @@ FLASHMEM void setEncodersState(State s)
         encMap[ENC_BL].Push = true;
         encMap[ENC_BL].PushAction = State::MAIN;
 
-        encMap[ENC_BR].active = false;
+        encMap[ENC_BR].active = true;
+        encMap[ENC_BR].Parameter = CCmonomode;
+        encMap[ENC_BR].ShowValue = true;
+        encMap[ENC_BR].Value = currentPatch.MonophonicMode;
+        encMap[ENC_BR].ValueStr = MonophonicStr[currentPatch.MonophonicMode];
+        encMap[ENC_BR].Range = 4;
+        encMap[ENC_BR].ParameterStr = ParameterStrMap[CCmonomode];
+        encMap[ENC_BR].Push = true;
+        encMap[ENC_BR].PushAction = State::MAIN;
 
         break;
 
@@ -759,6 +798,31 @@ FLASHMEM void setEncodersState(State s)
         encMap[ENC_BR].PushAction = State::MAIN;
         break;
 
+    case State::PATCHSAVING:
+        encMap[ENC_TL].active = false;
+
+        encMap[ENC_TR].active = false;
+
+        encMap[ENC_BL].active = true;
+        encMap[ENC_BL].Parameter = savebankselect;
+        encMap[ENC_BL].ShowValue = false;
+        encMap[ENC_BL].Value = currentBankIndex;
+        encMap[ENC_BL].Range = BANKS_LIMIT;
+        encMap[ENC_BL].ValueStr = "";
+        encMap[ENC_BL].ParameterStr = ParameterStrMap[savebankselect];
+        encMap[ENC_BL].Push = false;
+
+        encMap[ENC_BR].active = true;
+        encMap[ENC_BR].Parameter = savepatchselect;
+        encMap[ENC_BR].ShowValue = false;
+        encMap[ENC_BR].Value = toSavePatchIndex;
+        encMap[ENC_BR].Range = patches.size();
+        encMap[ENC_BR].ValueStr = "";
+        encMap[ENC_BR].ParameterStr = ParameterStrMap[savepatchselect];
+        encMap[ENC_BR].Push = true;
+        encMap[ENC_BR].PushAction = State::SAVE;
+        break;
+
     case State::DELETE:
         encMap[ENC_TL].active = false;
 
@@ -786,6 +850,59 @@ FLASHMEM void setEncodersState(State s)
         encMap[ENC_BR].ValueStr = "";
         encMap[ENC_BR].ParameterStr = ParameterStrMap[patchselect];
         encMap[ENC_BR].Push = false;
+        break;
+
+    case State::MIDIPAGE:
+        encMap[ENC_TL].active = true;
+        encMap[ENC_TL].Parameter = MIDIThruMode;
+        encMap[ENC_TL].ShowValue = true;
+        encMap[ENC_TL].Value = MIDIThru;
+        encMap[ENC_TL].Range = 16;
+        encMap[ENC_TL].ParameterStr = ParameterStrMap[MIDIThruMode];
+        encMap[ENC_TL].ValueStr = String(midiChannel);
+        encMap[ENC_TL].Push = false;
+
+        encMap[ENC_TR].active = false;
+
+        encMap[ENC_BL].active = true;
+        encMap[ENC_BL].Parameter = MIDIChIn;
+        encMap[ENC_BL].ShowValue = true;
+        encMap[ENC_BL].Value = midiChannel;
+        encMap[ENC_BL].Range = 16;
+        encMap[ENC_BL].ParameterStr = ParameterStrMap[MIDIChIn];
+        encMap[ENC_BL].ValueStr = String(midiChannel);
+        encMap[ENC_BL].Push = false;
+
+        encMap[ENC_BR].active = true;
+        encMap[ENC_BR].Parameter = MIDIChOut;
+        encMap[ENC_BR].ShowValue = true;
+        encMap[ENC_BR].Value = midiOutCh;
+        encMap[ENC_BR].Range = 15;
+        encMap[ENC_BR].ValueStr = String(midiOutCh);
+        encMap[ENC_BR].ParameterStr = ParameterStrMap[MIDIChOut];
+        encMap[ENC_BR].Push = false;
+        break;
+
+    case State::PERFORMANCEPAGE:
+        encMap[ENC_TL].active = false;
+
+        encMap[ENC_TR].active = false;
+
+        encMap[ENC_BL].active = true;
+        encMap[ENC_BL].Parameter = PerfSelect;
+        encMap[ENC_BL].ShowValue = false;
+        encMap[ENC_BL].Value = 0;
+        encMap[ENC_BL].Range = 127;
+        encMap[ENC_BL].ParameterStr = ParameterStrMap[PerfSelect];
+        encMap[ENC_BL].ValueStr = String(midiChannel);
+        encMap[ENC_BL].Push = false;
+
+        encMap[ENC_BR].active = true;
+        encMap[ENC_BR].Parameter = PerfEdit;
+        encMap[ENC_BR].ShowValue = false;
+        encMap[ENC_BR].ValueStr = String(midiOutCh);
+        encMap[ENC_BR].ParameterStr = "Push to Edit";
+        encMap[ENC_BR].Push = true;
         break;
     default:
         break;

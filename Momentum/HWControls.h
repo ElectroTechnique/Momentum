@@ -36,6 +36,9 @@ const int clockPin = 9;  // LEDs CLK2
 const int dataPinG = 44; // Green LEDs data
 const int dataPinR = 43; // Red LEDs data
 
+uint8_t currentRLEDs = 0;
+uint8_t currentGLEDs = 0;
+
 EncPlex74165 encoders(encoderCount, pinLD, pinCLK, srB, srA, srC);
 ButtonPlex74165 buttons(buttonCount, pinLD, pinCLK, srB, srA, srC);
 
@@ -43,11 +46,12 @@ void ledAnimation(long millis);
 
 // TeensyMM pins
 #define BACKLIGHT 24 // A10/I2C_SCL1
-    typedef enum ledColour {
-      RED,
-      GREEN,
-      OFF,
-    } ledColour;
+typedef enum ledColour
+{
+  RED,
+  GREEN,
+  OFF,
+} ledColour;
 
 typedef enum controlParameter
 {
@@ -94,18 +98,17 @@ const int16_t LED_TO_BIN[9] = {0, 1, 2, 4, 8, 16, 32, 64, 128}; // First value i
 
 FLASHMEM void setupHardware(EncoderTool::allCallback_t ec, EncoderTool::allBtnCallback_t ebc, ButtonTool::allBtnCallback_t bc)
 {
-  pinMode(latchPin, OUTPUT);
-  pinMode(clockPin, OUTPUT);
-  pinMode(dataPinG, OUTPUT);
-  pinMode(dataPinR, OUTPUT);
-
   encoders.begin(CountMode::full);
   encoders.attachCallback(ec);
   encoders.attachBtnCallback(ebc);
 
   buttons.begin(bc);
 
-  ledAnimation(70);
+  pinMode(latchPin, OUTPUT);
+  pinMode(clockPin, OUTPUT);
+  pinMode(dataPinG, OUTPUT);
+  pinMode(dataPinR, OUTPUT);
+  ledAnimation(50);
 
   // Display backlight - Can be used to turn off or dim using PWM
   // Not used but you never know
@@ -146,12 +149,16 @@ void singleLED(ledColour color, int8_t ledNo)
   {
   case RED:
     shiftOutX(dataPinR, dataPinG, clockPin, MSBFIRST, LED_TO_BIN[ledNo], 0);
+    currentRLEDs = ledNo;
     break;
   case GREEN:
     shiftOutX(dataPinR, dataPinG, clockPin, MSBFIRST, 0, LED_TO_BIN[ledNo]);
+    currentGLEDs = ledNo;
     break;
   case OFF:
     shiftOutX(dataPinR, dataPinG, clockPin, MSBFIRST, 0, 0);
+    currentRLEDs = 0;
+    currentGLEDs = 0;
     break;
   }
   digitalWrite(latchPin, HIGH);
@@ -171,6 +178,8 @@ void lightRGLEDs(int8_t ledRNos, int8_t ledGNos)
   digitalWrite(latchPin, LOW);
   shiftOutX(dataPinR, dataPinG, clockPin, MSBFIRST, ledRNos, ledGNos);
   digitalWrite(latchPin, HIGH);
+  currentRLEDs = ledRNos;
+  currentGLEDs = ledGNos;
 }
 
 void ledAnimation(long millis)

@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include "Arduino.h"
 
-#define PWMWAVEFORM WAVEFORM_SINE
+#define PWMWAVEFORM WAVEFORM_TRIANGLE
 #define BANKS_LIMIT 8          // 8 banks
 #define PATCHES_LIMIT 128      // 128 patches per bank
 #define PERFORMANCES_LIMIT 128 // 128 performances
@@ -16,8 +16,20 @@
 #define renamepatch 131
 #define deletepatch 132
 #define temposync 133
+#define ampenvshape 134
+#define filterenvshape 135
+#define glideshape 136
+#define pitchbendrange 137
+#define modwheeldepth 138
+#define savepatchselect 139
+#define savebankselect 140
+#define MIDIChIn 141
+#define MIDIChOut 142
+#define MIDIThruMode 143
+#define PerfSelect 144
+#define PerfEdit 145
 
-const static char *SEQUENCE_FOLDER_NAME = "Sequences";
+    const static char *SEQUENCE_FOLDER_NAME = "Sequences";
 const static char *SEQUENCE_FOLDER_NAME_SLASH = "Sequences/";
 
 const static char *BANKS_FILE_NAME = "Banknames";
@@ -31,6 +43,10 @@ static char *bankNames[] = {"Strings", "Basses", "Keys", "FX", "User 1", "User 2
 
 const static char *PERFORMANCE_FOLDER_NAME = "Performances";
 const static char *PERFORMANCE_FOLDER_NAME_SLASH = "Performances/";
+
+const static char *EnvShapeStr[] = {"Lin", "Exp -8", "Exp -7", "Exp -6", "Exp -5", "Exp -4", "Exp -3", "Exp -2", "Exp -1", "Exp 0", "Exp +1", "Exp +2", "Exp +3", "Exp +4", "Exp +5", "Exp +6", "Exp +7", "Exp +8"};
+const static char *GlideShapeStr[] = {"Lin", "Exp"};
+const static char *MonophonicStr[] = {"Off", "Last", "First", "Highest", "Lowest"};
 
 #define TOTALCHARS 64
 const static char CHARACTERS[TOTALCHARS] = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', ' ', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', ' ', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0'};
@@ -53,6 +69,8 @@ extern const float DIV24;
 extern const float DIV1270;
 extern const float LINEAR[128];
 extern const float LINEARCENTREZERO[128];
+extern const int8_t ENVSHAPE[18];
+
 extern const float BANDPASS;
 extern const float LOWPASS;
 extern const float HIGHPASS;
@@ -94,7 +112,7 @@ typedef enum State
   PATCHLIST,      // Patches list
   SAVE,           // Save patch page
   REINITIALISE,   // Reinitialise message
-  PATCHNAMING,    // Patch naming page
+  PATCHSAVING,    // Patch naming page
   DELETE,         // Delete patch page
   DELETEMSG,      // Delete patch message page
   SETTINGS,       // Settings page

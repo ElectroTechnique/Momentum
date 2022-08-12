@@ -142,7 +142,7 @@ public:
                                        effectAmount(1.0),
                                        effectMix(0.0)
     {
-        _params.keytrackingAmount = 0.5; // Half - MIDI CC & settings option
+        _params.keytrackingAmount = 0.0;
         _params.mixerLevel = 0.0;
         _params.prevNote = 48;
         _params.glideSpeed = 0.0;
@@ -160,7 +160,6 @@ public:
         shared.pwmLfoA.begin(PWMWAVEFORM);
         shared.pwmLfoB.amplitude(ONE);
         shared.pwmLfoB.begin(PWMWAVEFORM);
-        shared.pwmLfoB.phase(10.0f); // Off set phase of second osc
 
         setEffectAmount(effectAmount);
         setEffectMix(effectMix);
@@ -460,11 +459,13 @@ public:
             break;
         case 2: // XMod
             // osc A sounds with increasing osc B mod
-            if (oscLevelA == 1.0f && oscLevelB <= 1.0f)
+            if (oscLevelA > oscLevelB)
             {
                 setOscModMixerA(3, 1 - oscLevelB); // Feed from Osc 2 (B)
-                setWaveformMixerLevel(0, ONE);     // Osc 1 (A)
-                setWaveformMixerLevel(1, 0);       // Osc 2 (B)
+            }
+            else
+            {
+                setOscModMixerB(3, 1 - oscLevelA); // Feed from Osc 1 (A)
             }
             break;
         case 0:                                  // None
@@ -487,11 +488,13 @@ public:
             break;
         case 2: // XMod
             // osc B sounds with increasing osc A mod
-            if (oscLevelB == 1.0f && oscLevelA < 1.0f)
+            if (oscLevelA > oscLevelB)
+            {
+                setOscModMixerA(3, 1 - oscLevelB); // Feed from Osc 2 (B)
+            }
+            else
             {
                 setOscModMixerB(3, 1 - oscLevelA); // Feed from Osc 1 (A)
-                setWaveformMixerLevel(0, 0);       // Osc 1 (A)
-                setWaveformMixerLevel(1, ONE);     // Osc 2 (B)
             }
             break;
         case 0:                                  // None
@@ -508,7 +511,8 @@ public:
 
         if (oscFX == 2)
         {
-            if (oscLevelA == 1.0f && oscLevelB <= 1.0f)
+            // if (oscLevelA == 1.0f && oscLevelB <= 1.0f)
+            if (oscLevelA > oscLevelB)
             {
                 setOscModMixerA(3, 1 - oscLevelB); // Feed from Osc 2 (B)
                 setWaveformMixerLevel(0, ONE);     // Osc 1 (A)
@@ -966,7 +970,7 @@ private:
                     // Exit since there is already a note playing.
                     return;
                     break;
-                case MONOPHONIC_LEGATO:
+                case MONOPHONIC_LEGATO://Not implemented
                 case MONOPHONIC_LAST:
                     // Always play the last note.
                     break;

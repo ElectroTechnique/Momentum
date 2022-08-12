@@ -83,16 +83,39 @@ typedef struct PatchStruct
     uint8_t VelocitySensitivity = 0;
     uint8_t ChordDetune = 0;
     uint8_t MonophonicMode = 0;
+    uint8_t FilterEnvShape = 0;
+    uint8_t AmpEnvShape = 0;
+    uint8_t GlideShape = 0;
+    uint8_t PitchBend = 12;
+    uint8_t ModWheelDepth = 1;
 } PatchStruct;
-
-typedef struct PerformanceStruct
-{
-    uint32_t UID = 0;
-    char PerformanceName[64] = "Performance 1";
-} PerformanceStruct;
 
 typedef struct SequenceStruct
 {
     uint32_t UID = 0;
     char SequenceName[64] = "Sequence 1";
 } SequenceStruct;
+
+typedef struct PatchesInPerfStruct
+{
+    char Bank[20] = "";
+    PatchStruct patch;
+    uint8_t midiCh = 0;
+    uint8_t min = 0;
+    uint8_t max = 127;
+} PatchesInPerfStruct;
+
+typedef enum PerformanceMode
+{
+    Single,
+    Layer,
+    Split
+} PerformanceMode;
+
+typedef struct PerformanceStruct
+{
+    uint32_t UID = 0;
+    char PerformanceName[64] = "Performance 1";
+    PerformanceMode mode = PerformanceMode::Single;
+    PatchesInPerfStruct pp[];
+} PerformanceStruct;

@@ -11,6 +11,8 @@ uint8_t tempBankIndex = 0;
 uint8_t currentBankIndex = 0;
 uint8_t currentPatchIndex = 0;
 
+uint8_t toSavePatchIndex = 0;
+
 PatchStruct currentPatch;
 
 struct PatchUIDAndName
@@ -96,6 +98,11 @@ FLASHMEM void savePatch(uint8_t bankIndex)
   doc["Glide"] = currentPatch.Glide;
   doc["EffectAmt"] = currentPatch.EffectAmt;
   doc["EffectMix"] = currentPatch.EffectMix;
+  doc["FilterEnvShape"] = currentPatch.FilterEnvShape;
+  doc["AmpEnvShape"] = currentPatch.AmpEnvShape;
+  doc["GlideShape"] = currentPatch.GlideShape;
+  doc["PitchBend"] = currentPatch.PitchBend;
+  doc["ModWheelDepth"] = currentPatch.ModWheelDepth;
 
   // Need to generate a new UID as the patch settings may have changed if overwriting an existing patch
   String output;
@@ -263,6 +270,11 @@ FLASHMEM void loadPatch(uint8_t bank, uint32_t filename)
   currentPatch.Glide = doc["Glide"];
   currentPatch.EffectAmt = doc["EffectAmt"];
   currentPatch.EffectMix = doc["EffectMix"];
+  currentPatch.FilterEnvShape = doc["FilterEnvShape"];
+  currentPatch.AmpEnvShape = doc["AmpEnvShape"];
+  currentPatch.GlideShape = doc["GlideShape"];
+  currentPatch.PitchBend = doc["PitchBend"];
+  currentPatch.ModWheelDepth = doc["ModWheelDepth"];
 
   file.close();
 }
@@ -385,6 +397,34 @@ FLASHMEM uint8_t decCurrentPatchIndex()
     // Go to back of array
     currentPatchIndex = patches.size() - 1;
     return currentPatchIndex;
+  }
+}
+
+FLASHMEM uint8_t incTempPatchIndex()
+{
+  if (toSavePatchIndex < patches.size() - 1)
+  {
+    return ++toSavePatchIndex;
+  }
+  else
+  {
+    // Go back to Start from front of array
+    toSavePatchIndex = 0;
+    return toSavePatchIndex;
+  }
+}
+
+FLASHMEM uint8_t decTempPatchIndex()
+{
+  if (toSavePatchIndex > 0)
+  {
+    return --toSavePatchIndex;
+  }
+  else
+  {
+    // Go to back of array
+    toSavePatchIndex = patches.size() - 1;
+    return toSavePatchIndex;
   }
 }
 

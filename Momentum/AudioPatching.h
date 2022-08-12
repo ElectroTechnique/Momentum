@@ -265,8 +265,8 @@ struct Global {
     inline int maxTimbre() { return MAX_NO_TIMBER; }
 
     // Limited to 12 because we have 3 mixers funnelling into 1 mixer.
-    inline int maxVoicesPerGroup() { return 12; }
-    inline int maxTimbres() { return 12; }
+    inline int maxVoicesPerGroup() { return MAX_NO_VOICE; }
+    inline int maxTimbres() { return MAX_NO_VOICE; }
 };
 
 #endif

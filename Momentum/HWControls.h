@@ -98,16 +98,18 @@ const int16_t LED_TO_BIN[9] = {0, 1, 2, 4, 8, 16, 32, 64, 128}; // First value i
 
 FLASHMEM void setupHardware(EncoderTool::allCallback_t ec, EncoderTool::allBtnCallback_t ebc, ButtonTool::allBtnCallback_t bc)
 {
+  pinMode(latchPin, OUTPUT);
+  pinMode(clockPin, OUTPUT);
+  pinMode(dataPinG, OUTPUT);
+  pinMode(dataPinR, OUTPUT);
+
+
   encoders.begin(CountMode::full);
   encoders.attachCallback(ec);
   encoders.attachBtnCallback(ebc);
 
   buttons.begin(bc);
 
-  pinMode(latchPin, OUTPUT);
-  pinMode(clockPin, OUTPUT);
-  pinMode(dataPinG, OUTPUT);
-  pinMode(dataPinR, OUTPUT);
   ledAnimation(50);
 
   // Display backlight - Can be used to turn off or dim using PWM

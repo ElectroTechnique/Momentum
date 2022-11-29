@@ -1,7 +1,7 @@
 typedef struct EncoderMappingStruct
 {
     boolean active = true;
-    uint8_t Parameter = 0;          // MIDI cc (up to 127) or other code up to 255
+    uint8_t Parameter = 255;        // MIDI cc (up to 127) or other code up to 255
     uint8_t ShowValue = false;      // Some parameters don't show value like patch no
     uint8_t Value = 0;              // Up to 255
     int8_t Counter = 0;             // For reduced sensitivity for small ranges
@@ -21,7 +21,7 @@ boolean setEncValue(boolean act, uint8_t parameter, uint8_t value, String str, u
     {
         if (encMap[i].Parameter == parameter)
         {
-            if (act != encMap[i].active)
+            if (act != encMap[i].active && state != State::MAIN)
                 encMap[i].active = act;
             if (newParameter != encMap[i].Parameter)
                 encMap[i].Parameter = newParameter;
@@ -82,7 +82,15 @@ FLASHMEM void setEncodersState(State s)
     case State::PATCHLIST:
         encMap[ENC_TL].active = false;
 
-        encMap[ENC_TR].active = false;
+        encMap[ENC_TR].active = true;
+        encMap[ENC_TR].Parameter = cancel;
+        encMap[ENC_TR].ShowValue = false;
+        encMap[ENC_TR].Value = 0;
+        encMap[ENC_TR].Range = 0;
+        encMap[ENC_TR].ValueStr = "";
+        encMap[ENC_TR].ParameterStr = ParameterStrMap[cancel];
+        encMap[ENC_TR].Push = true;
+        encMap[ENC_TR].PushAction = State::MAIN;
 
         encMap[ENC_BL].active = true;
         encMap[ENC_BL].Parameter = CCbankselectLSB;
@@ -267,15 +275,7 @@ FLASHMEM void setEncodersState(State s)
         encMap[ENC_TL].Push = true;
         encMap[ENC_TL].PushAction = State::OSCPAGE1;
 
-        encMap[ENC_TR].active = true;
-        encMap[ENC_TR].Parameter = CCglide;
-        encMap[ENC_TR].ShowValue = true;
-        encMap[ENC_TR].Value = currentPatch.Glide;
-        encMap[ENC_TR].ValueStr = milliToString(POWER[currentPatch.Glide] * GLIDEFACTOR);
-        encMap[ENC_TR].Range = 127;
-        encMap[ENC_TR].ParameterStr = ParameterStrMap[CCglide];
-        encMap[ENC_TR].Push = true;
-        encMap[ENC_TR].PushAction = State::OSCPAGE1;
+        encMap[ENC_TR].active = false;
 
         break;
     case State::OSCMODPAGE1:
@@ -285,8 +285,8 @@ FLASHMEM void setEncodersState(State s)
         encMap[ENC_BL].Value = currentPatch.PWMSourceA;
         switch (currentPatch.PWMSourceA)
         {
-        case PWMSOURCEFIXED:
-            encMap[ENC_BL].ValueStr = "Fixed";
+        case PWMSOURCEMANUAL:
+            encMap[ENC_BL].ValueStr = "Manual";
             break;
         case PWMSOURCELFO:
             encMap[ENC_BL].ValueStr = "LFO";
@@ -300,7 +300,7 @@ FLASHMEM void setEncodersState(State s)
         encMap[ENC_BL].Push = true;
         encMap[ENC_BL].PushAction = State::OSCMODPAGE2;
 
-        currentPatch.PWMSourceA != PWMSOURCEFIXED ? encMap[ENC_BR].active = true : encMap[ENC_BR].active = false;
+        currentPatch.PWMSourceA != PWMSOURCEMANUAL ? encMap[ENC_BR].active = true : encMap[ENC_BR].active = false;
         encMap[ENC_BR].Parameter = CCpwmAmtA;
         encMap[ENC_BR].ShowValue = true;
         encMap[ENC_BR].Value = currentPatch.PWMA_Amount;
@@ -310,7 +310,7 @@ FLASHMEM void setEncodersState(State s)
         encMap[ENC_BR].Push = true;
         encMap[ENC_BR].PushAction = State::OSCMODPAGE2;
 
-        encMap[ENC_TL].active = true;
+        currentPatch.PWMSourceA == PWMSOURCELFO ? encMap[ENC_TL].active = true : encMap[ENC_TL].active = false;
         encMap[ENC_TL].Parameter = CCpwmRateA;
         encMap[ENC_TL].ShowValue = true;
         encMap[ENC_TL].Value = currentPatch.PWMRateA;
@@ -320,7 +320,7 @@ FLASHMEM void setEncodersState(State s)
         encMap[ENC_TL].Push = true;
         encMap[ENC_TL].PushAction = State::OSCMODPAGE2;
 
-        currentPatch.PWMSourceA == PWMSOURCEFIXED ? encMap[ENC_TR].active = true : encMap[ENC_TR].active = false;
+        currentPatch.PWMSourceA == PWMSOURCEMANUAL ? encMap[ENC_TR].active = true : encMap[ENC_TR].active = false;
         encMap[ENC_TR].Parameter = CCpwA;
         encMap[ENC_TR].ParameterStr = ParameterStrMap[CCpwA];
         encMap[ENC_TR].ShowValue = true;
@@ -345,7 +345,7 @@ FLASHMEM void setEncodersState(State s)
         encMap[ENC_BL].Value = currentPatch.PWMSourceB;
         switch (currentPatch.PWMSourceB)
         {
-        case PWMSOURCEFIXED:
+        case PWMSOURCEMANUAL:
             encMap[ENC_BL].ValueStr = "Manual";
             break;
         case PWMSOURCELFO:
@@ -360,7 +360,7 @@ FLASHMEM void setEncodersState(State s)
         encMap[ENC_BL].Push = true;
         encMap[ENC_BL].PushAction = State::OSCMODPAGE3;
 
-        currentPatch.PWMSourceB != PWMSOURCEFIXED ? encMap[ENC_BR].active = true : encMap[ENC_BR].active = false;
+        currentPatch.PWMSourceB != PWMSOURCEMANUAL ? encMap[ENC_BR].active = true : encMap[ENC_BR].active = false;
         encMap[ENC_BR].Parameter = CCpwmAmtB;
         encMap[ENC_BR].ShowValue = true;
         encMap[ENC_BR].Value = currentPatch.PWMB_Amount;
@@ -380,7 +380,7 @@ FLASHMEM void setEncodersState(State s)
         encMap[ENC_TL].Push = true;
         encMap[ENC_TL].PushAction = State::OSCMODPAGE3;
 
-        currentPatch.PWMSourceB == PWMSOURCEFIXED ? encMap[ENC_TR].active = true : encMap[ENC_TR].active = false;
+        currentPatch.PWMSourceB == PWMSOURCEMANUAL ? encMap[ENC_TR].active = true : encMap[ENC_TR].active = false;
         encMap[ENC_TR].Parameter = CCpwB;
         encMap[ENC_TR].ParameterStr = ParameterStrMap[CCpwB];
         encMap[ENC_TR].ShowValue = true;
@@ -620,8 +620,8 @@ FLASHMEM void setEncodersState(State s)
         encMap[ENC_TL].active = true;
         encMap[ENC_TL].Parameter = CCfilterlforate;
         encMap[ENC_TL].ShowValue = true;
-        encMap[ENC_TL].Value = currentPatch.PitchLFORate;
-        encMap[ENC_TL].ValueStr = String(groupvec[activeGroupIndex]->getPitchLfoRate()) + " Hz";
+        encMap[ENC_TL].Value = currentPatch.FilterLFORate;
+        encMap[ENC_TL].ValueStr = String(groupvec[activeGroupIndex]->getFilterLfoRate()) + " Hz";
         encMap[ENC_TL].Range = 127;
         encMap[ENC_TL].ParameterStr = ParameterStrMap[CCfilterlforate];
         encMap[ENC_TL].Push = true;
@@ -660,7 +660,15 @@ FLASHMEM void setEncodersState(State s)
 
         encMap[ENC_TL].active = false;
 
-        encMap[ENC_TR].active = false;
+        encMap[ENC_TR].active = true;
+        encMap[ENC_TR].Parameter = filterenvshape;
+        encMap[ENC_TR].ShowValue = true;
+        encMap[ENC_TR].Value = currentPatch.FilterEnvShape;
+        encMap[ENC_TR].ValueStr = EnvShapeStr[currentPatch.FilterEnvShape];
+        encMap[ENC_TR].Range = 17;
+        encMap[ENC_TR].ParameterStr = ParameterStrMap[filterenvshape];
+        encMap[ENC_TR].Push = true;
+        encMap[ENC_TR].PushAction = State::MAIN;
 
         break;
     case State::AMPPAGE1:
@@ -748,6 +756,41 @@ FLASHMEM void setEncodersState(State s)
 
         break;
 
+    case State::AMPPAGE3:
+        encMap[ENC_TL].active = false;
+
+        encMap[ENC_TR].active = true;
+        encMap[ENC_TR].Parameter = ampenvshape;
+        encMap[ENC_TR].ShowValue = true;
+        encMap[ENC_TR].Value = currentPatch.AmpEnvShape;
+        encMap[ENC_TR].ValueStr = EnvShapeStr[currentPatch.AmpEnvShape];
+        encMap[ENC_TR].Range = 17;
+        encMap[ENC_TR].ParameterStr = ParameterStrMap[ampenvshape];
+        encMap[ENC_TR].Push = true;
+        encMap[ENC_TR].PushAction = State::MAIN;
+
+        encMap[ENC_BL].active = true;
+        encMap[ENC_BL].Parameter = CCglide;
+        encMap[ENC_BL].ShowValue = true;
+        encMap[ENC_BL].Value = currentPatch.Glide;
+        encMap[ENC_BL].ValueStr = milliToString(POWER[currentPatch.Glide] * GLIDEFACTOR);
+        encMap[ENC_BL].Range = 127;
+        encMap[ENC_BL].ParameterStr = ParameterStrMap[CCglide];
+        encMap[ENC_BL].Push = true;
+        encMap[ENC_BL].PushAction = State::MAIN;
+
+        encMap[ENC_BR].active = true;
+        encMap[ENC_BR].Parameter = glideshape;
+        encMap[ENC_BR].ShowValue = true;
+        encMap[ENC_BR].Value = currentPatch.GlideShape;
+        encMap[ENC_BR].ValueStr = GlideShapeStr[currentPatch.GlideShape];
+        encMap[ENC_BR].Range = 1;
+        encMap[ENC_BR].ParameterStr = ParameterStrMap[glideshape];
+        encMap[ENC_BR].Push = true;
+        encMap[ENC_BR].PushAction = State::MAIN;
+
+        break;
+
     case State::FXPAGE:
         encMap[ENC_TL].active = false;
 
@@ -799,9 +842,25 @@ FLASHMEM void setEncodersState(State s)
         break;
 
     case State::PATCHSAVING:
-        encMap[ENC_TL].active = false;
+        encMap[ENC_TL].active = true;
+        encMap[ENC_TL].Parameter = editbank;
+        encMap[ENC_TL].ShowValue = false;
+        encMap[ENC_TL].Value = 0;
+        encMap[ENC_TL].Range = 0;
+        encMap[ENC_TL].ValueStr = "";
+        encMap[ENC_TL].ParameterStr = ParameterStrMap[editbank];
+        encMap[ENC_TL].Push = true;
+        encMap[ENC_TL].PushAction = State::EDITBANK;
 
-        encMap[ENC_TR].active = false;
+        encMap[ENC_TR].active = true;
+        encMap[ENC_TR].Parameter = cancel;
+        encMap[ENC_TR].ShowValue = false;
+        encMap[ENC_TR].Value = 0;
+        encMap[ENC_TR].Range = 0;
+        encMap[ENC_TR].ValueStr = "";
+        encMap[ENC_TR].ParameterStr = ParameterStrMap[cancel];
+        encMap[ENC_TR].Push = true;
+        encMap[ENC_TR].PushAction = State::MAIN;
 
         encMap[ENC_BL].active = true;
         encMap[ENC_BL].Parameter = savebankselect;
@@ -815,23 +874,71 @@ FLASHMEM void setEncodersState(State s)
         encMap[ENC_BR].active = true;
         encMap[ENC_BR].Parameter = savepatchselect;
         encMap[ENC_BR].ShowValue = false;
-        encMap[ENC_BR].Value = toSavePatchIndex;
+        encMap[ENC_BR].Value = currentPatchIndex;
         encMap[ENC_BR].Range = patches.size();
         encMap[ENC_BR].ValueStr = "";
         encMap[ENC_BR].ParameterStr = ParameterStrMap[savepatchselect];
         encMap[ENC_BR].Push = true;
-        encMap[ENC_BR].PushAction = State::SAVE;
+        encMap[ENC_BR].PushAction = State::RENAMEPATCH;
         break;
 
-    case State::DELETE:
-        encMap[ENC_TL].active = false;
+    case State::RENAMEPATCH:
+        encMap[ENC_TL].active = true;
+        encMap[ENC_TL].Parameter = deleteCharacterPatch;
+        encMap[ENC_TL].ShowValue = false;
+        encMap[ENC_TL].Value = 0;
+        encMap[ENC_TL].Range = 0;
+        encMap[ENC_TL].ValueStr = "";
+        encMap[ENC_TL].ParameterStr = ParameterStrMap[deleteCharacterPatch];
+        encMap[ENC_TL].Push = true;
+        encMap[ENC_TL].PushAction = State::DELETECHARPATCH;
 
         encMap[ENC_TR].active = true;
-        encMap[ENC_TR].Parameter = deletepatch;
+        encMap[ENC_TR].Parameter = cancel;
         encMap[ENC_TR].ShowValue = false;
-        encMap[ENC_TR].ParameterStr = ParameterStrMap[deletepatch];
+        encMap[ENC_TR].Value = 0;
+        encMap[ENC_TR].Range = 0;
+        encMap[ENC_TR].ValueStr = "";
+        encMap[ENC_TR].ParameterStr = ParameterStrMap[cancel];
         encMap[ENC_TR].Push = true;
-        encMap[ENC_TR].PushAction = State::DELETEMSG;
+        encMap[ENC_TR].PushAction = State::MAIN;
+
+        encMap[ENC_BL].active = true;
+        encMap[ENC_BL].Parameter = choosecharacterPatch;
+        encMap[ENC_BL].ShowValue = false;
+        encMap[ENC_BL].Value = 0;
+        encMap[ENC_BL].Range = TOTALCHARS;
+        encMap[ENC_BL].ValueStr = "";
+        encMap[ENC_BL].ParameterStr = ParameterStrMap[choosecharacterPatch];
+        encMap[ENC_BL].Push = true;
+        encMap[ENC_BL].PushAction = State::CHOOSECHARPATCH;
+
+        encMap[ENC_BR].active = true;
+        encMap[ENC_BR].Parameter = savepatch;
+        encMap[ENC_BR].ShowValue = false;
+        encMap[ENC_BR].ValueStr = "";
+        encMap[ENC_BR].ParameterStr = ParameterStrMap[savepatch];
+        encMap[ENC_BR].Push = true;
+        encMap[ENC_BR].PushAction = State::MAIN;
+        break;
+
+    case State::DELETEPATCH:
+        encMap[ENC_TL].active = true;
+        encMap[ENC_TL].Parameter = deletepatch;
+        encMap[ENC_TL].ShowValue = false;
+        encMap[ENC_TL].ParameterStr = ParameterStrMap[deletepatch];
+        encMap[ENC_TL].Push = true;
+        encMap[ENC_TL].PushAction = State::MAIN;
+
+        encMap[ENC_TR].active = true;
+        encMap[ENC_TR].Parameter = cancel;
+        encMap[ENC_TR].ShowValue = false;
+        encMap[ENC_TR].Value = 0;
+        encMap[ENC_TR].Range = 0;
+        encMap[ENC_TR].ValueStr = "";
+        encMap[ENC_TR].ParameterStr = ParameterStrMap[cancel];
+        encMap[ENC_TR].Push = true;
+        encMap[ENC_TR].PushAction = State::MAIN;
 
         encMap[ENC_BL].active = true;
         encMap[ENC_BL].Parameter = CCbankselectLSB;
@@ -857,9 +964,9 @@ FLASHMEM void setEncodersState(State s)
         encMap[ENC_TL].Parameter = MIDIThruMode;
         encMap[ENC_TL].ShowValue = true;
         encMap[ENC_TL].Value = MIDIThru;
-        encMap[ENC_TL].Range = 16;
+        encMap[ENC_TL].Range = 3;
         encMap[ENC_TL].ParameterStr = ParameterStrMap[MIDIThruMode];
-        encMap[ENC_TL].ValueStr = String(midiChannel);
+        encMap[ENC_TL].ValueStr = MIDIThruStr[MIDIThru];
         encMap[ENC_TL].Push = false;
 
         encMap[ENC_TR].active = false;
@@ -903,6 +1010,125 @@ FLASHMEM void setEncodersState(State s)
         encMap[ENC_BR].ValueStr = String(midiOutCh);
         encMap[ENC_BR].ParameterStr = "Push to Edit";
         encMap[ENC_BR].Push = true;
+        break;
+
+    case State::SETTINGS:
+        encMap[ENC_TL].active = false;
+
+        encMap[ENC_TR].active = false;
+
+        encMap[ENC_BL].active = true;
+        encMap[ENC_BL].Parameter = settingoption;
+        encMap[ENC_BL].ShowValue = false;
+        encMap[ENC_BL].Value = 0;
+        encMap[ENC_BL].Range = 5;
+        encMap[ENC_BL].ParameterStr = ParameterStrMap[settingoption];
+        encMap[ENC_BL].ValueStr = "";
+        encMap[ENC_BL].Push = false;
+
+        encMap[ENC_BR].active = true;
+        encMap[ENC_BR].Parameter = settingvalue;
+        encMap[ENC_BR].ShowValue = false;
+        encMap[ENC_BR].Value = 0;
+        encMap[ENC_BR].Range = patches.size();
+        encMap[ENC_BR].ValueStr = "";
+        encMap[ENC_BR].ParameterStr = ParameterStrMap[settingvalue];
+        encMap[ENC_BR].Push = false;
+        break;
+
+    case State::ARPPAGE:
+        encMap[ENC_TL].active = false;
+
+        encMap[ENC_TR].active = false;
+
+        encMap[ENC_BL].active = false;
+
+        encMap[ENC_BR].active = false;
+        break;
+
+    case State::SEQPAGE:
+        encMap[ENC_TL].active = false;
+
+        encMap[ENC_TR].active = false;
+
+        encMap[ENC_BL].active = false;
+
+        encMap[ENC_BR].active = false;
+        break;
+
+    case State::EDITBANK:
+        encMap[ENC_TL].active = false;
+        encMap[ENC_TL].active = true;
+        encMap[ENC_TL].Parameter = deletebank;
+        encMap[ENC_TL].ShowValue = false;
+        encMap[ENC_TL].ParameterStr = ParameterStrMap[deletebank];
+        encMap[ENC_TL].Push = true;
+        encMap[ENC_TL].PushAction = State::DELETEBANKMSG;
+
+        encMap[ENC_TR].active = true;
+        encMap[ENC_TR].Parameter = cancel;
+        encMap[ENC_TR].ShowValue = false;
+        encMap[ENC_TR].Value = 0;
+        encMap[ENC_TR].Range = 0;
+        encMap[ENC_TR].ValueStr = "";
+        encMap[ENC_TR].ParameterStr = ParameterStrMap[cancel];
+        encMap[ENC_TR].Push = true;
+        encMap[ENC_TR].PushAction = State::MAIN;
+
+        encMap[ENC_BL].active = true;
+        encMap[ENC_BL].Parameter = bankeditselect;
+        encMap[ENC_BL].ShowValue = false;
+        encMap[ENC_BL].Range = BANKS_LIMIT;
+        encMap[ENC_BL].ParameterStr = ParameterStrMap[bankeditselect];
+        encMap[ENC_BL].Push = true;
+        encMap[ENC_BL].PushAction = State::MAIN;
+
+        encMap[ENC_BR].active = true;
+        encMap[ENC_BR].Parameter = renamebank;
+        encMap[ENC_BR].ShowValue = false;
+        encMap[ENC_BR].ParameterStr = ParameterStrMap[renamebank];
+        encMap[ENC_BR].Push = true;
+        encMap[ENC_BR].PushAction = State::RENAMEBANK;
+        break;
+
+    case State::RENAMEBANK:
+        encMap[ENC_TL].active = true;
+        encMap[ENC_TL].Parameter = deleteCharacterBank;
+        encMap[ENC_TL].ShowValue = false;
+        encMap[ENC_TL].Value = 0;
+        encMap[ENC_TL].Range = 0;
+        encMap[ENC_TL].ValueStr = "";
+        encMap[ENC_TL].ParameterStr = ParameterStrMap[deleteCharacterBank];
+        encMap[ENC_TL].Push = true;
+        encMap[ENC_TL].PushAction = State::DELETECHARBANK;
+
+        encMap[ENC_TR].active = true;
+        encMap[ENC_TR].Parameter = cancel;
+        encMap[ENC_TR].ShowValue = false;
+        encMap[ENC_TR].Value = 0;
+        encMap[ENC_TR].Range = 0;
+        encMap[ENC_TR].ValueStr = "";
+        encMap[ENC_TR].ParameterStr = ParameterStrMap[cancel];
+        encMap[ENC_TR].Push = true;
+        encMap[ENC_TR].PushAction = State::MAIN;
+
+        encMap[ENC_BL].active = true;
+        encMap[ENC_BL].Parameter = choosecharacterBank;
+        encMap[ENC_BL].ShowValue = false;
+        encMap[ENC_BL].Value = 0;
+        encMap[ENC_BL].Range = TOTALCHARS;
+        encMap[ENC_BL].ValueStr = "";
+        encMap[ENC_BL].ParameterStr = ParameterStrMap[choosecharacterBank];
+        encMap[ENC_BL].Push = true;
+        encMap[ENC_BL].PushAction = State::CHOOSECHARBANK;
+
+        encMap[ENC_BR].active = true;
+        encMap[ENC_BR].Parameter = savebank;
+        encMap[ENC_BR].ShowValue = false;
+        encMap[ENC_BR].ValueStr = "";
+        encMap[ENC_BR].ParameterStr = ParameterStrMap[savebank];
+        encMap[ENC_BR].Push = true;
+        encMap[ENC_BR].PushAction = State::MAIN;
         break;
     default:
         break;

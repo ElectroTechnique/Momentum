@@ -34,6 +34,15 @@ NumericType clampToRange(NumericType value, NumericType delta, NumericType min, 
   return value;
 }
 
+char *substr(char *arr, int begin, int len)
+{
+  char *res = new char[len + 1];
+  for (int i = 0; i < len; i++)
+    res[i] = *(arr + begin + i);
+  res[len] = 0;
+  return res;
+}
+
 String milliToString(float milli)
 {
   if (milli < 1000)

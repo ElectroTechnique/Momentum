@@ -276,7 +276,7 @@ public:
 
         shared.pwmLfoA.frequency(pwmRateA);
 
-        if (pwmSourceA == PWMSOURCEFIXED)
+        if (pwmSourceA == PWMSOURCEMANUAL)
         {
             // Set to fixed PW mode
             this->setPwmMixerALFO(0);  // LFO Source off
@@ -300,7 +300,7 @@ public:
 
         shared.pwmLfoB.frequency(pwmRateB);
 
-        if (pwmSourceB == PWMSOURCEFIXED)
+        if (pwmSourceB == PWMSOURCEMANUAL)
         {
             // Set to fixed PW mode
             this->setPwmMixerBLFO(0);  // LFO Source off
@@ -970,7 +970,7 @@ private:
                     // Exit since there is already a note playing.
                     return;
                     break;
-                case MONOPHONIC_LEGATO://Not implemented
+                case MONOPHONIC_LEGATO: // Not implemented
                 case MONOPHONIC_LAST:
                     // Always play the last note.
                     break;
@@ -1087,7 +1087,6 @@ private:
 
     void noteOn(uint8_t note, uint8_t velocity, bool monoRetrigger)
     {
-
         if (filterLfoRetrig)
         {
             shared.filterLfo.sync();

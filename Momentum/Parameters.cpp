@@ -26,3 +26,5 @@ int8_t envTypeFilt = -128; // Linear
 int8_t glideShape = 1; // Exp
 
 uint8_t currentVolume = 63;
+
+int8_t chosenChar = 0;

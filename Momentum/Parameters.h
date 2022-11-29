@@ -1,6 +1,7 @@
 #pragma once
 #include <stdint.h>
 #include <MIDI.h>
+#include <Constants.h>
 
 // Globals used for Settings
 extern byte midiChannel;
@@ -26,12 +27,17 @@ extern int8_t glideShape;
 
 extern uint8_t currentVolume;
 
+extern int8_t chosenChar;
+
+// extern uint8_t currentSettingsOption;
+// extern uint8_t currentSettingsValue;
+
 // Patch parameters to store the relative 7-bit values (Cutoff freq 8-bit) for patch store and modification by the encoders
 // Initialised with a default patch to store when there are no patches on SD card
 typedef struct PatchStruct
 {
     uint32_t UID = 0;
-    char PatchName[64] = "Solina";
+    char PatchName[64] = "Init"; // INITPATCHNAME;
     uint8_t OscLevelA = 127;
     uint8_t OscLevelB = 127;
     uint8_t NoiseLevel = 63; // Centre off
@@ -53,8 +59,8 @@ typedef struct PatchStruct
     uint8_t PWMB_Amount = 63;
     uint8_t PWMRateA = 10;
     uint8_t PWMRateB = 10;
-    uint8_t PWA_Amount = 0;
-    uint8_t PWB_Amount = 0;
+    uint8_t PWA_Amount = 63;
+    uint8_t PWB_Amount = 63;
     uint8_t FilterRes = 10;
     uint8_t FilterFreq = 230;
     uint8_t FilterMixer = 0;
@@ -77,8 +83,8 @@ typedef struct PatchStruct
     uint8_t Decay = 20;
     uint8_t Sustain = 80;
     uint8_t Release = 25;
-    uint8_t EffectAmt = 20;
-    uint8_t EffectMix = 105;
+    uint8_t EffectAmt = 8;
+    uint8_t EffectMix = 63;
     uint8_t PitchEnv = 63; // Centre off
     uint8_t VelocitySensitivity = 0;
     uint8_t ChordDetune = 0;

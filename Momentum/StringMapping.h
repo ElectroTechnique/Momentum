@@ -67,11 +67,24 @@ FLASHMEM void assignStrings()
     ParameterStrMap[pitchbendrange] = "Pitch Bend";
     ParameterStrMap[modwheeldepth] = "Mod Wheel Depth";
     ParameterStrMap[savebankselect] = "Bank";
-    ParameterStrMap[savepatchselect] = "Patch";
+    ParameterStrMap[savepatchselect] = "Save Patch";
     ParameterStrMap[MIDIChIn] = "Channel In";
     ParameterStrMap[MIDIChOut] = "Channel Out";
     ParameterStrMap[MIDIThruMode] = "MIDI Thru Mode";
     ParameterStrMap[PerfSelect] = "Performance";
+    ParameterStrMap[cancel] = "Cancel";
+    ParameterStrMap[settingoption] = "Setting";
+    ParameterStrMap[settingvalue] = "Value";
+    ParameterStrMap[editbank] = "Edit Bank";
+    ParameterStrMap[deletepatches] = "Delete";
+    ParameterStrMap[deletebank] = "Delete";
+    ParameterStrMap[renamebank] = "Rename Bank";
+    ParameterStrMap[savebank] = "Save Bank";
+    ParameterStrMap[bankeditselect] = "Bank";
+    ParameterStrMap[choosecharacterPatch] = "Character";
+    ParameterStrMap[choosecharacterBank] = "Character";
+    ParameterStrMap[deleteCharacterPatch] = "Del. Char";
+    ParameterStrMap[deleteCharacterBank] = "Del. Char";
 }
 
 FLASHMEM String getWaveformStr(int value)

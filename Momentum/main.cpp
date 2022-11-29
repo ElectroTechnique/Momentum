@@ -128,6 +128,7 @@ long earliestTime = millis(); // For voice allocation - initialise to now
 
 FLASHMEM void setup()
 {
+    // while(!Serial);
     AudioMemory(60);
     // Initialize the voice groups.
     uint8_t total = 0;
@@ -143,9 +144,7 @@ FLASHMEM void setup()
         }
         groupvec.push_back(currentGroup);
     }
-
     setUpSettings();
-
     cardStatus = SD.begin(BUILTIN_SDCARD);
     if (cardStatus)
     {
@@ -153,14 +152,14 @@ FLASHMEM void setup()
         // Get patch numbers and names from SD card
         checkSDCardStructure();
         loadBankNames();
-        loadPatchNames(currentBankIndex);
+        loadPatchNamesFromBank(currentBankIndex);
         recallPatch(currentBankIndex, patches.front().patchUID); // Load first patch from SD card
     }
     else
     {
         setCurrentPatchData(); // Initialise to default
         Serial.println(F("SD card is not connected or unusable"));
-        showPatchPage(F("SD Card"), F("Not connected or usable"));
+        setPatchNoAndNameForDisp(F(""), F("No SD Card"));
     }
 
     // Read MIDI Channel from EEPROM
@@ -216,9 +215,9 @@ FLASHMEM void setup()
 
     assignStrings();
 
+    setupDisplay();
     setupHardware(encoderCallback, encoderButtonCallback, buttonCallback);
     setEncodersState(state);
-    setupDisplay();
 }
 
 void myNoteOn(byte channel, byte note, byte velocity)
@@ -342,7 +341,7 @@ FLASHMEM void updatePatch(String name, uint32_t index, uint32_t UID)
     groupvec[activeGroupIndex]->setPatchName(name);
     groupvec[activeGroupIndex]->setPatchIndex(index);
     groupvec[activeGroupIndex]->setUID(UID);
-    showPatchPage(String(index), name);
+    setPatchNoAndNameForDisp(String(index), name);
 }
 
 void myPitchBend(byte channel, int bend)
@@ -370,21 +369,21 @@ void myControlChange(byte channel, byte control, byte value)
 
         if (value == 0)
         {
-            setEncValue(CCdetune, currentPatch.Detune, String((1 - groupvec[activeGroupIndex]->params().detune) * 100) + " %");
-            if (!setEncValue(CCunison, value, "Off"))
-                showCurrentParameterOverlay("Unison", "Off");
+            setEncValue(CCdetune, currentPatch.Detune, String((1 - groupvec[activeGroupIndex]->params().detune) * 100) + F(" %"));
+            if (!setEncValue(CCunison, value, F("Off")))
+                showCurrentParameterOverlay(F("Unison"), F("Off"));
         }
         else if (value == 1)
         {
             setEncValue(CCdetune, currentPatch.Detune, String((1 - groupvec[activeGroupIndex]->params().detune) * 100) + " %");
-            if (!setEncValue(CCunison, value, "Dynamic"))
-                showCurrentParameterOverlay("Dynamic", "On");
+            if (!setEncValue(CCunison, value, F("Dynamic")))
+                showCurrentParameterOverlay(F("Dynamic"), F("On"));
         }
         else
         {
             setEncValue(CCdetune, currentPatch.ChordDetune, String(CDT_STR[groupvec[activeGroupIndex]->params().chordDetune]));
-            if (!setEncValue(CCunison, value, "Chord"))
-                showCurrentParameterOverlay("Chord", "On");
+            if (!setEncValue(CCunison, value, F("Chord")))
+                showCurrentParameterOverlay(F("Chord"), F("On"));
         }
         break;
     }
@@ -421,16 +420,16 @@ void myControlChange(byte channel, byte control, byte value)
         currentPatch.PitchA = value;
         groupvec[activeGroupIndex]->params().oscPitchA = PITCH[value];
         groupvec[activeGroupIndex]->updateVoices();
-        if (!setEncValue(CCpitchA, value, (PITCH[value] > 0 ? "+" : "") + String(PITCH[value])))
-            showCurrentParameterOverlay(ParameterStrMap[CCpitchA], (PITCH[value] > 0 ? "+" : "") + String(PITCH[value]));
+        if (!setEncValue(CCpitchA, value, (PITCH[value] > 0 ? F("+") : F("")) + String(PITCH[value])))
+            showCurrentParameterOverlay(ParameterStrMap[CCpitchA], (PITCH[value] > 0 ? F("+") : F("")) + String(PITCH[value]));
         break;
 
     case CCpitchB:
         currentPatch.PitchB = value;
         groupvec[activeGroupIndex]->params().oscPitchB = PITCH[value];
         groupvec[activeGroupIndex]->updateVoices();
-        if (!setEncValue(CCpitchB, value, (PITCH[value] > 0 ? "+" : "") + String(PITCH[value])))
-            showCurrentParameterOverlay(ParameterStrMap[CCpitchB], (PITCH[value] > 0 ? "+" : "") + String(PITCH[value]));
+        if (!setEncValue(CCpitchB, value, (PITCH[value] > 0 ? F("+") : F("")) + String(PITCH[value])))
+            showCurrentParameterOverlay(ParameterStrMap[CCpitchB], (PITCH[value] > 0 ? F("+") : F("")) + String(PITCH[value]));
         break;
 
     case CCdetune:
@@ -445,12 +444,12 @@ void myControlChange(byte channel, byte control, byte value)
         {
             ;
             if (!setEncValue(CCdetune, value, CDT_STR[value]))
-                showCurrentParameterOverlay("Chord", CDT_STR[value]);
+                showCurrentParameterOverlay(F("Chord"), CDT_STR[value]);
         }
         else
         {
-            if (!setEncValue(CCdetune, value, String((1 - detune) * 100) + " %"))
-                showCurrentParameterOverlay(ParameterStrMap[CCdetune], String((1 - detune) * 100) + " %");
+            if (!setEncValue(CCdetune, value, String((1 - detune) * 100) + F(" %")))
+                showCurrentParameterOverlay(ParameterStrMap[CCdetune], String((1 - detune) * 100) + F(" %"));
         }
         break;
     }
@@ -460,16 +459,16 @@ void myControlChange(byte channel, byte control, byte value)
 
         if (value == PWMSOURCELFO)
         {
-            if (!setEncValue(CCpwmSourceA, value, "LFO"))
-                showCurrentParameterOverlay(ParameterStrMap[CCpwmSourceA], "LFO");
+            if (!setEncValue(CCpwmSourceA, value, F("LFO")))
+                showCurrentParameterOverlay(ParameterStrMap[CCpwmSourceA], F("LFO"));
             // Turn on rate control
-            setEncValue(true, CCpwmRateA, currentPatch.PWMRateA, String(2 * PWMRATE[currentPatch.PWMRateA]) + " Hz", CCpwmRateA);
+            setEncValue(true, CCpwmRateA, currentPatch.PWMRateA, String(2 * PWMRATE[currentPatch.PWMRateA]) + F(" Hz"), CCpwmRateA);
             setEncInactive(CCpwA);
         }
         else if (value == PWMSOURCEFENV)
         {
-            if (!setEncValue(CCpwmSourceA, value, "Filter Env"))
-                showCurrentParameterOverlay(ParameterStrMap[CCpwmSourceA], "Filter Env");
+            if (!setEncValue(CCpwmSourceA, value, F("Filter Env")))
+                showCurrentParameterOverlay(ParameterStrMap[CCpwmSourceA], F("Filter Env"));
             setEncInactive(CCpwmRateA);
             setEncInactive(CCpwA);
             // Turn on pwm amot control
@@ -477,17 +476,17 @@ void myControlChange(byte channel, byte control, byte value)
         }
         else
         {
-            if (!setEncValue(CCpwmSourceA, value, "Manual"))
-                showCurrentParameterOverlay(ParameterStrMap[CCpwmSourceA], "Manual");
+            if (!setEncValue(CCpwmSourceA, value, F("Manual")))
+                showCurrentParameterOverlay(ParameterStrMap[CCpwmSourceA], F("Manual"));
             setEncInactive(CCpwmRateA);
             setEncInactive(CCpwmAmtA);
             if (groupvec[activeGroupIndex]->getWaveformA() == WAVEFORM_TRIANGLE_VARIABLE)
             {
-                setEncValue(true, CCpwA, currentPatch.PWA_Amount, "Tri " + String(groupvec[activeGroupIndex]->getPwA()), CCpwA);
+                setEncValue(true, CCpwA, currentPatch.PWA_Amount, F("Tri ") + String(groupvec[activeGroupIndex]->getPwA()), CCpwA);
             }
             else
             {
-                setEncValue(true, CCpwA, currentPatch.PWA_Amount, "Pulse " + String(groupvec[activeGroupIndex]->getPwA()), CCpwA);
+                setEncValue(true, CCpwA, currentPatch.PWA_Amount, F("Pulse ") + String(groupvec[activeGroupIndex]->getPwA()), CCpwA);
             }
         }
         break;
@@ -497,16 +496,16 @@ void myControlChange(byte channel, byte control, byte value)
 
         if (value == PWMSOURCELFO)
         {
-            if (!setEncValue(CCpwmSourceB, value, "LFO"))
-                showCurrentParameterOverlay(ParameterStrMap[CCpwmSourceB], "LFO");
+            if (!setEncValue(CCpwmSourceB, value, F("LFO")))
+                showCurrentParameterOverlay(ParameterStrMap[CCpwmSourceB], F("LFO"));
             // Turn on rate control
-            setEncValue(true, CCpwmRateB, currentPatch.PWMRateB, String(2 * PWMRATE[currentPatch.PWMRateB]) + " Hz", CCpwmRateB);
+            setEncValue(true, CCpwmRateB, currentPatch.PWMRateB, String(2 * PWMRATE[currentPatch.PWMRateB]) + F(" Hz"), CCpwmRateB);
             setEncInactive(CCpwB);
         }
         else if (value == PWMSOURCEFENV)
         {
-            if (!setEncValue(CCpwmSourceB, value, "Filter Env"))
-                showCurrentParameterOverlay(ParameterStrMap[CCpwmSourceB], "Filter Env");
+            if (!setEncValue(CCpwmSourceB, value, F("Filter Env")))
+                showCurrentParameterOverlay(ParameterStrMap[CCpwmSourceB], F("Filter Env"));
             setEncInactive(CCpwB);
             setEncInactive(CCpwmRateB);
             // Turn on pwm amot controlS
@@ -514,31 +513,31 @@ void myControlChange(byte channel, byte control, byte value)
         }
         else
         {
-            if (!setEncValue(CCpwmSourceB, value, "Manual"))
-                showCurrentParameterOverlay(ParameterStrMap[CCpwmSourceB], "Manual");
+            if (!setEncValue(CCpwmSourceB, value, F("Manual")))
+                showCurrentParameterOverlay(ParameterStrMap[CCpwmSourceB], F("Manual"));
             setEncInactive(CCpwmRateB);
             setEncInactive(CCpwmAmtB);
             if (groupvec[activeGroupIndex]->getWaveformB() == WAVEFORM_TRIANGLE_VARIABLE)
             {
-                setEncValue(true, CCpwB, currentPatch.PWB_Amount, "Tri " + String(groupvec[activeGroupIndex]->getPwB()), CCpwB);
+                setEncValue(true, CCpwB, currentPatch.PWB_Amount, F("Tri ") + String(groupvec[activeGroupIndex]->getPwB()), CCpwB);
             }
             else
             {
-                setEncValue(true, CCpwB, currentPatch.PWB_Amount, "Pulse " + String(groupvec[activeGroupIndex]->getPwB()), CCpwB);
+                setEncValue(true, CCpwB, currentPatch.PWB_Amount, F("Pulse ") + String(groupvec[activeGroupIndex]->getPwB()), CCpwB);
             }
         }
         break;
     case CCpwmRateA:
         currentPatch.PWMRateA = value;
         groupvec[activeGroupIndex]->setPwmRateA(PWMRATE[value]);
-        if (!setEncValue(CCpwmRateA, value, String(2 * PWMRATE[value]) + " Hz"))
-            showCurrentParameterOverlay(ParameterStrMap[CCpwmRateA], String(2 * PWMRATE[value]) + " Hz"); // PWM goes through mid to maximum, sounding effectively twice as fast
+        if (!setEncValue(CCpwmRateA, value, String(2 * PWMRATE[value]) + F(" Hz")))
+            showCurrentParameterOverlay(ParameterStrMap[CCpwmRateA], String(2 * PWMRATE[value]) + F(" Hz")); // PWM goes through mid to maximum, sounding effectively twice as fast
         break;
     case CCpwmRateB:
         currentPatch.PWMRateB = value;
         groupvec[activeGroupIndex]->setPwmRateB(PWMRATE[value]);
-        if (!setEncValue(CCpwmRateB, value, String(2 * PWMRATE[value]) + " Hz"))
-            showCurrentParameterOverlay(ParameterStrMap[CCpwmRateB], String(2 * PWMRATE[value]) + " Hz"); // PWM goes through mid to maximum, sounding effectively twice as fast
+        if (!setEncValue(CCpwmRateB, value, String(2 * PWMRATE[value]) + F(" Hz")))
+            showCurrentParameterOverlay(ParameterStrMap[CCpwmRateB], String(2 * PWMRATE[value]) + F(" Hz")); // PWM goes through mid to maximum, sounding effectively twice as fast
         break;
 
     case CCpwmAmtA:
@@ -574,13 +573,13 @@ void myControlChange(byte channel, byte control, byte value)
         groupvec[activeGroupIndex]->setPWA(LINEARCENTREZERO[value]);
         if (groupvec[activeGroupIndex]->getWaveformA() == WAVEFORM_TRIANGLE_VARIABLE)
         {
-            if (!setEncValue(CCpwA, value, "Tri " + String(groupvec[activeGroupIndex]->getPwA())))
-                showCurrentParameterOverlay("1 Var Triangle", groupvec[activeGroupIndex]->getPwA());
+            if (!setEncValue(CCpwA, value, F("Tri ") + String(groupvec[activeGroupIndex]->getPwA())))
+                showCurrentParameterOverlay(F("1 Var Triangle"), groupvec[activeGroupIndex]->getPwA());
         }
         else
         {
-            if (!setEncValue(CCpwA, value, "Pulse " + String(groupvec[activeGroupIndex]->getPwA())))
-                showCurrentParameterOverlay("1 Pulse Width", groupvec[activeGroupIndex]->getPwA());
+            if (!setEncValue(CCpwA, value, F("Pulse ") + String(groupvec[activeGroupIndex]->getPwA())))
+                showCurrentParameterOverlay(F("1 Pulse Width"), groupvec[activeGroupIndex]->getPwA());
         }
         break;
 
@@ -589,13 +588,13 @@ void myControlChange(byte channel, byte control, byte value)
         groupvec[activeGroupIndex]->setPWB(LINEARCENTREZERO[value]);
         if (groupvec[activeGroupIndex]->getWaveformB() == WAVEFORM_TRIANGLE_VARIABLE)
         {
-            if (!setEncValue(CCpwB, value, "Tri " + String(groupvec[activeGroupIndex]->getPwB())))
-                showCurrentParameterOverlay("2 Variable Triangle", groupvec[activeGroupIndex]->getPwB());
+            if (!setEncValue(CCpwB, value, F("Tri ") + String(groupvec[activeGroupIndex]->getPwB())))
+                showCurrentParameterOverlay(F("2 Variable Triangle"), groupvec[activeGroupIndex]->getPwB());
         }
         else
         {
-            if (!setEncValue(CCpwB, value, "Pulse " + String(groupvec[activeGroupIndex]->getPwB())))
-                showCurrentParameterOverlay("2 Pulse Width", groupvec[activeGroupIndex]->getPwB());
+            if (!setEncValue(CCpwB, value, F("Pulse ") + String(groupvec[activeGroupIndex]->getPwB())))
+                showCurrentParameterOverlay(F("2 Pulse Width"), groupvec[activeGroupIndex]->getPwB());
         }
         break;
 
@@ -606,12 +605,12 @@ void myControlChange(byte channel, byte control, byte value)
         {
         case 1: // XOR
             if (!setEncValue(CCoscLevelA, value, String(groupvec[activeGroupIndex]->getOscLevelA())))
-                showCurrentParameterOverlay("Osc Mix 1:2", "   " + String(groupvec[activeGroupIndex]->getOscLevelA()) + " : " + String(groupvec[activeGroupIndex]->getOscLevelB()));
+                showCurrentParameterOverlay(F("Osc Mix 1:2"), "   " + String(groupvec[activeGroupIndex]->getOscLevelA()) + F(" : ") + String(groupvec[activeGroupIndex]->getOscLevelB()));
             break;
         case 2: // XMod
                 // osc A sounds with increasing osc B mod
             if (!setEncValue(CCoscLevelA, value, String(groupvec[activeGroupIndex]->getOscLevelA())))
-                showCurrentParameterOverlay("X-Mod Osc 1", "by Osc 2: " + String(1 - groupvec[activeGroupIndex]->getOscLevelB()));
+                showCurrentParameterOverlay(F("X-Mod Osc 1"), F("by Osc 2: ") + String(1 - groupvec[activeGroupIndex]->getOscLevelB()));
             break;
         case 0: // None
             if (!setEncValue(CCoscLevelA, value, String(groupvec[activeGroupIndex]->getOscLevelA())))
@@ -627,12 +626,12 @@ void myControlChange(byte channel, byte control, byte value)
         {
         case 1: // XOR
             if (!setEncValue(CCoscLevelB, value, String(groupvec[activeGroupIndex]->getOscLevelB())))
-                showCurrentParameterOverlay("Osc Mix 1:2", "   " + String(groupvec[activeGroupIndex]->getOscLevelA()) + " : " + String(groupvec[activeGroupIndex]->getOscLevelB()));
+                showCurrentParameterOverlay(F("Osc Mix 1:2"), "   " + String(groupvec[activeGroupIndex]->getOscLevelA()) + F(" : ") + String(groupvec[activeGroupIndex]->getOscLevelB()));
             break;
         case 2: // XMod
                 // osc B sounds with increasing osc A mod
             if (!setEncValue(CCoscLevelB, value, String(groupvec[activeGroupIndex]->getOscLevelB())))
-                showCurrentParameterOverlay("X-Mod Osc 2", "by Osc 1: " + String(1 - groupvec[activeGroupIndex]->getOscLevelA()));
+                showCurrentParameterOverlay(F("X-Mod Osc 2"), F("by Osc 1: ") + String(1 - groupvec[activeGroupIndex]->getOscLevelA()));
             break;
         case 0: // None
             if (!setEncValue(CCoscLevelB, value, String(groupvec[activeGroupIndex]->getOscLevelB())))
@@ -662,18 +661,18 @@ void myControlChange(byte channel, byte control, byte value)
 
         if (noise > 0)
         {
-            if (!setEncValue(CCnoiseLevel, value, "Pink " + String(noise)))
-                showCurrentParameterOverlay(ParameterStrMap[CCnoiseLevel], "Pink " + String(noise));
+            if (!setEncValue(CCnoiseLevel, value, F("Pink ") + String(noise)))
+                showCurrentParameterOverlay(ParameterStrMap[CCnoiseLevel], F("Pink ") + String(noise));
         }
         else if (noise < 0)
         {
-            if (!setEncValue(CCnoiseLevel, value, "White " + String(abs(noise))))
-                showCurrentParameterOverlay(ParameterStrMap[CCnoiseLevel], "White " + String(abs(noise)));
+            if (!setEncValue(CCnoiseLevel, value, F("White ") + String(abs(noise))))
+                showCurrentParameterOverlay(ParameterStrMap[CCnoiseLevel], F("White ") + String(abs(noise)));
         }
         else
         {
-            if (!setEncValue(CCnoiseLevel, value, "Off"))
-                showCurrentParameterOverlay(ParameterStrMap[CCnoiseLevel], "Off");
+            if (!setEncValue(CCnoiseLevel, value, F("Off")))
+                showCurrentParameterOverlay(ParameterStrMap[CCnoiseLevel], F("Off"));
         }
         break;
     }
@@ -682,7 +681,9 @@ void myControlChange(byte channel, byte control, byte value)
         {
             Serial.println(value);
             currentBankIndex = value;
-            loadPatchNames(currentBankIndex);
+            if (!cardStatus)
+                return;
+            loadPatchNamesFromBank(currentBankIndex);
             if (patches.size() > 0 && patches[0].patchUID > 0)
             {
                 currentPatchIndex = 0;
@@ -695,16 +696,16 @@ void myControlChange(byte channel, byte control, byte value)
         // MIDI is 7 bit, 128 values and needs to choose alternate filterfreqs(8 bit) by multiplying by 2
         currentPatch.FilterFreq = value << 1; // FilterFreq is 8 bit
         groupvec[activeGroupIndex]->setCutoff(FILTERFREQS256[currentPatch.FilterFreq]);
-        if (!setEncValue(filterfreq256, currentPatch.FilterFreq, String(int(FILTERFREQS256[currentPatch.FilterFreq])) + " Hz"))
-            showCurrentParameterOverlay(ParameterStrMap[CCfilterfreq], String(int(FILTERFREQS256[currentPatch.FilterFreq])) + " Hz");
+        if (!setEncValue(filterfreq256, currentPatch.FilterFreq, String(int(FILTERFREQS256[currentPatch.FilterFreq])) + F(" Hz")))
+            showCurrentParameterOverlay(ParameterStrMap[CCfilterfreq], String(int(FILTERFREQS256[currentPatch.FilterFreq])) + F(" Hz"));
         break;
 
     case filterfreq256:
         // 8 bit from panel control for smoothness
         currentPatch.FilterFreq = value;
         groupvec[activeGroupIndex]->setCutoff(FILTERFREQS256[value]);
-        if (!setEncValue(filterfreq256, value, String(int(FILTERFREQS256[value])) + " Hz"))
-            showCurrentParameterOverlay(ParameterStrMap[CCfilterfreq], String(int(FILTERFREQS256[value])) + " Hz");
+        if (!setEncValue(filterfreq256, value, String(int(FILTERFREQS256[value])) + F(" Hz")))
+            showCurrentParameterOverlay(ParameterStrMap[CCfilterfreq], String(int(FILTERFREQS256[value])) + F(" Hz"));
         break;
 
     case CCfilterres:
@@ -724,22 +725,22 @@ void myControlChange(byte channel, byte control, byte value)
         String filterStr;
         if (LINEAR_FILTERMIXER[value] == BANDPASS)
         {
-            filterStr = "Band Pass";
+            filterStr = F("Band Pass");
         }
         else
         {
             // LP-HP mix mode - a notch filter
             if (LINEAR_FILTERMIXER[value] == LOWPASS)
             {
-                filterStr = "Low Pass";
+                filterStr = F("Low Pass");
             }
             else if (LINEAR_FILTERMIXER[value] == HIGHPASS)
             {
-                filterStr = "High Pass";
+                filterStr = F("High Pass");
             }
             else
             {
-                filterStr = "Low " + String(100 - int(100 * LINEAR_FILTERMIXER[value])) + " - " + String(int(100 * LINEAR_FILTERMIXER[value])) + " High";
+                filterStr = F("Low ") + String(100 - int(100 * LINEAR_FILTERMIXER[value])) + F(" - ") + String(int(100 * LINEAR_FILTERMIXER[value])) + F(" High");
             }
         }
         if (!setEncValue(CCfiltermixer, value, filterStr))
@@ -794,8 +795,8 @@ void myControlChange(byte channel, byte control, byte value)
         }
 
         groupvec[activeGroupIndex]->setPitchLfoRate(rate);
-        if (!setEncValue(CCoscLfoRate, value, String(rate) + " Hz"))
-            showCurrentParameterOverlay(ParameterStrMap[CCoscLfoRate], String(rate) + " Hz");
+        if (!setEncValue(CCoscLfoRate, value, String(rate) + F(" Hz")))
+            showCurrentParameterOverlay(ParameterStrMap[CCoscLfoRate], String(rate) + F(" Hz"));
         break;
     }
 
@@ -809,15 +810,15 @@ void myControlChange(byte channel, byte control, byte value)
     case CCosclforetrig:
         currentPatch.PitchLFORetrig = value;
         groupvec[activeGroupIndex]->setPitchLfoRetrig(value > 0);
-        if (!setEncValue(CCosclforetrig, value, value > 0 ? "On" : "Off"))
-            showCurrentParameterOverlay(ParameterStrMap[CCosclforetrig], value > 0 ? "On" : "Off");
+        if (!setEncValue(CCosclforetrig, value, value > 0 ? F("On") : F("Off")))
+            showCurrentParameterOverlay(ParameterStrMap[CCosclforetrig], value > 0 ? F("On") : F("Off"));
         break;
 
     case CCfilterLFOMidiClkSync:
         currentPatch.FilterLFOMidiClkSync = value;
         groupvec[activeGroupIndex]->setFilterLfoMidiClockSync(value > 0);
-        if (!setEncValue(temposync, value, value > 0 ? "On" : "Off"))
-            showCurrentParameterOverlay(ParameterStrMap[temposync], value > 0 ? "On" : "Off");
+        if (!setEncValue(temposync, value, value > 0 ? F("On") : F("Off")))
+            showCurrentParameterOverlay(ParameterStrMap[temposync], value > 0 ? F("On") : F("Off"));
         break;
 
     case CCfilterlforate:
@@ -841,12 +842,12 @@ void myControlChange(byte channel, byte control, byte value)
         if (timeDivStr.length() > 0)
         {
             if (!setEncValue(CCfilterlforate, value, timeDivStr))
-                showCurrentParameterOverlay("LFO Time Division", timeDivStr);
+                showCurrentParameterOverlay(F("LFO Time Division"), timeDivStr);
         }
         else
         {
-            if (!setEncValue(CCfilterlforate, value, String(rate) + " Hz"))
-                showCurrentParameterOverlay(ParameterStrMap[CCfilterlforate], String(rate) + " Hz");
+            if (!setEncValue(CCfilterlforate, value, String(rate) + F(" Hz")))
+                showCurrentParameterOverlay(ParameterStrMap[CCfilterlforate], String(rate) + F(" Hz"));
         }
         break;
     }
@@ -870,15 +871,15 @@ void myControlChange(byte channel, byte control, byte value)
     case CCfilterlforetrig:
         currentPatch.FilterLFORetrig = value;
         groupvec[activeGroupIndex]->setFilterLfoRetrig(value > 0);
-        if (!setEncValue(CCfilterlforetrig, value, value > 0 ? "On" : "Off"))
-            showCurrentParameterOverlay(ParameterStrMap[CCfilterlforetrig], value > 0 ? "On" : "Off");
+        if (!setEncValue(CCfilterlforetrig, value, value > 0 ? F("On") : F("Off")))
+            showCurrentParameterOverlay(ParameterStrMap[CCfilterlforetrig], value > 0 ? F("On") : F("Off"));
         break;
 
     case CCoscLFOMidiClkSync:
         currentPatch.PitchLFOMidiClkSync = value;
         groupvec[activeGroupIndex]->setPitchLfoMidiClockSync(value > 0);
-        if (!setEncValue(CCoscLFOMidiClkSync, value, value > 0 ? "On" : "Off"))
-            showCurrentParameterOverlay(ParameterStrMap[CCoscLFOMidiClkSync], value > 0 ? "On" : "Off");
+        if (!setEncValue(CCoscLFOMidiClkSync, value, value > 0 ? F("On") : F("Off")))
+            showCurrentParameterOverlay(ParameterStrMap[CCoscLFOMidiClkSync], value > 0 ? F("On") : F("Off"));
         break;
 
     case CCfilterattack:
@@ -945,24 +946,24 @@ void myControlChange(byte channel, byte control, byte value)
         groupvec[activeGroupIndex]->setOscFX(value);
         if (value == OSCFXXMOD)
         {
-            if (!setEncValue(CCoscfx, value, "X Mod"))
-                showCurrentParameterOverlay(ParameterStrMap[CCoscfx], "X Mod");
+            if (!setEncValue(CCoscfx, value, F("X Mod")))
+                showCurrentParameterOverlay(ParameterStrMap[CCoscfx], F("X Mod"));
             // Turn osc level controls on
             setEncValue(true, CCoscLevelA, currentPatch.OscLevelA, groupvec[activeGroupIndex]->getOscLevelA(), CCoscLevelA);
             setEncValue(true, CCoscLevelB, currentPatch.OscLevelB, groupvec[activeGroupIndex]->getOscLevelB(), CCoscLevelB);
         }
         else if (value == OSCFXXOR)
         {
-            if (!setEncValue(CCoscfx, value, "XOR Mod"))
-                showCurrentParameterOverlay(ParameterStrMap[CCoscfx], "XOR Mod");
+            if (!setEncValue(CCoscfx, value, F("XOR Mod")))
+                showCurrentParameterOverlay(ParameterStrMap[CCoscfx], F("XOR Mod"));
             // Turn osc level controls off
             setEncInactive(CCoscLevelA);
             setEncInactive(CCoscLevelB);
         }
         else
         {
-            if (!setEncValue(CCoscfx, value, "Off"))
-                showCurrentParameterOverlay(ParameterStrMap[CCoscfx], "Off");
+            if (!setEncValue(CCoscfx, value, F("Off")))
+                showCurrentParameterOverlay(ParameterStrMap[CCoscfx], F("Off"));
             // Turn osc level controls off
             setEncInactive(CCoscLevelA);
             setEncInactive(CCoscLevelB);
@@ -972,8 +973,8 @@ void myControlChange(byte channel, byte control, byte value)
     case CCfxamt:
         currentPatch.EffectAmt = value;
         groupvec[activeGroupIndex]->setEffectAmount(ENSEMBLE_LFO[value]);
-        if (!setEncValue(CCfxamt, value, String(ENSEMBLE_LFO[value]) + " Hz"))
-            showCurrentParameterOverlay(ParameterStrMap[CCfxamt], String(ENSEMBLE_LFO[value]) + " Hz");
+        if (!setEncValue(CCfxamt, value, String(ENSEMBLE_LFO[value]) + F(" Hz")))
+            showCurrentParameterOverlay(ParameterStrMap[CCfxamt], String(ENSEMBLE_LFO[value]) + F(" Hz"));
         break;
 
     case CCfxmix:
@@ -1051,8 +1052,20 @@ void myControlChange(byte channel, byte control, byte value)
     case MIDIThruMode:
         MIDIThru = value;
         storeMidiThru(MIDIThru);
-        if (!setEncValue(MIDIThruMode, value, String(MIDIThru)))
-            showCurrentParameterOverlay(ParameterStrMap[MIDIThruMode], String(MIDIThru));
+        if (!setEncValue(MIDIThruMode, value, MIDIThruStr[MIDIThru]))
+            showCurrentParameterOverlay(ParameterStrMap[MIDIThruMode], MIDIThruStr[MIDIThru]);
+        break;
+    case settingoption:
+        currentSettingsOption = value;
+        // storeMidiOutCh(midiOutCh);
+        if (!setEncValue(MIDIChOut, value, F("settingoption")))
+            showCurrentParameterOverlay(ParameterStrMap[MIDIChOut], F("settingoption"));
+        break;
+    case settingvalue:
+        currentSettingsValue = value;
+        // storeMidiThru(MIDIThru);
+        if (!setEncValue(MIDIThruMode, value, F("settingvalue")))
+            showCurrentParameterOverlay(ParameterStrMap[MIDIThruMode], F("settingvalue"));
         break;
     }
 }
@@ -1114,6 +1127,8 @@ FLASHMEM void recallPatch(uint8_t bank, long patchUID)
     groupvec[activeGroupIndex]->closeEnvelopes();
     loadPatch(bank, patchUID);
     setCurrentPatchData();
+    previousPatchIndex = currentPatchIndex;
+    previousBankIndex = currentBankIndex;
 }
 
 FLASHMEM void setCurrentPatchData()
@@ -1175,60 +1190,52 @@ FLASHMEM void setCurrentPatchData()
     Serial.print(F("Set Patch: "));
     Serial.print(currentPatch.PatchName);
     Serial.print(F(" UID: "));
-    Serial.println(groupvec[activeGroupIndex]->getUID()); // TODO remove
+    Serial.println(groupvec[activeGroupIndex]->getUID());
 }
 
 // Scales the encoder inc/decrement depending on the range to traverse
 FLASHMEM int8_t encScaling(EncoderMappingStruct *enc, int8_t delta)
 {
-    if (enc->Range < 127)
+    int8_t countLimit = 0;
+    switch (enc->Range)
     {
-        int8_t countLimit = 0;
-        switch (enc->Range)
-        {
-        case 64 ... 127:
-            countLimit = 2;
-            break;
-        case 32 ... 63:
-            countLimit = 3;
-            break;
-        case 16 ... 31:
-            countLimit = 5;
-            break;
-        case 8 ... 15:
-            countLimit = 7;
-            break;
-        case 4 ... 7:
-            countLimit = 10;
-            break;
-        case 1 ... 3:
-            countLimit = 20;
-            break;
-        default:
-            break;
-        }
-
-        enc->Counter += delta;
-        if (enc->Counter < (countLimit * -1) || enc->Counter > countLimit)
-        {
-            if ((enc->Value + delta > -1) && (enc->Value + delta < enc->Range + 1))
-            {
-                enc->Counter = 0;
-                enc->Value += delta;
-            }
-        }
-        else
-        {
-            delta = 0;
-        }
+    case 64 ... 127:
+        countLimit = 2;
+        break;
+    case 32 ... 63:
+        countLimit = 3;
+        break;
+    case 16 ... 31:
+        countLimit = 5;
+        break;
+    case 8 ... 15:
+        countLimit = 7;
+        break;
+    case 4 ... 7:
+        countLimit = 10;
+        break;
+    case 1 ... 3:
+        countLimit = 20;
+        break;
+    default:
+        countLimit = 1;
+        break;
     }
-    else
+
+    enc->Counter += delta;
+    if (enc->Counter < (countLimit * -1) || enc->Counter > countLimit)
     {
+        enc->Counter = 0;
         if ((enc->Value + delta > -1) && (enc->Value + delta < enc->Range + 1))
         {
             enc->Value += delta;
         }
     }
+    else
+    {
+        delta = 0;
+    }
+
     return delta;
 }
 
@@ -1244,45 +1251,68 @@ FLASHMEM void encoderCallback(unsigned enc_idx, int value, int delta)
         switch (encMap[enc_idx].Parameter)
         {
         case patchselect:
+        case savepatchselect:
+            if (!cardStatus)
+                return;
             if (newDelta == 0)
                 break;
-            recallPatch(currentBankIndex, patches[newDelta > 0 ? incCurrentPatchIndex() : decCurrentPatchIndex()].patchUID);
+            newDelta > 0 ? incCurrentPatchIndex() : decCurrentPatchIndex();
+            if (state == State::MAIN || state == State::DELETEPATCH)
+            {
+                recallPatch(currentBankIndex, patches[currentPatchIndex].patchUID);
+            }
+            else if (state == State::PATCHSAVING)
+            {
+                currentPatchName = patches[currentPatchIndex].patchName;
+            }
             break;
         case CCbankselectLSB:
+            if (!cardStatus)
+                return;
             if (newDelta == 0)
                 break;
-            loadPatchNames(newDelta > 0 ? incTempBankIndex() : decTempBankIndex());
-            if (state == State::PATCHLIST)
+            loadPatchNamesFromBank(newDelta > 0 ? incTempBankIndex() : decTempBankIndex());
+            if (state == State::PATCHLIST || state == State::EDITBANK)
             {
                 currentBankIndex = tempBankIndex;
                 currentPatchIndex = 0;
-                recallPatch(currentBankIndex, patches[0].patchUID);
             }
             else
             {
                 while (patches[0].patchUID == 0)
                 {
-                    loadPatchNames(newDelta > 0 ? incTempBankIndex() : decTempBankIndex());
+                    loadPatchNamesFromBank(newDelta > 0 ? incTempBankIndex() : decTempBankIndex());
                 }
                 currentBankIndex = tempBankIndex;
                 currentPatchIndex = 0;
-                recallPatch(currentBankIndex, patches[0].patchUID);
+                recallPatch(currentBankIndex, patches[currentPatchIndex].patchUID);
             }
             break;
-        case savepatchselect:
-            if (newDelta == 0)
-                break;
-            newDelta > 0 ? incTempPatchIndex() : decTempPatchIndex();
-            break;
         case savebankselect:
+            if (!cardStatus)
+                return;
             if (newDelta == 0)
                 break;
-            loadPatchNames(newDelta > 0 ? incTempBankIndex() : decTempBankIndex());
+            loadPatchNamesFromBank(newDelta > 0 ? incTempBankIndex() : decTempBankIndex());
             currentBankIndex = tempBankIndex;
-            currentPatchIndex = 0;
-            if (patches.size() > 0)
-                patches.push_back(PatchUIDAndName{0, "-Empty-"});
-            toSavePatchIndex = patches.size() - 1;
+            if (patches[0].patchUID != 0)
+                patches.push_back(PatchUIDAndName{0, F("-Empty-")});
+            currentPatchIndex = patches.size() - 1;
+            break;
+        case bankeditselect:
+            if (!cardStatus)
+                return;
+            if (newDelta == 0)
+                break;
+            loadPatchNamesFromBank(newDelta > 0 ? incTempBankIndex() : decTempBankIndex());
+            break;
+        case choosecharacterPatch:
+        case choosecharacterBank:
+            chosenChar += newDelta;
+            if (chosenChar >= TOTALCHARS)
+                chosenChar = 0;
+            if (chosenChar <= -1)
+                chosenChar = TOTALCHARS - 1;
             break;
         default:
             // Serial.printf("enc[%u]: v=%d, d=%d\n", enc_idx, encMap[enc_idx].Value, newDelta);
@@ -1297,8 +1327,78 @@ FLASHMEM void encoderButtonCallback(unsigned enc_idx, int buttonState)
 {
     // Subtract 4 from encoder index due to numbering on shift registers
     enc_idx -= 4;
-    if (encMap[enc_idx].Push)
+    if (encMap[enc_idx].Push && encMap[enc_idx].active)
     {
+        switch (encMap[enc_idx].Parameter)
+        {
+        case patchselect:
+        case CCbankselectLSB:
+            // If current patch is empty in this bank, go to previous bank with valid patch
+            while (patches[0].patchUID == 0)
+            {
+                tempBankIndex = decTempBankIndex();
+                loadPatchNamesFromBank(tempBankIndex);
+                currentBankIndex = tempBankIndex;
+                currentPatchIndex = 0;
+            }
+            recallPatch(currentBankIndex, patches[currentPatchIndex].patchUID);
+            lightRGLEDs(0, 0);
+            break;
+        case cancel:
+            currentPatchIndex = previousPatchIndex;
+            currentBankIndex = previousBankIndex;
+            loadPatchNamesFromBank(currentBankIndex);
+            lightRGLEDs(0, 0);
+            break;
+        case choosecharacterPatch:
+            if (currentPatchName.length() < PATCHNAMEMAXLEN)
+                currentPatchName += CHARACTERS[chosenChar];
+            break;
+        case choosecharacterBank:
+            if (strlen(bankNames[tempBankIndex]) < BANKNAMEMAXLEN)
+                strcat(bankNames[tempBankIndex], CHARACTERS[chosenChar]);
+            break;
+        case deleteCharacterPatch:
+            if (currentPatchName.length() == 0)
+                break;
+            currentPatchName = currentPatchName.substring(0, currentPatchName.length() - 1);
+            break;
+        case deleteCharacterBank:
+            if (strlen(bankNames[tempBankIndex]) == 0)
+                break;
+            bankNames[tempBankIndex] = substr(bankNames[tempBankIndex], 0, strlen(bankNames[tempBankIndex]) - 1);
+            break;
+        case savepatch:
+            state = State::SAVE;
+            strncpy(currentPatch.PatchName, currentPatchName.c_str(), 64);
+            savePatch(currentBankIndex, currentPatchIndex);
+            updatePatch(currentPatch.PatchName, currentPatchIndex + 1, currentPatch.UID);
+            lightRGLEDs(0, 0);
+            break;
+        case deletepatch:
+            state = State::DELETEMSG;
+            deletePatch(currentBankIndex, currentPatch.UID);
+            currentPatchIndex = 0;
+            loadPatchNamesFromBank(currentBankIndex);
+            recallPatch(currentBankIndex, patches[currentPatchIndex].patchUID);
+            lightRGLEDs(0, 0);
+            break;
+        case savebank:
+            state = State::MAIN;
+            saveBankName(bankNames[tempBankIndex]);
+            lightRGLEDs(0, 0);
+            break;
+        case deletebank:
+            state = State::DELETEBANKMSG;
+            deleteBank(currentBankIndex);
+            currentPatchIndex = 0;
+            //loadPatchNamesFromBank(currentBankIndex);
+            //recallPatch(currentBankIndex, patches[currentPatchIndex].patchUID);
+            lightRGLEDs(0, 0);
+            break;
+        default:
+            break;
+        }
         state = encMap[enc_idx].PushAction;
         setEncodersState(state);
     }
@@ -1306,7 +1406,7 @@ FLASHMEM void encoderButtonCallback(unsigned enc_idx, int buttonState)
 
 FLASHMEM void showSettingsPage()
 {
-    showSettingsPage(settings::current_setting(), settings::current_setting_value(), state);
+    setSettingsForDisp(settings::current_setting(), settings::current_setting_value(), state);
 }
 
 void buttonCallback(unsigned button_idx, int button)
@@ -1508,6 +1608,10 @@ void buttonCallback(unsigned button_idx, int button)
                 singleLED(RED, 5);
                 break;
             case State::AMPPAGE2:
+                state = State::AMPPAGE3; // show amplifier parameters
+                singleLED(RED, 5);
+                break;
+            case State::AMPPAGE3:
                 state = State::AMPPAGE1; // show amplifier parameters
                 singleLED(RED, 5);
                 break;
@@ -1519,7 +1623,7 @@ void buttonCallback(unsigned button_idx, int button)
         }
         if (button == HELD)
         {
-            if (state != State::SETTINGS && state != State::AMPPAGE1 && state != State::AMPPAGE2)
+            if (state != State::SETTINGS && state != State::AMPPAGE1 && state != State::AMPPAGE2 && state != State::AMPPAGE3)
             {
                 switch (state)
                 {
@@ -1580,14 +1684,27 @@ void buttonCallback(unsigned button_idx, int button)
                 if (patches.size() < PATCHES_LIMIT)
                 {
                     // Prompt for patch name
-                    currentPatchName = INITPATCHNAME;
+                    currentPatchName = currentPatch.PatchName;
+                    currentPatchIndex++;
                     state = State::PATCHSAVING;
+                    if (patches[0].patchUID != 0 && patches.back().patchUID != 0)
+                        patches.push_back(PatchUIDAndName{0, F("-Empty-")});
+                    currentPatchIndex = patches.size() - 1;
+                    Serial.printf(F("currentPatchIndex: %i\n"), currentPatchIndex);
+                }
+                else
+                {
+                    Serial.println(F("Over patch limit on this bank"));
                 }
             }
-            else if (state != State::PATCHSAVING)
+            else if (state == State::PATCHSAVING)
             {
+                // Save without patch naming
                 state = State::SAVE;
-                savePatch(currentBankIndex);
+                savePatch(currentBankIndex, currentPatchIndex);
+                updatePatch(currentPatchName, currentPatchIndex + 1, patches[currentPatchIndex].patchUID);
+                state = State::MAIN;
+                singleLED(ledColour::OFF, 7);
             }
             else
             {
@@ -1597,10 +1714,10 @@ void buttonCallback(unsigned button_idx, int button)
         }
         if (button == HELD)
         {
-            if (state != State::PATCHSAVING && state != State::DELETE && state != State::SAVE)
+            if (state != State::PATCHSAVING && state != State::DELETEPATCH && state != State::SAVE && state != State::EDITBANK && state != State::RENAMEBANK)
             {
                 // DELETE
-                state = State::DELETE;
+                state = State::DELETEPATCH;
                 singleLED(GREEN, 7);
             }
             else
@@ -1624,17 +1741,18 @@ void buttonCallback(unsigned button_idx, int button)
                 while (patches[0].patchUID == 0)
                 {
                     tempBankIndex = decTempBankIndex();
-                    loadPatchNames(tempBankIndex);
+                    loadPatchNamesFromBank(tempBankIndex);
+                    currentBankIndex = tempBankIndex;
+                    currentPatchIndex = 0;
                 }
-                currentBankIndex = tempBankIndex;
-                currentPatchIndex = 0;
-                recallPatch(currentBankIndex, patches[0].patchUID);
+                recallPatch(currentBankIndex, patches[currentPatchIndex].patchUID);
                 state = State::MAIN;
                 singleLED(OFF, 8);
                 break;
             default:
                 tempBankIndex = currentBankIndex;
-                loadPatchNames(tempBankIndex);
+                loadPatchNamesFromBank(tempBankIndex);
+                // currentPatchIndex = 0;
                 state = State::PATCHLIST; // show patch list
                 break;
             }
@@ -1644,12 +1762,11 @@ void buttonCallback(unsigned button_idx, int button)
             if (state != State::PATCHLIST)
             {
                 // Reinitialise to default patch
-                State stateprev = state;
                 state = State::REINITIALISE;
                 reinitialisePatch();
                 setCurrentPatchData();
                 flashLED(GREEN, 8, 300);
-                state = stateprev;
+                state = State::MAIN;
                 lightRGLEDs(currentRLEDs, currentGLEDs);
             }
             else

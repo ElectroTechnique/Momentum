@@ -1,5 +1,7 @@
 /*
-   MicroDexed
+This code is taken from:
+
+   MicroDexed - https://codeberg.org/positionhigh/MicroDexed-touch
 
    MicroDexed is a port of the Dexed sound engine
    (https://github.com/asb2m10/dexed) for the Teensy-3.5/3.6/4.x with audio shield.
@@ -43,7 +45,7 @@ void myNoteOnX(byte channel, byte note, byte velocity)
 
 void myNoteOffX(byte channel, byte note, byte velocity)
 {
-    return;
+  return;
 }
 
 void seq_live_recording(void)
@@ -162,8 +164,8 @@ void sequencer_part1(void)
                 }
               }
               else if (seq.arp_style == 3)
-              { // arp random
-                uint8_t rnd1 = 3;//random(seq.arp_length); TODO
+              {                   // arp random
+                uint8_t rnd1 = 3; // random(seq.arp_length); TODO
                 myNoteOnX(midiChannel, seq.arp_note + seq.arps[seq.arp_chord][rnd1 + seq.element_shift] + (seq.oct_shift * 12), seq.chord_velocity);
                 seq.arp_note_prev = seq.arp_note + seq.arps[seq.arp_chord][rnd1 + seq.element_shift] + (seq.oct_shift * 12);
               }

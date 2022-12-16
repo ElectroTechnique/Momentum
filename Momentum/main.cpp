@@ -128,7 +128,8 @@ long earliestTime = millis(); // For voice allocation - initialise to now
 
 FLASHMEM void setup()
 {
-    // while(!Serial);
+    if (CrashReport)
+        Serial.print(CrashReport);
     AudioMemory(60);
     // Initialize the voice groups.
     uint8_t total = 0;
@@ -152,8 +153,17 @@ FLASHMEM void setup()
         // Get patch numbers and names from SD card
         checkSDCardStructure();
         loadBankNames();
+        loadLastPatchUsed();
         loadPatchNamesFromBank(currentBankIndex);
-        recallPatch(currentBankIndex, patches.front().patchUID); // Load first patch from SD card
+        // If current patch is empty in this bank, go to previous bank with valid patch
+        while (patches[0].patchUID == 0)
+        {
+            tempBankIndex = decTempBankIndex();
+            loadPatchNamesFromBank(tempBankIndex);
+            currentBankIndex = tempBankIndex;
+            currentPatchIndex = 0;
+        }
+        recallPatch(currentBankIndex, patches[currentPatchIndex].patchUID);
     }
     else
     {
@@ -202,7 +212,7 @@ FLASHMEM void setup()
     Serial.println(F("MIDI In DIN Listening"));
 
     // Read MIDI Out Channel from EEPROM
-    midiOutCh = 1; // getMIDIOutCh();
+    midiOutCh = getMIDIOutCh();
     // Read MIDI Thru mode from EEPROM
     MIDIThru = getMidiThru();
     changeMIDIThruMode();
@@ -346,8 +356,7 @@ FLASHMEM void updatePatch(String name, uint32_t index, uint32_t UID)
 
 void myPitchBend(byte channel, int bend)
 {
-    // 0.5 to give 1oct max - spread of mod is 2oct
-    groupvec[activeGroupIndex]->pitchBend(bend * 0.5f * pitchBendRange * DIV12 * DIV8192);
+    groupvec[activeGroupIndex]->pitchBend(bend * pitchBendRange * DIV12xDIV8192);
 }
 
 // MIDI CC
@@ -1037,36 +1046,34 @@ void myControlChange(byte channel, byte control, byte value)
         if (!setEncValue(modwheeldepth, value, String(modWheelDepth)))
             showCurrentParameterOverlay(ParameterStrMap[modwheeldepth], String(modWheelDepth));
         break;
-    case MIDIChIn:
-        midiChannel = value;
-        storeMidiChannel(midiOutCh);
-        if (!setEncValue(MIDIChIn, value, String(midiChannel)))
-            showCurrentParameterOverlay(ParameterStrMap[MIDIChIn], String(midiChannel));
-        break;
-    case MIDIChOut:
-        midiOutCh = value;
-        storeMidiOutCh(midiOutCh);
-        if (!setEncValue(MIDIChOut, value, String(midiOutCh)))
-            showCurrentParameterOverlay(ParameterStrMap[MIDIChOut], String(midiOutCh));
-        break;
     case MIDIThruMode:
         MIDIThru = value;
         storeMidiThru(MIDIThru);
         if (!setEncValue(MIDIThruMode, value, MIDIThruStr[MIDIThru]))
             showCurrentParameterOverlay(ParameterStrMap[MIDIThruMode], MIDIThruStr[MIDIThru]);
         break;
-    case settingoption:
-        currentSettingsOption = value;
-        // storeMidiOutCh(midiOutCh);
-        if (!setEncValue(MIDIChOut, value, F("settingoption")))
-            showCurrentParameterOverlay(ParameterStrMap[MIDIChOut], F("settingoption"));
-        break;
-    case settingvalue:
-        currentSettingsValue = value;
-        // storeMidiThru(MIDIThru);
-        if (!setEncValue(MIDIThruMode, value, F("settingvalue")))
-            showCurrentParameterOverlay(ParameterStrMap[MIDIThruMode], F("settingvalue"));
-        break;
+    case MIDIChOut:
+    {
+        midiOutCh = value;
+        storeMidiOutCh(midiOutCh);
+        String sOut = "Off";
+        if (midiOutCh > 0)
+            sOut = String(midiOutCh);
+        if (!setEncValue(MIDIChOut, value, sOut))
+            showCurrentParameterOverlay(ParameterStrMap[MIDIChOut], sOut);
+    }
+    break;
+    case MIDIChIn:
+    {
+        midiChannel = value;
+        storeMidiChannel(midiChannel);
+        String sIn = "All";
+        if (midiChannel > MIDI_CHANNEL_OMNI)
+            sIn = String(midiChannel);
+        if (!setEncValue(MIDIChIn, value, sIn))
+            showCurrentParameterOverlay(ParameterStrMap[MIDIChIn], sIn);
+    }
+    break;
     }
 }
 
@@ -1074,12 +1081,10 @@ FLASHMEM void myProgramChange(byte channel, byte program)
 {
     if (program < patches.size())
     {
-        // state = PATCH;
         currentPatchIndex = program;
         recallPatch(currentBankIndex, patches[currentPatchIndex].patchUID);
         Serial.print(F("MIDI Pgm Change:"));
         Serial.println(patches[currentPatchIndex].patchUID);
-        // state = PARAMETER;
     }
 }
 
@@ -1107,7 +1112,7 @@ FLASHMEM void myMIDIClock()
     {
         // TODO: Most of this needs to move into the VoiceGroup
 
-        setMIDIClkSignal(!getMIDIClkSignal());
+        // setMIDIClkSignal(!getMIDIClkSignal()); //Flash with tempo
         float timeNow = millis();
         midiClkTimeInterval = (timeNow - previousMillis);
         lfoSyncFreq = 1000.0f / midiClkTimeInterval;
@@ -1129,6 +1134,8 @@ FLASHMEM void recallPatch(uint8_t bank, long patchUID)
     setCurrentPatchData();
     previousPatchIndex = currentPatchIndex;
     previousBankIndex = currentBankIndex;
+    storeLastPatchToEEPROM(currentPatchIndex);
+    storeLastBankToEEPROM(currentBankIndex);
 }
 
 FLASHMEM void setCurrentPatchData()
@@ -1272,7 +1279,7 @@ FLASHMEM void encoderCallback(unsigned enc_idx, int value, int delta)
             if (newDelta == 0)
                 break;
             loadPatchNamesFromBank(newDelta > 0 ? incTempBankIndex() : decTempBankIndex());
-            if (state == State::PATCHLIST || state == State::EDITBANK)
+            if (state == State::PATCHLIST || state == State::EDITBANK || state == State::DELETEPATCH)
             {
                 currentBankIndex = tempBankIndex;
                 currentPatchIndex = 0;
@@ -1314,6 +1321,19 @@ FLASHMEM void encoderCallback(unsigned enc_idx, int value, int delta)
             if (chosenChar <= -1)
                 chosenChar = TOTALCHARS - 1;
             break;
+        case deleteCharacterPatch:
+        case deleteCharacterBank:
+            break;
+        case settingoption:
+            newDelta > 0 ? settings::increment_setting() : settings::decrement_setting();
+            setEncValue(settingoption, value, settings::current_setting());
+            settings::save_current_value();
+            break;
+        case settingvalue:
+            newDelta > 0 ? settings::increment_setting_value() : settings::decrement_setting_value();
+            setEncValue(settingvalue, value, settings::current_setting_value());
+            settings::save_current_value();
+            break;
         default:
             // Serial.printf("enc[%u]: v=%d, d=%d\n", enc_idx, encMap[enc_idx].Value, newDelta);
             myControlChange(midiChannel, encMap[enc_idx].Parameter, encMap[enc_idx].Value);
@@ -1347,6 +1367,7 @@ FLASHMEM void encoderButtonCallback(unsigned enc_idx, int buttonState)
         case cancel:
             currentPatchIndex = previousPatchIndex;
             currentBankIndex = previousBankIndex;
+            loadBankNames();//If in the middle of bank renaming
             loadPatchNamesFromBank(currentBankIndex);
             lightRGLEDs(0, 0);
             break;
@@ -1355,8 +1376,8 @@ FLASHMEM void encoderButtonCallback(unsigned enc_idx, int buttonState)
                 currentPatchName += CHARACTERS[chosenChar];
             break;
         case choosecharacterBank:
-            if (strlen(bankNames[tempBankIndex]) < BANKNAMEMAXLEN)
-                strcat(bankNames[tempBankIndex], CHARACTERS[chosenChar]);
+            if (bankNames[tempBankIndex].length() < BANKNAMEMAXLEN)
+                bankNames[tempBankIndex].concat(CHARACTERS[chosenChar]);
             break;
         case deleteCharacterPatch:
             if (currentPatchName.length() == 0)
@@ -1364,9 +1385,10 @@ FLASHMEM void encoderButtonCallback(unsigned enc_idx, int buttonState)
             currentPatchName = currentPatchName.substring(0, currentPatchName.length() - 1);
             break;
         case deleteCharacterBank:
-            if (strlen(bankNames[tempBankIndex]) == 0)
+            if (bankNames[tempBankIndex].length() == 0)
                 break;
-            bankNames[tempBankIndex] = substr(bankNames[tempBankIndex], 0, strlen(bankNames[tempBankIndex]) - 1);
+            //bankNames[tempBankIndex] = substr(bankNames[tempBankIndex], 0, bankNames[tempBankIndex].length() - 1);
+            String(bankNames[tempBankIndex]).substring(0, bankNames[tempBankIndex].length() - 1);
             break;
         case savepatch:
             state = State::SAVE;
@@ -1376,8 +1398,11 @@ FLASHMEM void encoderButtonCallback(unsigned enc_idx, int buttonState)
             lightRGLEDs(0, 0);
             break;
         case deletepatch:
-            state = State::DELETEMSG;
-            deletePatch(currentBankIndex, currentPatch.UID);
+            if (patches.size() > 0)
+            {
+                state = State::DELETEMSG;
+                deletePatch(currentBankIndex, currentPatch.UID);
+            }
             currentPatchIndex = 0;
             loadPatchNamesFromBank(currentBankIndex);
             recallPatch(currentBankIndex, patches[currentPatchIndex].patchUID);
@@ -1390,10 +1415,10 @@ FLASHMEM void encoderButtonCallback(unsigned enc_idx, int buttonState)
             break;
         case deletebank:
             state = State::DELETEBANKMSG;
-            deleteBank(currentBankIndex);
+            deleteBank(tempBankIndex);
             currentPatchIndex = 0;
-            //loadPatchNamesFromBank(currentBankIndex);
-            //recallPatch(currentBankIndex, patches[currentPatchIndex].patchUID);
+            // loadPatchNamesFromBank(currentBankIndex);
+            // recallPatch(currentBankIndex, patches[currentPatchIndex].patchUID);
             lightRGLEDs(0, 0);
             break;
         default:
@@ -1402,11 +1427,6 @@ FLASHMEM void encoderButtonCallback(unsigned enc_idx, int buttonState)
         state = encMap[enc_idx].PushAction;
         setEncodersState(state);
     }
-}
-
-FLASHMEM void showSettingsPage()
-{
-    setSettingsForDisp(settings::current_setting(), settings::current_setting_value(), state);
 }
 
 void buttonCallback(unsigned button_idx, int button)
@@ -1629,10 +1649,8 @@ void buttonCallback(unsigned button_idx, int button)
                 {
                 case State::MAIN:
                     state = SETTINGS;
-                    showSettingsPage();
                     break;
                 case SETTINGS:
-                    settings::save_current_value();
                     state = State::MAIN;
                     break;
                 default:
@@ -1647,7 +1665,6 @@ void buttonCallback(unsigned button_idx, int button)
             }
         }
         break;
-
         // FX / Panic
     case BUTTON_6:
         if (button == HIGH)
@@ -1679,8 +1696,9 @@ void buttonCallback(unsigned button_idx, int button)
         {
             // SAVE
             singleLED(RED, 7);
-            if (state != State::PATCHSAVING)
+            if (state != State::PATCHSAVING && state != State::CHOOSECHARPATCH)
             {
+                loadBankNames(); // If in the middle of bank renaming
                 if (patches.size() < PATCHES_LIMIT)
                 {
                     // Prompt for patch name
@@ -1705,6 +1723,17 @@ void buttonCallback(unsigned button_idx, int button)
                 updatePatch(currentPatchName, currentPatchIndex + 1, patches[currentPatchIndex].patchUID);
                 state = State::MAIN;
                 singleLED(ledColour::OFF, 7);
+            }
+            else if (state == State::CHOOSECHARPATCH)
+            {
+                // Save after patch naming
+                state = State::SAVE;
+                strncpy(currentPatch.PatchName, currentPatchName.c_str(), 64);
+                savePatch(currentBankIndex, currentPatchIndex);
+                updatePatch(currentPatch.PatchName, currentPatchIndex + 1, currentPatch.UID);
+                state = State::MAIN;
+                singleLED(ledColour::OFF, 7);
+                break;
             }
             else
             {
@@ -1750,9 +1779,9 @@ void buttonCallback(unsigned button_idx, int button)
                 singleLED(OFF, 8);
                 break;
             default:
+                currentPatchIndex = previousPatchIndex; // when coming from cancelled save on last Empty patch
                 tempBankIndex = currentBankIndex;
                 loadPatchNamesFromBank(tempBankIndex);
-                // currentPatchIndex = 0;
                 state = State::PATCHLIST; // show patch list
                 break;
             }
@@ -1811,7 +1840,9 @@ void CPUMonitor()
     Serial.print(AudioProcessorUsageMax());
     Serial.print(F(")"));
     Serial.print(F("  MEM:"));
-    Serial.println(AudioMemoryUsageMax());
+    Serial.println(AudioProcessorUsage());
+    // memInfo();
+    // getFreeITCM();
     delayMicroseconds(500);
 }
 

@@ -115,5 +115,5 @@ void settings::decrement_setting_value() {
 }
 
 void settings::save_current_value() {
-  settingsOptions[currentSettingIndex()].updateHandler(selectedSettingValueIndex, current_setting_value());
+    settingsOptions[currentSettingIndex()].updateHandler(selectedSettingValueIndex, current_setting_value());
 }

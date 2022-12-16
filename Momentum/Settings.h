@@ -119,9 +119,6 @@ FLASHMEM int currentIndexVUEnable()
 // add settings to the circular buffer
 FLASHMEM void setUpSettings()
 {
-  settings::append(settings::SettingsOption{"MIDI In Ch.", {"All", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "\0"}, settingsMIDICh, currentIndexMIDICh});
-  settings::append(settings::SettingsOption{"MIDI Out Ch.", {"Off", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "\0"}, settingsMIDIOutCh, currentIndexMIDIOutCh});
-  settings::append(settings::SettingsOption{"MIDI Thru", {"Off", "Full", "Same Ch.", "Diff. Ch.", "\0"}, settingsMIDIThru, currentIndexMIDIThru});
   settings::append(settings::SettingsOption{"Oscilloscope", {"Off", "On", "\0"}, settingsScopeEnable, currentIndexScopeEnable});
   settings::append(settings::SettingsOption{"VU Meter", {"Off", "On", "\0"}, settingsVUEnable, currentIndexVUEnable});
 }

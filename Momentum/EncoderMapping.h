@@ -976,16 +976,30 @@ FLASHMEM void setEncodersState(State s)
         encMap[ENC_BL].ShowValue = true;
         encMap[ENC_BL].Value = midiChannel;
         encMap[ENC_BL].Range = 16;
+        if (midiChannel == 0)
+        {
+            encMap[ENC_BL].ValueStr = "All";
+        }
+        else
+        {
+            encMap[ENC_BL].ValueStr = String(midiChannel);
+        }
         encMap[ENC_BL].ParameterStr = ParameterStrMap[MIDIChIn];
-        encMap[ENC_BL].ValueStr = String(midiChannel);
         encMap[ENC_BL].Push = false;
 
         encMap[ENC_BR].active = true;
         encMap[ENC_BR].Parameter = MIDIChOut;
         encMap[ENC_BR].ShowValue = true;
         encMap[ENC_BR].Value = midiOutCh;
-        encMap[ENC_BR].Range = 15;
-        encMap[ENC_BR].ValueStr = String(midiOutCh);
+        encMap[ENC_BR].Range = 16;
+        if (midiOutCh == 0)
+        {
+            encMap[ENC_BR].ValueStr = "Off";
+        }
+        else
+        {
+            encMap[ENC_BR].ValueStr = String(midiOutCh);
+        }
         encMap[ENC_BR].ParameterStr = ParameterStrMap[MIDIChOut];
         encMap[ENC_BR].Push = false;
         break;
@@ -1007,8 +1021,8 @@ FLASHMEM void setEncodersState(State s)
         encMap[ENC_BR].active = true;
         encMap[ENC_BR].Parameter = PerfEdit;
         encMap[ENC_BR].ShowValue = false;
-        encMap[ENC_BR].ValueStr = String(midiOutCh);
-        encMap[ENC_BR].ParameterStr = "Push to Edit";
+        encMap[ENC_BR].ValueStr = "";
+        encMap[ENC_BR].ParameterStr = ParameterStrMap[PerfEdit];
         encMap[ENC_BR].Push = true;
         break;
 
@@ -1019,19 +1033,19 @@ FLASHMEM void setEncodersState(State s)
 
         encMap[ENC_BL].active = true;
         encMap[ENC_BL].Parameter = settingoption;
-        encMap[ENC_BL].ShowValue = false;
+        encMap[ENC_BL].ShowValue = true;
         encMap[ENC_BL].Value = 0;
-        encMap[ENC_BL].Range = 5;
+        encMap[ENC_BL].Range = 3;
         encMap[ENC_BL].ParameterStr = ParameterStrMap[settingoption];
-        encMap[ENC_BL].ValueStr = "";
+        encMap[ENC_BL].ValueStr = settings::current_setting();
         encMap[ENC_BL].Push = false;
 
         encMap[ENC_BR].active = true;
         encMap[ENC_BR].Parameter = settingvalue;
-        encMap[ENC_BR].ShowValue = false;
-        encMap[ENC_BR].Value = 0;
-        encMap[ENC_BR].Range = patches.size();
-        encMap[ENC_BR].ValueStr = "";
+        encMap[ENC_BR].ShowValue = true;
+        encMap[ENC_BR].Value = settings::index();
+        encMap[ENC_BR].Range = SETTINGSVALUESNO - 1;
+        encMap[ENC_BR].ValueStr = settings::current_setting_value();
         encMap[ENC_BR].ParameterStr = ParameterStrMap[settingvalue];
         encMap[ENC_BR].Push = false;
         break;
@@ -1063,7 +1077,7 @@ FLASHMEM void setEncodersState(State s)
         encMap[ENC_TL].ShowValue = false;
         encMap[ENC_TL].ParameterStr = ParameterStrMap[deletebank];
         encMap[ENC_TL].Push = true;
-        encMap[ENC_TL].PushAction = State::DELETEBANKMSG;
+        encMap[ENC_TL].PushAction = State::MAIN;
 
         encMap[ENC_TR].active = true;
         encMap[ENC_TR].Parameter = cancel;

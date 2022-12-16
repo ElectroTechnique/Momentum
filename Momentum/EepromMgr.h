@@ -1,20 +1,46 @@
 #include <EEPROM.h>
 
 #define EEPROM_MIDI_CH 0
-#define EEPROM_PITCHBEND 1
-#define EEPROM_MODWHEEL_DEPTH 2
-#define EEPROM_SCOPE_ENABLE 4
-#define EEPROM_MIDI_OUT_CH 5
-#define EEPROM_VU_ENABLE 6
-#define EEPROM_MIDI_THRU 7
-#define EEPROM_AMP_ENV 8
-#define EEPROM_FILT_ENV 9
-#define EEPROM_GLIDE_SHAPE 10
-#define EEPROM_VOLUME 11
+#define EEPROM_MIDI_OUT_CH 1
+#define EEPROM_MIDI_THRU 2
+#define EEPROM_SCOPE_ENABLE 3
+#define EEPROM_VU_ENABLE 4
+#define EEPROM_VOLUME 5
+#define EEPROM_LAST_BANK 6
+#define EEPROM_LAST_PATCH 7
 
-FLASHMEM void storeVolumeToEEPROM(byte type)
+FLASHMEM int8_t getLastBank()
 {
-  EEPROM.update(EEPROM_VOLUME, type);
+  byte b = EEPROM.read(EEPROM_LAST_BANK);
+  if (b < 0 || b > 7)
+    return 0;
+  return b;
+}
+
+FLASHMEM void storeLastBankToEEPROM(byte type)
+{
+  if (type != getLastBank())
+    EEPROM.update(EEPROM_LAST_BANK, type);
+}
+
+FLASHMEM int8_t getLastPatch()
+{
+  byte p = EEPROM.read(EEPROM_LAST_PATCH);
+  if (p < 0 || p > 127)
+    return 0;
+  return p;
+}
+
+FLASHMEM void storeLastPatchToEEPROM(byte type)
+{
+  if (type != getLastPatch())
+    EEPROM.update(EEPROM_LAST_PATCH, type);
+}
+
+FLASHMEM void loadLastPatchUsed()
+{
+  currentBankIndex = getLastBank();
+  currentPatchIndex = getLastPatch();
 }
 
 FLASHMEM int8_t getVolume()
@@ -25,43 +51,10 @@ FLASHMEM int8_t getVolume()
   return v;
 }
 
-FLASHMEM void storeGlideShape(byte type)
+FLASHMEM void storeVolumeToEEPROM(byte type)
 {
-  EEPROM.update(EEPROM_GLIDE_SHAPE, type);
-}
-
-FLASHMEM void storeAmpEnv(byte type)
-{
-  EEPROM.update(EEPROM_AMP_ENV, type);
-}
-
-FLASHMEM void storeFiltEnv(byte type)
-{
-  EEPROM.update(EEPROM_FILT_ENV, type);
-}
-
-FLASHMEM int8_t getGlideShape()
-{
-  int8_t gs = (int8_t)EEPROM.read(EEPROM_GLIDE_SHAPE);
-  if (gs < 0 || gs > 1)
-    gs = 1; // If EEPROM has no glide shape (Exp type)
-  return gs;
-}
-
-FLASHMEM int8_t getAmpEnv()
-{
-  int8_t ae = (int8_t)EEPROM.read(EEPROM_AMP_ENV);
-  if (ae < -8 || ae > 8)
-    ae = -128; // If EEPROM has no amp env (Lin type)
-  return ae;
-}
-
-FLASHMEM int8_t getFiltEnv()
-{
-  int8_t fe = (int8_t)EEPROM.read(EEPROM_FILT_ENV);
-  if (fe < -8 || fe > 8)
-    fe = -128; // If EEPROM has no filter env (Lin type)
-  return fe;
+  if (type != getVolume())
+    EEPROM.update(EEPROM_VOLUME, type);
 }
 
 FLASHMEM int getMIDIChannel()
@@ -74,34 +67,8 @@ FLASHMEM int getMIDIChannel()
 
 FLASHMEM void storeMidiChannel(byte channel)
 {
-  EEPROM.update(EEPROM_MIDI_CH, channel);
-}
-
-FLASHMEM int getPitchBendRange()
-{
-  byte pitchbend = EEPROM.read(EEPROM_PITCHBEND);
-  if (pitchbend < 1 || pitchbend > 12)
-    return pitchBendRange; // If EEPROM has no pitchbend stored
-  return pitchbend;
-}
-
-FLASHMEM void storePitchBendRange(byte pitchbend)
-{
-  EEPROM.update(EEPROM_PITCHBEND, pitchbend);
-}
-
-FLASHMEM float getModWheelDepth()
-{
-  byte mw = EEPROM.read(EEPROM_MODWHEEL_DEPTH);
-  if (mw < 1 || mw > 10)
-    return modWheelDepth; // If EEPROM has no mod wheel depth stored
-  return mw / 10.0f;
-}
-
-FLASHMEM void storeModWheelDepth(float mwDepth)
-{
-  byte mw = mwDepth * 10;
-  EEPROM.update(EEPROM_MODWHEEL_DEPTH, mw);
+  if (channel != getMIDIChannel())
+    EEPROM.update(EEPROM_MIDI_CH, channel);
 }
 
 FLASHMEM int getMIDIOutCh()
@@ -114,7 +81,8 @@ FLASHMEM int getMIDIOutCh()
 
 FLASHMEM void storeMidiOutCh(byte channel)
 {
-  EEPROM.update(EEPROM_MIDI_OUT_CH, channel);
+  if (channel != getMIDIOutCh())
+    EEPROM.update(EEPROM_MIDI_OUT_CH, channel);
 }
 
 FLASHMEM midi::Thru::Mode getMidiThru()
@@ -127,7 +95,8 @@ FLASHMEM midi::Thru::Mode getMidiThru()
 
 FLASHMEM void storeMidiThru(byte thru)
 {
-  EEPROM.update(EEPROM_MIDI_THRU, thru);
+  if (thru != getMidiThru())
+    EEPROM.update(EEPROM_MIDI_THRU, thru);
 }
 
 FLASHMEM boolean getScopeEnable()
@@ -140,7 +109,8 @@ FLASHMEM boolean getScopeEnable()
 
 FLASHMEM void storeScopeEnable(byte ScopeEnable)
 {
-  EEPROM.update(EEPROM_SCOPE_ENABLE, ScopeEnable);
+  if (ScopeEnable != getScopeEnable())
+    EEPROM.update(EEPROM_SCOPE_ENABLE, ScopeEnable);
 }
 
 FLASHMEM boolean getVUEnable()
@@ -153,5 +123,6 @@ FLASHMEM boolean getVUEnable()
 
 FLASHMEM void storeVUEnable(byte VUEnable)
 {
-  EEPROM.update(EEPROM_VU_ENABLE, VUEnable);
+  if (VUEnable != getVUEnable())
+    EEPROM.update(EEPROM_VU_ENABLE, VUEnable);
 }

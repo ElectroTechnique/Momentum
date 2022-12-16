@@ -13,46 +13,47 @@
 
 #pragma once
 
-#define SETTINGSOPTIONSNO 5//No of options
-#define SETTINGSVALUESNO 19//Maximum number of settings option values needed
+#define SETTINGSOPTIONSNO 2 // No of options
+#define SETTINGSVALUESNO 3  // Maximum number of settings option values needed
 
-namespace settings {
-
-//Function to handle the values for this settings option
-typedef void (*updater)(int index, const char* value);
-
-//Function to array index of current value for this settings option
-typedef int (*index)();
-
-struct SettingsOption
+namespace settings
 {
-  const char * option;//Settings option string
-  const char * value[SETTINGSVALUESNO];//Array of strings of settings option values
-  updater updateHandler;
-  index currentIndex;
-};
 
-// setting names
-const char* current_setting();
-const char* previous_setting();
-const char* next_setting();
+  // Function to handle the values for this settings option
+  typedef void (*updater)(int index, const char *value);
 
-const char* previous_setting_value();
-const char* next_setting_value();
+  // Function to array index of current value for this settings option
+  typedef int (*index)();
 
-const char* current_setting_value();
-const char* current_setting_previous_value();
-const char* current_setting_next_value();
+  struct SettingsOption
+  {
+    const char *option;                  // Settings option string
+    const char *value[SETTINGSVALUESNO]; // Array of strings of settings option values
+    updater updateHandler;
+    index currentIndex;
+  };
 
-void increment_setting();
-void decrement_setting();
+  // setting names
+  const char *current_setting();
+  const char *previous_setting();
+  const char *next_setting();
 
-void increment_setting_value();
-void decrement_setting_value();
+  const char *previous_setting_value();
+  const char *next_setting_value();
 
-void save_current_value();
+  const char *current_setting_value();
+  const char *current_setting_previous_value();
+  const char *current_setting_next_value();
 
-void append(SettingsOption option);
-void reset();
+  void increment_setting();
+  void decrement_setting();
+
+  void increment_setting_value();
+  void decrement_setting_value();
+
+  void save_current_value();
+
+  void append(SettingsOption option);
+  void reset();
 
 }

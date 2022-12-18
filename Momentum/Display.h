@@ -34,7 +34,7 @@
 #define ILI9341_LIGHTBLUE 0x853E
 #define ILI9341_DARKRED 0x6000
 #define ILI9341_MIDGREY 0xB576
-#define ILI9341_DARKYELLOW 0xBDE0
+#define ILI9341_DARKYELLOW 0xB5C0
 
 ILI9341_t3n tft = ILI9341_t3n(cs, dc, rst, mosi, sclk, miso);
 
@@ -333,17 +333,16 @@ FLASHMEM void renderMainPage()
 
 FLASHMEM void renderPulseWidth(float value)
 {
-  tft.setOrigin(-40, -30);
-  const uint16_t a = 216;
-  const uint16_t b = 148;
-  const uint16_t c = 246;
-  const uint16_t d = 26;
-  const uint16_t e = 40;
-  const uint16_t f = 188;
-  const uint16_t g = 32;
-  const uint16_t h = 42;
-  const uint16_t i = 276;
-  const uint16_t j = 30;
+  const int16_t a = 216;
+  const int16_t b = 148;
+  const int16_t c = 246;
+  const int16_t d = 26;
+  const int16_t e = 40;
+  const int16_t f = 188;
+  const int16_t g = 32;
+  const int16_t h = 42;
+  const int16_t i = 276;
+  const int16_t j = 30;
 
   tft.drawFastHLine(a, b, j + (value * d), ILI9341_CYAN);
   tft.drawFastVLine(c + (value * d), b, e, ILI9341_CYAN);
@@ -361,13 +360,12 @@ FLASHMEM void renderPulseWidth(float value)
 
 FLASHMEM void renderVarTriangle(float value)
 {
-  tft.setOrigin(-40, -30);
-  const uint16_t a = 220;
-  const uint16_t b = 192;
-  const uint16_t c = 246;
-  const uint16_t d = 26;
-  const uint16_t e = 172;
-  const uint16_t f = 188;
+  const int16_t a = 220; // x1
+  const int16_t b = 192; // y1
+  const int16_t c = 194; // x2
+  const int16_t d = 26;  // factor
+  const int16_t e = 172; // x2
+  const int16_t f = 150; // y2
 
   tft.drawLine(a, b, c + (value * d), f, ILI9341_CYAN);
   tft.drawLine(c + (value * d), f, e, b, ILI9341_CYAN);
@@ -376,16 +374,14 @@ FLASHMEM void renderVarTriangle(float value)
 
 FLASHMEM void renderEnv(float att, float dec, float sus, float rel)
 {
-  // tft.setOrigin(-40, -30); //Set origin before calling
-
-  const uint16_t a = 200;
-  const uint16_t b = 188;
-  const uint16_t c = 30;
-  const uint16_t d = 278;
-  const uint16_t e = 40;
-  const uint16_t f = 148;
-  const uint16_t g = 80;
-  const uint16_t h = 26;
+  const int16_t a = 200;
+  const int16_t b = 188;
+  const int16_t c = 30;
+  const int16_t d = 278;
+  const int16_t e = 40;
+  const int16_t f = 148;
+  const int16_t g = 80;
+  const int16_t h = 26;
 
   tft.drawLine(a, b, a + (att * c), f, ILI9341_CYAN);                                           // attack
   tft.drawLine(a + (att * c), f, a + ((att + dec) * c), b - (sus * e), ILI9341_CYAN);           // decay
@@ -409,9 +405,11 @@ FLASHMEM void renderCurrentParameterOverlay()
   switch (paramType)
   {
   case PULSE:
+    tft.setOrigin(-40, -30);
     renderPulseWidth(currentFloatValue);
     break;
   case VAR_TRI:
+    tft.setOrigin(-10, -30);
     renderVarTriangle(currentFloatValue);
     break;
   case FILTER_ENV:
@@ -496,13 +494,28 @@ FLASHMEM void renderSavePage()
   {
     tft.drawString(F("Saving Patch"), 160, 100);
     tft.setTextColor(ILI9341_WHITE);
-    tft.drawString(currentPatch.PatchName, 160, 125);
+
+    if (strlen(currentPatch.PatchName) > 12)
+    {
+      tft.drawString(String(currentPatch.PatchName).substring(0, 11) + String(".."), 160, 125);
+    }
+    else
+    {
+      tft.drawString(currentPatch.PatchName, 160, 125);
+    }
   }
   else
   {
     tft.drawString(F("Overwriting Patch"), 160, 100);
     tft.setTextColor(ILI9341_WHITE);
-    tft.drawString(currentPatchName, 160, 125);
+    if (strlen(currentPatch.PatchName) > 12)
+    {
+      tft.drawString(String(currentPatch.PatchName).substring(0, 11) + String(".."), 160, 125);
+    }
+    else
+    {
+      tft.drawString(currentPatch.PatchName, 160, 125);
+    }
   }
 }
 
@@ -571,7 +584,7 @@ FLASHMEM void renderPatchNamingPage()
   tft.drawFastHLine(10, 42, tft.width() - 20, ILI9341_RED);
   tft.setTextColor(ILI9341_RED);
   tft.setTextDatum(TL_DATUM);
-  tft.drawString(currentPatchName, 90, 70);
+  tft.drawString(currentPatchName, 19, 70);
   tft.drawFontChar(95); // Underscore caret
   tft.setFont(Arial_14);
   tft.setTextColor(ILI9341_LIGHTGREY);
@@ -604,7 +617,7 @@ FLASHMEM void renderBankNamingPage()
   tft.drawFastHLine(10, 42, tft.width() - 20, ILI9341_RED);
   tft.setTextColor(ILI9341_RED);
   tft.setTextDatum(TL_DATUM);
-  tft.drawString(bankNames[tempBankIndex], 90, 70);
+  tft.drawString(bankNames[tempBankIndex], 19, 70);
   tft.drawFontChar(95); // Underscore caret
   tft.setFont(Arial_14);
   tft.setTextColor(ILI9341_LIGHTGREY);
@@ -708,6 +721,32 @@ FLASHMEM void renderOscModPage(size_t no)
   case 4:
     tft.drawString("Osc Effects", 160, 150);
     break;
+  }
+  if (no == 1 && currentPatch.PWMSourceA == PWMSOURCEMANUAL)
+  {
+    if (groupvec[activeGroupIndex]->getWaveformA() == WAVEFORM_BANDLIMIT_PULSE)
+    {
+      tft.setOrigin(-90, -50);
+      renderPulseWidth(groupvec[activeGroupIndex]->getPwA());
+    }
+    else
+    {
+      tft.setOrigin(-30, -55);
+      renderVarTriangle(groupvec[activeGroupIndex]->getPwA());
+    }
+  }
+  else if (no == 2 && currentPatch.PWMSourceB == PWMSOURCEMANUAL)
+  {
+    if (groupvec[activeGroupIndex]->getWaveformB() == WAVEFORM_BANDLIMIT_PULSE)
+    {
+      tft.setOrigin(-90, -50);
+      renderPulseWidth(groupvec[activeGroupIndex]->getPwB());
+    }
+    else
+    {
+      tft.setOrigin(-30, -55);
+      renderVarTriangle(groupvec[activeGroupIndex]->getPwB());
+    }
   }
   renderCorners();
 }
@@ -839,7 +878,7 @@ FLASHMEM void renderEditBankPage()
 
     if (bankNames[i].length() > 9)
     {
-     tft.drawString(bankNames[i].substring( 0, 8) + String(".."), 0, 51 + (20 * i));
+      tft.drawString(bankNames[i].substring(0, 8) + String(".."), 0, 51 + (20 * i));
     }
     else
     {
@@ -850,13 +889,12 @@ FLASHMEM void renderEditBankPage()
   tft.setTextColor(ILI9341_YELLOW);
   if (patches[0].patchUID == 0)
   {
-    tft.drawString("0 Patches", 110, 51);
+    tft.drawString("0 Patches", 120, 51);
   }
   else
   {
-    tft.drawString(String(patches.size()) + " Patches", 110, 51);
+    tft.drawString(String(patches.size()) + " Patches", 120, 51);
   }
-  tft.drawString(String(patches.size()) + " Patches", 110, 51);
   for (size_t i = 0; i < min(patches.size(), 6); i++)
   {
     tft.setTextColor(ILI9341_DARKYELLOW);
@@ -904,7 +942,7 @@ FLASHMEM void renderSettingsPage()
   renderCorners();
 }
 
-FLASHMEM void showCurrentParameterOverlay(const char *param, float val, int pType)
+FLASHMEM void showCurrentParameterOverlay2(const char *param, float val, int pType)
 {
   if (!updateDisplay)
     return;

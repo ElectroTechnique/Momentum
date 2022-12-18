@@ -32,20 +32,20 @@ void Oscilloscope::ScreenSetup(ILI9341_t3n *screen) {
 void Oscilloscope::Display()
 {
   pixel_x = 0;
-  prev_pixel_y = map(buffer[0], 32767, -32768, -120, 120) + 63;
-  if (prev_pixel_y < 30)
-    prev_pixel_y = 30;
-  if (prev_pixel_y > 100)
-    prev_pixel_y = 100;
+  prev_pixel_y = map(buffer[0], 32767, -32768, -120, 120) + 200;
+  if (prev_pixel_y < 167)
+    prev_pixel_y = 167;
+  if (prev_pixel_y > 237)
+    prev_pixel_y = 237;
 
   for (uint8_t i = 0; i < AUDIO_BLOCK_SAMPLES - 1; i++)
   {
-    pixel_y = map(buffer[i], 32767, -32768, -120, 120) + 63;
-    if (pixel_y < 30)
-      pixel_y = 30;
-    if (pixel_y > 100)
-      pixel_y = 100;
-    display->drawLine(pixel_x + 15, prev_pixel_y, pixel_x + 16, pixel_y, 0x07B0);
+    pixel_y = map(buffer[i], 32767, -32768, -120, 120) + 200;
+    if (pixel_y < 167)
+      pixel_y = 167;
+    if (pixel_y > 237)
+      pixel_y = 237;
+    display->drawLine(pixel_x + 96, prev_pixel_y, pixel_x + 97, pixel_y, 0x07B0);//Orange
     prev_pixel_y = pixel_y;
     pixel_x++;
   }

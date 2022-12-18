@@ -39,11 +39,11 @@ typedef Array<PatchUIDAndName, PATCHES_LIMIT> Patches;
 
 Patches patches;
 
-FLASHMEM void concatBankAndUID(uint8_t bank, uint32_t filename, char *result)
+FLASHMEM void concatBankAndUID(uint8_t bank, uint32_t uid, char *result)
 {
   char buf[12];
   strcpy(result, BANK_FOLDER_NAMES_SLASH[bank]); // copy string one into the result.
-  strcat(result, utoa(filename, buf, 10));       // append string two to the result
+  strcat(result, utoa(uid, buf, 10));       // append string two to the result
 }
 
 FLASHMEM void concatBankAndFilename(uint8_t bank, const char *filename, char *result)
@@ -523,16 +523,16 @@ FLASHMEM void deleteBank(uint8_t bank)
 {
   if (patches[0].patchUID == 0)
     return;
-  char *result;
+  char result[30];
   for (uint8_t index = 0; index < patches.size(); index++)
   {
     concatBankAndUID(bank, patches[index].patchUID, result);
+    Serial.println(">" + String(index) + "-" + String(result));
     if (!SD.remove(result))
     {
       Serial.println(F("Couldn't delete from SD card"));
     }
   }
-
   concatBankAndFilename(bank, PATCH_INDEX_FILE_NAME, result);
   if (!SD.remove(result))
   {

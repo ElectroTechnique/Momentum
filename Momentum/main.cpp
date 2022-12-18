@@ -583,12 +583,12 @@ void myControlChange(byte channel, byte control, byte value)
         if (groupvec[activeGroupIndex]->getWaveformA() == WAVEFORM_TRIANGLE_VARIABLE)
         {
             if (!setEncValue(CCpwA, value, F("Tri ") + String(groupvec[activeGroupIndex]->getPwA())))
-                showCurrentParameterOverlay(F("1 Var Triangle"), groupvec[activeGroupIndex]->getPwA());
+                showCurrentParameterOverlay2("1 Var Triangle", groupvec[activeGroupIndex]->getPwA(), VAR_TRI);
         }
         else
         {
             if (!setEncValue(CCpwA, value, F("Pulse ") + String(groupvec[activeGroupIndex]->getPwA())))
-                showCurrentParameterOverlay(F("1 Pulse Width"), groupvec[activeGroupIndex]->getPwA());
+                showCurrentParameterOverlay2("1 Pulse Width", groupvec[activeGroupIndex]->getPwA(), PULSE);
         }
         break;
 
@@ -598,12 +598,12 @@ void myControlChange(byte channel, byte control, byte value)
         if (groupvec[activeGroupIndex]->getWaveformB() == WAVEFORM_TRIANGLE_VARIABLE)
         {
             if (!setEncValue(CCpwB, value, F("Tri ") + String(groupvec[activeGroupIndex]->getPwB())))
-                showCurrentParameterOverlay(F("2 Variable Triangle"), groupvec[activeGroupIndex]->getPwB());
+                showCurrentParameterOverlay2("2 Variable Triangle", groupvec[activeGroupIndex]->getPwB(), VAR_TRI);
         }
         else
         {
             if (!setEncValue(CCpwB, value, F("Pulse ") + String(groupvec[activeGroupIndex]->getPwB())))
-                showCurrentParameterOverlay(F("2 Pulse Width"), groupvec[activeGroupIndex]->getPwB());
+                showCurrentParameterOverlay2("2 Pulse Width", groupvec[activeGroupIndex]->getPwB(), PULSE);
         }
         break;
 
@@ -1364,11 +1364,16 @@ FLASHMEM void encoderButtonCallback(unsigned enc_idx, int buttonState)
             recallPatch(currentBankIndex, patches[currentPatchIndex].patchUID);
             lightRGLEDs(0, 0);
             break;
+        case savepatchselect:
+            if (patches[currentPatchIndex].patchUID == 0)
+                currentPatchName = "";
+            break;
         case cancel:
             currentPatchIndex = previousPatchIndex;
             currentBankIndex = previousBankIndex;
-            loadBankNames();//If in the middle of bank renaming
+            loadBankNames(); // If in the middle of bank renaming
             loadPatchNamesFromBank(currentBankIndex);
+            recallPatch(currentBankIndex, patches[currentPatchIndex].patchUID);
             lightRGLEDs(0, 0);
             break;
         case choosecharacterPatch:
@@ -1387,14 +1392,14 @@ FLASHMEM void encoderButtonCallback(unsigned enc_idx, int buttonState)
         case deleteCharacterBank:
             if (bankNames[tempBankIndex].length() == 0)
                 break;
-            //bankNames[tempBankIndex] = substr(bankNames[tempBankIndex], 0, bankNames[tempBankIndex].length() - 1);
-            String(bankNames[tempBankIndex]).substring(0, bankNames[tempBankIndex].length() - 1);
+            bankNames[tempBankIndex] = String(bankNames[tempBankIndex]).substring(0, bankNames[tempBankIndex].length() - 1);
             break;
         case savepatch:
             state = State::SAVE;
             strncpy(currentPatch.PatchName, currentPatchName.c_str(), 64);
             savePatch(currentBankIndex, currentPatchIndex);
             updatePatch(currentPatch.PatchName, currentPatchIndex + 1, currentPatch.UID);
+            recallPatch(currentBankIndex, patches[currentPatchIndex].patchUID);
             lightRGLEDs(0, 0);
             break;
         case deletepatch:
@@ -1411,14 +1416,29 @@ FLASHMEM void encoderButtonCallback(unsigned enc_idx, int buttonState)
         case savebank:
             state = State::MAIN;
             saveBankName(bankNames[tempBankIndex]);
+            while (patches[0].patchUID == 0)
+            {
+                tempBankIndex = decTempBankIndex();
+                loadPatchNamesFromBank(tempBankIndex);
+                currentBankIndex = tempBankIndex;
+                currentPatchIndex = 0;
+            }
+            recallPatch(currentBankIndex, patches[currentPatchIndex].patchUID);
             lightRGLEDs(0, 0);
             break;
         case deletebank:
             state = State::DELETEBANKMSG;
             deleteBank(tempBankIndex);
             currentPatchIndex = 0;
-            // loadPatchNamesFromBank(currentBankIndex);
-            // recallPatch(currentBankIndex, patches[currentPatchIndex].patchUID);
+            // First Patch is empty in this bank, go to previous bank with valid patch
+            while (patches[0].patchUID == 0)
+            {
+                tempBankIndex = decTempBankIndex();
+                loadPatchNamesFromBank(tempBankIndex);
+                currentBankIndex = tempBankIndex;
+                currentPatchIndex = 0;
+            }
+            recallPatch(currentBankIndex, patches[currentPatchIndex].patchUID);
             lightRGLEDs(0, 0);
             break;
         default:
@@ -1698,7 +1718,8 @@ void buttonCallback(unsigned button_idx, int button)
             singleLED(RED, 7);
             if (state != State::PATCHSAVING && state != State::CHOOSECHARPATCH)
             {
-                loadBankNames(); // If in the middle of bank renaming
+                loadBankNames(); // If in the middle of bank renaming and cancelling
+                tempBankIndex = currentBankIndex;
                 if (patches.size() < PATCHES_LIMIT)
                 {
                     // Prompt for patch name
@@ -1721,6 +1742,7 @@ void buttonCallback(unsigned button_idx, int button)
                 state = State::SAVE;
                 savePatch(currentBankIndex, currentPatchIndex);
                 updatePatch(currentPatchName, currentPatchIndex + 1, patches[currentPatchIndex].patchUID);
+                recallPatch(currentBankIndex, patches[currentPatchIndex].patchUID);
                 state = State::MAIN;
                 singleLED(ledColour::OFF, 7);
             }
@@ -1731,6 +1753,7 @@ void buttonCallback(unsigned button_idx, int button)
                 strncpy(currentPatch.PatchName, currentPatchName.c_str(), 64);
                 savePatch(currentBankIndex, currentPatchIndex);
                 updatePatch(currentPatch.PatchName, currentPatchIndex + 1, currentPatch.UID);
+                recallPatch(currentBankIndex, patches[currentPatchIndex].patchUID);
                 state = State::MAIN;
                 singleLED(ledColour::OFF, 7);
                 break;

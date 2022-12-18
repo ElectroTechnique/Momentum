@@ -502,7 +502,7 @@ FLASHMEM void setEncodersState(State s)
         encMap[ENC_BL].Range = 255;
         encMap[ENC_BL].ParameterStr = ParameterStrMap[CCfilterfreq];
         encMap[ENC_BL].Push = true;
-        encMap[ENC_BL].PushAction = State::MAIN;
+        encMap[ENC_BL].PushAction = State::FILTERPAGE1;
 
         encMap[ENC_BR].active = true;
         encMap[ENC_BR].Parameter = CCfilterres;
@@ -512,7 +512,7 @@ FLASHMEM void setEncodersState(State s)
         encMap[ENC_BR].ValueStr = String(groupvec[activeGroupIndex]->getResonance());
         encMap[ENC_BR].ParameterStr = ParameterStrMap[CCfilterres];
         encMap[ENC_BR].Push = true;
-        encMap[ENC_BR].PushAction = State::MAIN;
+        encMap[ENC_BR].PushAction = State::FILTERPAGE1;
 
         encMap[ENC_TL].active = true;
         encMap[ENC_TL].Parameter = CCfiltermixer;
@@ -541,7 +541,7 @@ FLASHMEM void setEncodersState(State s)
         encMap[ENC_TL].Range = 127;
         encMap[ENC_TL].ParameterStr = ParameterStrMap[CCfiltermixer];
         encMap[ENC_TL].Push = true;
-        encMap[ENC_TL].PushAction = State::MAIN;
+        encMap[ENC_TL].PushAction = State::FILTERPAGE1;
 
         encMap[ENC_TR].active = true;
         encMap[ENC_TR].Parameter = CCfilterenv;
@@ -551,7 +551,7 @@ FLASHMEM void setEncodersState(State s)
         encMap[ENC_TR].Range = 127;
         encMap[ENC_TR].ParameterStr = ParameterStrMap[CCfilterenv];
         encMap[ENC_TR].Push = true;
-        encMap[ENC_TR].PushAction = State::MAIN;
+        encMap[ENC_TR].PushAction = State::FILTERPAGE1;
         break;
 
     case State::FILTERMODPAGE1:

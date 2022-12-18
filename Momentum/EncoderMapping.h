@@ -4,7 +4,7 @@ typedef struct EncoderMappingStruct
     uint8_t Parameter = 255;        // MIDI cc (up to 127) or other code up to 255
     uint8_t ShowValue = false;      // Some parameters don't show value like patch no
     uint8_t Value = 0;              // Up to 255
-    int8_t Counter = 0;             // For reduced sensitivity for small ranges
+    int8_t Counter = 0;             // For reduced sensitivity for small ranges - do not set
     String ValueStr = "";           // For transforming values in strings for display
     uint8_t Range = 127;            // Up to 255
     String ParameterStr = "";       // For display
@@ -1035,7 +1035,7 @@ FLASHMEM void setEncodersState(State s)
         encMap[ENC_BL].Parameter = settingoption;
         encMap[ENC_BL].ShowValue = true;
         encMap[ENC_BL].Value = 0;
-        encMap[ENC_BL].Range = 3;
+        encMap[ENC_BL].Range = settings::getSettingsOptionsSize() - 1;
         encMap[ENC_BL].ParameterStr = ParameterStrMap[settingoption];
         encMap[ENC_BL].ValueStr = settings::current_setting();
         encMap[ENC_BL].Push = false;
@@ -1044,8 +1044,8 @@ FLASHMEM void setEncodersState(State s)
         encMap[ENC_BR].Parameter = settingvalue;
         encMap[ENC_BR].ShowValue = true;
         encMap[ENC_BR].Value = settings::index();
-        encMap[ENC_BR].Range = SETTINGSVALUESNO - 1;
-        encMap[ENC_BR].ValueStr = settings::current_setting_value();
+        encMap[ENC_BR].Range = settings::current_setting_size() - 1;
+         encMap[ENC_BR].ValueStr = settings::current_setting_value();
         encMap[ENC_BR].ParameterStr = ParameterStrMap[settingvalue];
         encMap[ENC_BR].Push = false;
         break;

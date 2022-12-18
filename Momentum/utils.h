@@ -66,7 +66,7 @@ FLASHMEM uint32_t getHash(String tohash)
 //           String(p.chordDetune) + "," + String(groupvec[activeGroupIndex]->getMonophonicMode()) + "," + String(0.0f);
 //  }
 
-//ONLY WORKS WITH TD1.58?
+// ONLY WORKS WITH TD1.58?
 
 // https://forum.pjrc.com/threads/33443-How-to-display-free-ram
 // void memInfo()
@@ -78,7 +78,7 @@ FLASHMEM uint32_t getHash(String tohash)
 //   constexpr auto FLASH_SIZE = 2 << 20;
 // #elif ARDUINO_TEENSY41
 //   constexpr auto FLASH_SIZE = 8 << 20;
-// #elif ARDUINO_TEENSYMM
+// #elif ARDUINO_TEENSY_MICROMOD
 //    constexpr auto FLASH_SIZE = 16 << 20;
 // #endif
 

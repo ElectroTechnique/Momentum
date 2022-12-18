@@ -13,9 +13,6 @@
 
 #pragma once
 
-#define SETTINGSOPTIONSNO 2 // No of options
-#define SETTINGSVALUESNO 3  // Maximum number of settings option values needed
-
 namespace settings
 {
 
@@ -28,7 +25,7 @@ namespace settings
   struct SettingsOption
   {
     const char *option;                  // Settings option string
-    const char *value[SETTINGSVALUESNO]; // Array of strings of settings option values
+    const char *value[20]; // Array of strings of settings option values
     updater updateHandler;
     index currentIndex;
   };
@@ -56,4 +53,6 @@ namespace settings
   void append(SettingsOption option);
   void reset();
 
+  int getSettingsOptionsSize();
+  int current_setting_size();
 }

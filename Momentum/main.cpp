@@ -1325,11 +1325,16 @@ FLASHMEM void encoderCallback(unsigned enc_idx, int value, int delta)
         case deleteCharacterBank:
             break;
         case settingoption:
+            if (newDelta == 0)
+                break;
             newDelta > 0 ? settings::increment_setting() : settings::decrement_setting();
             setEncValue(settingoption, value, settings::current_setting());
+            setEncValue(settingvalue, settings::index(), settings::current_setting_value());
             settings::save_current_value();
             break;
         case settingvalue:
+            if (newDelta == 0)
+                break;
             newDelta > 0 ? settings::increment_setting_value() : settings::decrement_setting_value();
             setEncValue(settingvalue, value, settings::current_setting_value());
             settings::save_current_value();

@@ -1,7 +1,7 @@
 // MIDI CC control numbers
 // These broadly follow standard CC assignments
 #define CCbankselectMSB 0
-#define CCmodwheel 1  // pitch LFO amount - less from mod wheel
+#define CCmodwheel 1  // pitch LFO amount and filter mod amount
 #define CCosclfoamt 3 // pitch LFO amount - panel control
 #define CCglide 5
 #define CCvolume 7
@@ -46,11 +46,12 @@
 #define CCoscLfoWaveform 103
 #define CCfilterLFOMidiClkSync 104 // Off/On
 #define CCoscLFOMidiClkSync 105    // Off/On
-#define CCpwmSourceA 106            //Osc1 LFO/Filter Env
+#define CCpwmSourceA 106           // Osc1 LFO/Filter Env
 #define CCunison 107
-#define CCpwmSourceB 108            //Osc2 LFO/Filter Env
-#define CCvelocitySens 109            // Velocity sensitiviy
-#define CCallnotesoff 123 // Panic button includes sound off
+#define CCpwmSourceB 108         // Osc2 LFO/Filter Env
+#define CCvelocitySens 109       // Velocity sensitivity
+#define CCFilterVelocitySens 110 // Filter Velocity sensitivity
+#define CCallnotesoff 123        // Panic button includes sound off
 #define CCmonomode 126
 
 /*

@@ -34,7 +34,7 @@ NumericType clampToRange(NumericType value, NumericType delta, NumericType min, 
   return value;
 }
 
-String milliToString(float milli)
+FLASHMEM String milliToString(float milli)
 {
   if (milli < 1000)
     return String(int(milli)) + " ms";

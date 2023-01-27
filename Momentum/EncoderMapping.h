@@ -1,9 +1,12 @@
+void setConfigurationForCC(uint8_t, uint8_t);
+
 typedef struct EncoderMappingStruct
 {
     boolean active = true;
     uint8_t Parameter = 255;        // MIDI cc (up to 127) or other code up to 255
     uint8_t ShowValue = false;      // Some parameters don't show value like patch no
     uint8_t Value = 0;              // Up to 255
+    uint8_t DefaultValue = 0;       // Up to 255
     int8_t Counter = 0;             // For reduced sensitivity for small ranges - do not set
     String ValueStr = "";           // For transforming values in strings for display
     uint8_t Range = 127;            // Up to 255
@@ -15,7 +18,7 @@ typedef struct EncoderMappingStruct
 EncoderMappingStruct encMap[4] = {};
 
 // Sets the value and value string of the encoder when this parameter is on the display
-boolean setEncValue(boolean act, uint8_t parameter, uint8_t value, String str, uint8_t newParameter)
+FLASHMEM boolean setEncValue(boolean act, uint8_t parameter, uint8_t value, String str, uint8_t newParameter)
 {
     for (uint8_t i = 0; i < 4; i++)
     {
@@ -36,15 +39,961 @@ boolean setEncValue(boolean act, uint8_t parameter, uint8_t value, String str, u
     return false;
 }
 
-boolean setEncValue(uint8_t parameter, uint8_t value, String str)
+FLASHMEM boolean setEncValue(uint8_t parameter, uint8_t value, uint8_t range, String str)
+{
+    // Extra routine for settings which have variable size ranges
+    for (uint8_t i = 0; i < 4; i++)
+    {
+        if (encMap[i].Parameter == parameter)
+        {
+            encMap[i].Range = range;
+            break;
+        }
+    }
+    return setEncValue(true, parameter, value, str, parameter);
+}
+
+FLASHMEM boolean setEncValue(uint8_t parameter, uint8_t value, String str)
 {
     return setEncValue(true, parameter, value, str, parameter);
 }
 
 // For turning off
-boolean setEncInactive(uint8_t parameter)
+FLASHMEM boolean setEncInactive(uint8_t parameter)
 {
     return setEncValue(false, parameter, 0, "", parameter);
+}
+
+FLASHMEM void configureOff(EncoderMappingStruct *enc)
+{
+    enc->active = false;
+}
+
+FLASHMEM void configureCCbankselectLSB(EncoderMappingStruct *enc, State st = State::MAIN)
+{
+    enc->active = true;
+    enc->Parameter = CCbankselectLSB;
+    enc->ShowValue = false;
+    enc->Value = currentBankIndex;
+    enc->Range = BANKS_LIMIT;
+    enc->ParameterStr = ParameterStrMap[CCbankselectLSB];
+    enc->ValueStr = "";
+    enc->Push = true;
+    enc->PushAction = st;
+}
+
+FLASHMEM void configurePatchselect(EncoderMappingStruct *enc, State st = State::MAIN)
+{
+    enc->active = true;
+    enc->Parameter = patchselect;
+    enc->ShowValue = false;
+    enc->Value = currentPatchIndex;
+    enc->Range = patches.size();
+    enc->ValueStr = "";
+    enc->ParameterStr = ParameterStrMap[patchselect];
+    enc->Push = true;
+    enc->PushAction = st;
+}
+
+FLASHMEM void configureCancel(EncoderMappingStruct *enc, State st = State::MAIN)
+{
+    enc->active = true;
+    enc->Parameter = cancel;
+    enc->ShowValue = false;
+    enc->Value = 0;
+    enc->Range = 0;
+    enc->ValueStr = "";
+    enc->ParameterStr = ParameterStrMap[cancel];
+    enc->Push = true;
+    enc->PushAction = st;
+}
+
+FLASHMEM void configureCCoscwaveformA(EncoderMappingStruct *enc, State st = State::MAIN)
+{
+    enc->active = true;
+    enc->Parameter = CCoscwaveformA;
+    enc->ShowValue = true;
+    enc->Value = currentPatch.WaveformA;
+    enc->DefaultValue = 40;
+    enc->ValueStr = getWaveformStr(groupvec[activeGroupIndex]->getWaveformA());
+    enc->Range = 127;
+    enc->ParameterStr = ParameterStrMap[CCoscwaveformA];
+    enc->Push = true;
+    enc->PushAction = st;
+}
+
+FLASHMEM void configureCCoscLevelA(EncoderMappingStruct *enc, State st = State::MAIN)
+{
+    enc->active = true;
+    enc->Parameter = CCoscLevelA;
+    enc->ShowValue = true;
+    enc->Value = currentPatch.OscLevelA;
+    enc->DefaultValue = 127;
+    enc->ValueStr = String(groupvec[activeGroupIndex]->getOscLevelA());
+    enc->Range = 127;
+    enc->ParameterStr = ParameterStrMap[CCoscLevelA];
+    enc->Push = true;
+    enc->PushAction = st;
+}
+
+FLASHMEM void configureCCdetune(EncoderMappingStruct *enc, State st = State::MAIN)
+{
+    enc->active = true;
+    enc->Parameter = CCdetune;
+    enc->ShowValue = true;
+    if (groupvec[activeGroupIndex]->params().unisonMode == 2)
+    {
+        enc->Value = currentPatch.ChordDetune;
+        enc->DefaultValue = 0;
+        enc->ValueStr = String(CDT_STR[groupvec[activeGroupIndex]->params().chordDetune]);
+    }
+    else
+    {
+        enc->Value = currentPatch.Detune;
+        enc->DefaultValue = 20; // 0.15%
+        enc->ValueStr = String((1 - groupvec[activeGroupIndex]->params().detune) * 100) + " %";
+    }
+    enc->Range = 127;
+    enc->ParameterStr = ParameterStrMap[CCdetune];
+    enc->Push = true;
+    enc->PushAction = st;
+}
+
+FLASHMEM void configureCCpitchA(EncoderMappingStruct *enc, State st = State::MAIN)
+{
+    enc->active = true;
+    enc->Parameter = CCpitchA;
+    enc->ShowValue = true;
+    enc->Value = currentPatch.PitchA;
+    enc->DefaultValue = 63;
+    enc->ValueStr = (groupvec[activeGroupIndex]->params().oscPitchA > 0 ? "+" : "") + String(groupvec[activeGroupIndex]->params().oscPitchA);
+    enc->Range = 127;
+    enc->ParameterStr = ParameterStrMap[CCpitchA];
+    enc->Push = true;
+    enc->PushAction = st;
+}
+
+FLASHMEM void configureCCoscwaveformB(EncoderMappingStruct *enc, State st = State::MAIN)
+{
+    enc->active = true;
+    enc->Parameter = CCoscwaveformB;
+    enc->ShowValue = true;
+    enc->Value = currentPatch.WaveformB;
+    enc->DefaultValue = 40;
+    enc->ValueStr = getWaveformStr(groupvec[activeGroupIndex]->getWaveformB());
+    enc->Range = 127;
+    enc->ParameterStr = ParameterStrMap[CCoscwaveformB];
+    enc->Push = true;
+    enc->PushAction = st;
+}
+
+FLASHMEM void configureCCoscLevelB(EncoderMappingStruct *enc, State st = State::MAIN)
+{
+    enc->active = true;
+    enc->Parameter = CCoscLevelB;
+    enc->ShowValue = true;
+    enc->Value = currentPatch.OscLevelB;
+    enc->DefaultValue = 127;
+    enc->ValueStr = String(groupvec[activeGroupIndex]->getOscLevelB());
+    enc->Range = 127;
+    enc->ParameterStr = ParameterStrMap[CCoscLevelB];
+    enc->Push = true;
+    enc->PushAction = st;
+}
+
+FLASHMEM void configureCCpitchB(EncoderMappingStruct *enc, State st = State::MAIN)
+{
+    enc->active = true;
+    enc->Parameter = CCpitchB;
+    enc->ShowValue = true;
+    enc->Value = currentPatch.PitchB;
+    enc->DefaultValue = 7;
+    enc->ValueStr = (groupvec[activeGroupIndex]->params().oscPitchB > 0 ? "+" : "") + String(groupvec[activeGroupIndex]->params().oscPitchB);
+    enc->Range = 127;
+    enc->ParameterStr = ParameterStrMap[CCpitchB];
+    enc->Push = true;
+    enc->PushAction = st;
+}
+
+FLASHMEM void configureCCnoiseLevel(EncoderMappingStruct *enc, State st = State::MAIN)
+{
+    enc->active = true;
+    enc->Parameter = CCnoiseLevel;
+    enc->ShowValue = true;
+    if (groupvec[activeGroupIndex]->getPinkNoiseLevel() > 0)
+    {
+        enc->Value = currentPatch.NoiseLevel;
+        enc->DefaultValue = 63;
+        enc->ValueStr = "Pink " + String(groupvec[activeGroupIndex]->getPinkNoiseLevel());
+    }
+    else if (groupvec[activeGroupIndex]->getWhiteNoiseLevel() > 0)
+    {
+        enc->Value = currentPatch.NoiseLevel;
+        enc->DefaultValue = 63;
+        enc->ValueStr = "White " + String(groupvec[activeGroupIndex]->getWhiteNoiseLevel());
+    }
+    else
+    {
+        enc->Value = 63;
+        enc->ValueStr = "Off";
+    }
+    enc->Range = 127;
+    enc->ParameterStr = ParameterStrMap[CCnoiseLevel];
+    enc->Push = true;
+    enc->PushAction = st;
+}
+
+FLASHMEM void configureCCunison(EncoderMappingStruct *enc, State st = State::MAIN)
+{
+    enc->active = true;
+    enc->Parameter = CCunison;
+    enc->ShowValue = true;
+    enc->Value = currentPatch.Unison;
+    enc->DefaultValue = 0;
+
+    if (groupvec[activeGroupIndex]->params().unisonMode == 0)
+    {
+        enc->ValueStr = "Off";
+    }
+    else if (groupvec[activeGroupIndex]->params().unisonMode == 1)
+    {
+        enc->ValueStr = "Dynamic";
+    }
+    else
+    {
+        enc->ValueStr = "Chord";
+    }
+    enc->Range = 2;
+    enc->ParameterStr = ParameterStrMap[CCunison];
+    enc->Push = true;
+    enc->PushAction = st;
+}
+
+FLASHMEM void configureCCpwmSourceA(EncoderMappingStruct *enc, State st = State::MAIN)
+{
+    enc->active = true;
+    enc->Parameter = CCpwmSourceA;
+    enc->ShowValue = true;
+    enc->Value = currentPatch.PWMSourceA;
+    enc->DefaultValue = PWMSOURCELFO;
+    switch (currentPatch.PWMSourceA)
+    {
+    case PWMSOURCEMANUAL:
+        enc->ValueStr = "Manual";
+        break;
+    case PWMSOURCELFO:
+        enc->ValueStr = "LFO";
+        break;
+    case PWMSOURCEFENV:
+        enc->ValueStr = "Filter Env";
+        break;
+    }
+
+    enc->Range = 2;
+    enc->ParameterStr = ParameterStrMap[CCpwmSourceA];
+    enc->Push = true;
+    enc->PushAction = st;
+}
+
+FLASHMEM void configureCCpwmAmtA(EncoderMappingStruct *enc, State st = State::MAIN)
+{
+    currentPatch.PWMSourceA != PWMSOURCEMANUAL ? enc->active = true : enc->active = false;
+    enc->Parameter = CCpwmAmtA;
+    enc->ShowValue = true;
+    enc->Value = currentPatch.PWMA_Amount;
+    enc->DefaultValue = 63;
+    enc->ValueStr = String(LINEAR[currentPatch.PWMA_Amount]);
+    enc->Range = 127;
+    enc->ParameterStr = ParameterStrMap[CCpwmAmtA];
+    enc->Push = true;
+    enc->PushAction = st;
+}
+
+FLASHMEM void configureCCpwmRateA(EncoderMappingStruct *enc, State st = State::MAIN)
+{
+    currentPatch.PWMSourceA == PWMSOURCELFO ? enc->active = true : enc->active = false;
+    enc->Parameter = CCpwmRateA;
+    enc->ShowValue = true;
+    enc->Value = currentPatch.PWMRateA;
+    enc->DefaultValue = 11;
+    enc->ValueStr = String(groupvec[activeGroupIndex]->getPwmRateA()) + "Hz";
+    enc->Range = 127;
+    enc->ParameterStr = ParameterStrMap[CCpwmRateA];
+    enc->Push = true;
+    enc->PushAction = st;
+}
+
+FLASHMEM void configureCCpwA(EncoderMappingStruct *enc, State st = State::MAIN)
+{
+    currentPatch.PWMSourceA == PWMSOURCEMANUAL ? enc->active = true : enc->active = false;
+    enc->Parameter = CCpwA;
+    enc->ParameterStr = ParameterStrMap[CCpwA];
+    enc->ShowValue = true;
+    enc->Value = currentPatch.PWA_Amount;
+    enc->DefaultValue = 63;
+    if (groupvec[activeGroupIndex]->getWaveformA() == WAVEFORM_TRIANGLE_VARIABLE)
+    {
+        enc->ValueStr = "Tri " + String(groupvec[activeGroupIndex]->getPwA());
+    }
+    else
+    {
+        enc->ValueStr = "Pulse " + String(groupvec[activeGroupIndex]->getPwA());
+    }
+    enc->Range = 127;
+    enc->Push = true;
+    enc->PushAction = st;
+}
+
+FLASHMEM void configureCCpwmSourceB(EncoderMappingStruct *enc, State st = State::MAIN)
+{
+    enc->active = true;
+    enc->Parameter = CCpwmSourceB;
+    enc->ShowValue = true;
+    enc->Value = currentPatch.PWMSourceB;
+    switch (currentPatch.PWMSourceB)
+    {
+    case PWMSOURCEMANUAL:
+        enc->ValueStr = "Manual";
+        break;
+    case PWMSOURCELFO:
+        enc->ValueStr = "LFO";
+        break;
+    case PWMSOURCEFENV:
+        enc->ValueStr = "Filter Env";
+        break;
+    }
+    enc->Range = 2;
+    enc->ParameterStr = ParameterStrMap[CCpwmSourceB];
+    enc->Push = true;
+    enc->PushAction = st;
+}
+
+FLASHMEM void configureCCpwmAmtB(EncoderMappingStruct *enc, State st = State::MAIN)
+{
+    currentPatch.PWMSourceB != PWMSOURCEMANUAL
+        ? enc->active = true
+        : enc->active = false;
+    enc->Parameter = CCpwmAmtB;
+    enc->ShowValue = true;
+    enc->Value = currentPatch.PWMB_Amount;
+    enc->ValueStr = String(LINEAR[currentPatch.PWMB_Amount]);
+    enc->Range = 127;
+    enc->ParameterStr = ParameterStrMap[CCpwmAmtB];
+    enc->Push = true;
+    enc->PushAction = st;
+}
+
+FLASHMEM void configureCCpwmRateB(EncoderMappingStruct *enc, State st = State::MAIN)
+{
+    currentPatch.PWMSourceB == PWMSOURCELFO
+        ? enc->active = true
+        : enc->active = false;
+    enc->Parameter = CCpwmRateB;
+    enc->ShowValue = true;
+    enc->Value = currentPatch.PWMRateB;
+    enc->ValueStr = String(groupvec[activeGroupIndex]->getPwmRateB()) + "Hz";
+    enc->Range = 127;
+    enc->ParameterStr = ParameterStrMap[CCpwmRateB];
+    enc->Push = true;
+    enc->PushAction = st;
+}
+
+FLASHMEM void configureCCpwB(EncoderMappingStruct *enc, State st = State::MAIN)
+{
+    currentPatch.PWMSourceB == PWMSOURCEMANUAL
+        ? enc->active = true
+        : enc->active = false;
+    enc->Parameter = CCpwB;
+    enc->ParameterStr = ParameterStrMap[CCpwB];
+    enc->ShowValue = true;
+    enc->Value = currentPatch.PWB_Amount;
+    if (groupvec[activeGroupIndex]->getWaveformB() == WAVEFORM_TRIANGLE_VARIABLE)
+    {
+        enc->ValueStr = "Tri " + String(groupvec[activeGroupIndex]->getPwB());
+    }
+    else
+    {
+        enc->ValueStr = "Pulse " + String(groupvec[activeGroupIndex]->getPwB());
+    }
+    enc->Range = 127;
+    enc->Push = true;
+    enc->PushAction = st;
+}
+
+FLASHMEM void configureCCoscLfoWaveform(EncoderMappingStruct *enc, State st = State::MAIN)
+{
+    enc->active = true;
+    enc->Parameter = CCoscLfoWaveform;
+    enc->ShowValue = true;
+    enc->Value = currentPatch.PitchLFOWaveform;
+    enc->DefaultValue = WAVEFORM_SINE;
+    enc->ValueStr = getWaveformStr(groupvec[activeGroupIndex]->getPitchLfoWaveform());
+    enc->Range = 127;
+    enc->ParameterStr = ParameterStrMap[CCoscLfoWaveform];
+    enc->Push = true;
+    enc->PushAction = st;
+}
+
+FLASHMEM void configureCCosclfoamt(EncoderMappingStruct *enc, State st = State::MAIN)
+{
+    enc->active = true;
+    enc->Parameter = CCosclfoamt;
+    enc->ShowValue = true;
+    enc->Value = currentPatch.PitchLFOAmt;
+    enc->DefaultValue = 11;
+    enc->ValueStr = String(groupvec[activeGroupIndex]->getPitchLfoAmount());
+    enc->Range = 127;
+    enc->ParameterStr = ParameterStrMap[CCosclfoamt];
+    enc->Push = true;
+    enc->PushAction = st;
+}
+
+FLASHMEM void configureCCoscLfoRate(EncoderMappingStruct *enc, State st = State::MAIN)
+{
+    enc->active = true;
+    enc->Parameter = CCoscLfoRate;
+    enc->ShowValue = true;
+    enc->Value = currentPatch.PitchLFORate;
+    enc->DefaultValue = 11;
+    enc->ValueStr = String(groupvec[activeGroupIndex]->getPitchLfoRate()) + " Hz";
+    enc->Range = 127;
+    enc->ParameterStr = ParameterStrMap[CCoscLfoRate];
+    enc->Push = true;
+    enc->PushAction = st;
+}
+
+FLASHMEM void configureCCosclforetrig(EncoderMappingStruct *enc, State st = State::MAIN)
+{
+    enc->active = true;
+    enc->Parameter = CCosclforetrig;
+    enc->ShowValue = true;
+    enc->Value = currentPatch.PitchLFORetrig;
+    enc->DefaultValue = 0;
+    enc->ValueStr = groupvec[activeGroupIndex]->getPitchLfoRetrig() > 0 ? "On" : "Off";
+    enc->Range = 1;
+    enc->ParameterStr = ParameterStrMap[CCosclforetrig];
+    enc->Push = true;
+    enc->PushAction = st;
+}
+
+FLASHMEM void configureCCoscLFOMidiClkSync(EncoderMappingStruct *enc, State st = State::MAIN)
+{
+    enc->active = true;
+    enc->Parameter = CCoscLFOMidiClkSync;
+    enc->ShowValue = true;
+    enc->Value = currentPatch.PitchLFOMidiClkSync;
+    enc->DefaultValue = 0;
+    enc->ValueStr = groupvec[activeGroupIndex]->getPitchLfoMidiClockSync() > 0 ? "On" : "Off";
+    enc->Range = 1;
+    enc->ParameterStr = ParameterStrMap[CCoscLFOMidiClkSync];
+    enc->Push = true;
+    enc->PushAction = st;
+}
+
+FLASHMEM void configureCCfilterLFOMidiClkSync(EncoderMappingStruct *enc, State st = State::MAIN)
+{
+    enc->active = true;
+    enc->Parameter = CCfilterLFOMidiClkSync;
+    enc->ShowValue = true;
+    enc->Value = currentPatch.FilterLFOMidiClkSync;
+    enc->DefaultValue = 0;
+    enc->ValueStr = groupvec[activeGroupIndex]->getFilterLfoMidiClockSync() > 0 ? "On" : "Off";
+    enc->Range = 1;
+    enc->ParameterStr = ParameterStrMap[CCfilterLFOMidiClkSync];
+    enc->Push = true;
+    enc->PushAction = st;
+}
+
+FLASHMEM void configureCCoscLevelB_OscFX(EncoderMappingStruct *enc, State st = State::MAIN)
+{
+    currentPatch.OscFX == OSCFXXMOD ? enc->active = true : enc->active = false;
+    enc->Parameter = CCoscLevelB;
+    enc->ShowValue = true;
+    enc->Value = currentPatch.OscLevelB;
+    enc->DefaultValue = 127;
+    enc->ValueStr = String(groupvec[activeGroupIndex]->getOscLevelB());
+    enc->Range = 127;
+    enc->ParameterStr = ParameterStrMap[CCoscLevelB];
+    enc->Push = true;
+    enc->PushAction = st;
+}
+
+FLASHMEM void configureCCoscfx(EncoderMappingStruct *enc, State st = State::MAIN)
+{
+    enc->active = true;
+    enc->Parameter = CCoscfx;
+    enc->ShowValue = true;
+    enc->Value = currentPatch.OscFX;
+    enc->DefaultValue = 0;
+    switch (groupvec[activeGroupIndex]->getOscFX())
+    {
+    case 2:
+        enc->ValueStr = "X Mod";
+        break;
+    case 1:
+        enc->ValueStr = "XOR Mod";
+        break;
+    default:
+        enc->ValueStr = "Off";
+        break;
+    }
+    enc->Range = 2;
+    enc->ParameterStr = ParameterStrMap[CCoscfx];
+    enc->Push = true;
+    enc->PushAction = st;
+}
+
+FLASHMEM void configureCCpitchenv(EncoderMappingStruct *enc, State st = State::MAIN)
+{
+    enc->active = true;
+    enc->Parameter = CCpitchenv;
+    enc->ShowValue = true;
+    enc->Value = currentPatch.PitchEnv;
+    enc->DefaultValue = 63;
+    enc->ValueStr = String(groupvec[activeGroupIndex]->getPitchEnvelope());
+    enc->Range = 127;
+    enc->ParameterStr = ParameterStrMap[CCpitchenv];
+    enc->Push = true;
+    enc->PushAction = st;
+}
+
+FLASHMEM void configureCCoscLevelA_OscFX(EncoderMappingStruct *enc, State st = State::MAIN)
+{
+    currentPatch.OscFX == OSCFXXMOD ? enc->active = true : enc->active = false;
+    enc->Parameter = CCoscLevelA;
+    enc->ShowValue = true;
+    enc->Value = currentPatch.OscLevelA;
+    enc->DefaultValue = 63;
+    enc->ValueStr = String(groupvec[activeGroupIndex]->getOscLevelA());
+    enc->Range = 127;
+    enc->ParameterStr = ParameterStrMap[CCoscLevelA];
+    enc->Push = true;
+    enc->PushAction = st;
+}
+
+FLASHMEM void configurefilterfreq256(EncoderMappingStruct *enc, State st = State::MAIN)
+{
+    enc->active = true;
+    enc->Parameter = filterfreq256; // 256 values
+    enc->ShowValue = true;
+    enc->Value = currentPatch.FilterFreq;
+    enc->DefaultValue = 255;
+    enc->ValueStr = String(int(groupvec[activeGroupIndex]->getCutoff())) + " Hz";
+    enc->Range = 255;
+    enc->ParameterStr = ParameterStrMap[CCfilterfreq];
+    enc->Push = true;
+    enc->PushAction = st;
+}
+
+FLASHMEM void configureCCfilterres(EncoderMappingStruct *enc, State st = State::MAIN)
+{
+    enc->active = true;
+    enc->Parameter = CCfilterres;
+    enc->ShowValue = true;
+    enc->Value = currentPatch.FilterRes;
+    enc->DefaultValue = 0;
+    enc->Range = 127;
+    enc->ValueStr = String(groupvec[activeGroupIndex]->getResonance());
+    enc->ParameterStr = ParameterStrMap[CCfilterres];
+    enc->Push = true;
+    enc->PushAction = st;
+}
+
+FLASHMEM void configureCCfiltermixer(EncoderMappingStruct *enc, State st = State::MAIN)
+{
+    enc->active = true;
+    enc->Parameter = CCfiltermixer;
+    enc->ShowValue = true;
+    enc->Value = currentPatch.FilterMixer;
+    enc->DefaultValue = 0;
+    if (groupvec[activeGroupIndex]->getFilterMixer() == BANDPASS)
+    {
+        enc->ValueStr = "Band Pass";
+    }
+    else
+    {
+        // LP-HP mix mode - a notch filter
+        if (groupvec[activeGroupIndex]->getFilterMixer() == LOWPASS)
+        {
+            enc->ValueStr = "Low Pass";
+        }
+        else if (groupvec[activeGroupIndex]->getFilterMixer() == HIGHPASS)
+        {
+            enc->ValueStr = "High Pass";
+        }
+        else
+        {
+            enc->ValueStr = "Low " + String(100 - int(100 * groupvec[activeGroupIndex]->getFilterMixer())) + " - " + String(int(100 * groupvec[activeGroupIndex]->getFilterMixer())) + " High";
+        }
+    }
+    enc->Range = 127;
+    enc->ParameterStr = ParameterStrMap[CCfiltermixer];
+    enc->Push = true;
+    enc->PushAction = st;
+}
+
+FLASHMEM void configureCCfilterenv(EncoderMappingStruct *enc, State st = State::MAIN)
+{
+    enc->active = true;
+    enc->Parameter = CCfilterenv;
+    enc->ShowValue = true;
+    enc->Value = currentPatch.FilterEnv;
+    enc->DefaultValue = 63;
+    enc->ValueStr = String(groupvec[activeGroupIndex]->getFilterEnvelope());
+    enc->Range = 127;
+    enc->ParameterStr = ParameterStrMap[CCfilterenv];
+    enc->Push = true;
+    enc->PushAction = st;
+}
+
+FLASHMEM void configureCCfilterattack(EncoderMappingStruct *enc, State st = State::MAIN)
+{
+    enc->active = true;
+    enc->Parameter = CCfilterattack;
+    enc->ShowValue = true;
+    enc->Value = currentPatch.FilterAttack;
+    enc->DefaultValue = 0;
+    enc->ValueStr = milliToString(groupvec[activeGroupIndex]->getFilterAttack());
+    enc->Range = 127;
+    enc->ParameterStr = ParameterStrMap[CCfilterattack];
+    enc->Push = true;
+    enc->PushAction = st;
+}
+
+FLASHMEM void configureCCfilterdecay(EncoderMappingStruct *enc, State st = State::MAIN)
+{
+    enc->active = true;
+    enc->Parameter = CCfilterdecay;
+    enc->ShowValue = true;
+    enc->Value = currentPatch.FilterDecay;
+    enc->DefaultValue = 20;
+    enc->ValueStr = milliToString(groupvec[activeGroupIndex]->getFilterDecay());
+    enc->Range = 127;
+    enc->ParameterStr = ParameterStrMap[CCfilterdecay];
+    enc->Push = true;
+    enc->PushAction = st;
+}
+
+FLASHMEM void configureCCfiltersustain(EncoderMappingStruct *enc, State st = State::MAIN)
+{
+    enc->active = true;
+    enc->Parameter = CCfiltersustain;
+    enc->ShowValue = true;
+    enc->Value = currentPatch.FilterSustain;
+    enc->DefaultValue = 63;
+    enc->ValueStr = String(groupvec[activeGroupIndex]->getFilterSustain());
+    enc->Range = 127;
+    enc->ParameterStr = ParameterStrMap[CCfiltersustain];
+    enc->Push = true;
+    enc->PushAction = st;
+}
+
+FLASHMEM void configureCCfilterrelease(EncoderMappingStruct *enc, State st = State::MAIN)
+{
+    enc->active = true;
+    enc->Parameter = CCfilterrelease;
+    enc->ShowValue = true;
+    enc->Value = currentPatch.FilterRelease;
+    enc->DefaultValue = 20;
+    enc->ValueStr = milliToString(groupvec[activeGroupIndex]->getFilterRelease());
+    enc->Range = 127;
+    enc->ParameterStr = ParameterStrMap[CCfilterrelease];
+    enc->Push = true;
+    enc->PushAction = st;
+}
+
+FLASHMEM void configureCCfilterlfowaveform(EncoderMappingStruct *enc, State st = State::MAIN)
+{
+    enc->active = true;
+    enc->Parameter = CCfilterlfowaveform;
+    enc->ShowValue = true;
+    enc->Value = currentPatch.FilterLFOWaveform;
+    enc->DefaultValue = WAVEFORM_SINE;
+    enc->ValueStr = getWaveformStr(groupvec[activeGroupIndex]->getFilterLfoWaveform());
+    enc->Range = 127;
+    enc->ParameterStr = ParameterStrMap[CCfilterlfowaveform];
+    enc->Push = true;
+    enc->PushAction = st;
+}
+FLASHMEM void configureCCfilterlfoamt(EncoderMappingStruct *enc, State st = State::MAIN)
+{
+    enc->active = true;
+    enc->Parameter = CCfilterlfoamt;
+    enc->ShowValue = true;
+    enc->Value = currentPatch.FilterLfoAmt;
+    enc->DefaultValue = 0;
+    enc->ValueStr = String(groupvec[activeGroupIndex]->getFilterLfoAmt());
+    enc->Range = 127;
+    enc->ParameterStr = ParameterStrMap[CCfilterlfoamt];
+    enc->Push = true;
+    enc->PushAction = st;
+}
+FLASHMEM void configureCCfilterlforate(EncoderMappingStruct *enc, State st)
+{
+    enc->active = true;
+    enc->Parameter = CCfilterlforate;
+    enc->ShowValue = true;
+    enc->Value = currentPatch.FilterLFORate;
+    enc->DefaultValue = 18;
+    enc->ValueStr = String(groupvec[activeGroupIndex]->getFilterLfoRate()) + " Hz";
+    enc->Range = 127;
+    enc->ParameterStr = ParameterStrMap[CCfilterlforate];
+    enc->Push = true;
+    enc->PushAction = st;
+}
+
+FLASHMEM void configureCCfilterlforetrig(EncoderMappingStruct *enc, State st = State::MAIN)
+{
+    enc->active = true;
+    enc->Parameter = CCfilterlforetrig;
+    enc->ShowValue = true;
+    enc->Value = currentPatch.FilterLFORetrig;
+    enc->DefaultValue = 0;
+    enc->ValueStr = groupvec[activeGroupIndex]->getFilterLfoRetrig() > 0 ? "On" : "off";
+    enc->Range = 1;
+    enc->ParameterStr = ParameterStrMap[CCfilterlforetrig];
+    enc->Push = true;
+    enc->PushAction = st;
+}
+
+FLASHMEM void configureCCfxamt(EncoderMappingStruct *enc, State st = State::MAIN)
+{
+    enc->active = true;
+    enc->Parameter = CCfxamt;
+    enc->ShowValue = true;
+    enc->Value = currentPatch.EffectAmt;
+    enc->DefaultValue = 0;
+    enc->ValueStr = String(ENSEMBLE_LFO[currentPatch.EffectAmt]) + " Hz";
+    enc->Range = 127;
+    enc->ParameterStr = ParameterStrMap[CCfxamt];
+    enc->Push = true;
+    enc->PushAction = st;
+}
+
+FLASHMEM void configureCCfxmix(EncoderMappingStruct *enc, State st = State::MAIN)
+{
+    enc->active = true;
+    enc->Parameter = CCfxmix;
+    enc->ShowValue = true;
+    enc->Value = currentPatch.EffectMix;
+    enc->DefaultValue = 0;
+    enc->ValueStr = String(groupvec[activeGroupIndex]->getEffectMix());
+    enc->Range = 127;
+    enc->ParameterStr = ParameterStrMap[CCfxmix];
+    enc->Push = true;
+    enc->PushAction = st;
+}
+
+FLASHMEM void configureCCkeytracking(EncoderMappingStruct *enc, State st = State::MAIN)
+{
+    enc->active = true;
+    enc->Parameter = CCkeytracking;
+    enc->ShowValue = true;
+    enc->Value = currentPatch.KeyTracking;
+    enc->Value = 63;
+    enc->ValueStr = String(LINEAR[currentPatch.KeyTracking]);
+    enc->Range = 127;
+    enc->ParameterStr = ParameterStrMap[CCkeytracking];
+    enc->Push = true;
+    enc->PushAction = st;
+}
+
+FLASHMEM void configurefilterenvshape(EncoderMappingStruct *enc, State st = State::MAIN)
+{
+    enc->active = true;
+    enc->Parameter = filterenvshape;
+    enc->ShowValue = true;
+    enc->Value = currentPatch.FilterEnvShape;
+    enc->DefaultValue = 9;
+    enc->ValueStr = EnvShapeStr[currentPatch.FilterEnvShape];
+    enc->Range = 17;
+    enc->ParameterStr = ParameterStrMap[filterenvshape];
+    enc->Push = true;
+    enc->PushAction = st;
+}
+
+FLASHMEM void configureCCampattack(EncoderMappingStruct *enc, State st = State::MAIN)
+{
+    enc->active = true;
+    enc->Parameter = CCampattack;
+    enc->ShowValue = true;
+    enc->Value = currentPatch.Attack;
+    enc->DefaultValue = 0;
+    enc->ValueStr = milliToString(groupvec[activeGroupIndex]->getAmpAttack());
+    enc->Range = 127;
+    enc->ParameterStr = ParameterStrMap[CCampattack];
+    enc->Push = true;
+    enc->PushAction = st;
+}
+
+FLASHMEM void configureCCampdecay(EncoderMappingStruct *enc, State st = State::MAIN)
+{
+    enc->active = true;
+    enc->Parameter = CCampdecay;
+    enc->ShowValue = true;
+    enc->Value = currentPatch.Decay;
+    enc->DefaultValue = 20;
+    enc->ValueStr = milliToString(groupvec[activeGroupIndex]->getAmpDecay());
+    enc->Range = 127;
+    enc->ParameterStr = ParameterStrMap[CCampdecay];
+    enc->Push = true;
+    enc->PushAction = st;
+}
+
+FLASHMEM void configureCCampsustain(EncoderMappingStruct *enc, State st = State::MAIN)
+{
+    enc->active = true;
+    enc->Parameter = CCampsustain;
+    enc->ShowValue = true;
+    enc->Value = currentPatch.Sustain;
+    enc->DefaultValue = 63;
+    enc->ValueStr = String(groupvec[activeGroupIndex]->getAmpSustain());
+    enc->Range = 127;
+    enc->ParameterStr = ParameterStrMap[CCampsustain];
+    enc->Push = true;
+    enc->PushAction = st;
+}
+
+FLASHMEM void configureCCamprelease(EncoderMappingStruct *enc, State st = State::MAIN)
+{
+    enc->active = true;
+    enc->Parameter = CCamprelease;
+    enc->ShowValue = true;
+    enc->Value = currentPatch.Release;
+    enc->DefaultValue = 20;
+    enc->ValueStr = milliToString(groupvec[activeGroupIndex]->getAmpRelease());
+    enc->Range = 127;
+    enc->ParameterStr = ParameterStrMap[CCamprelease];
+    enc->Push = true;
+    enc->PushAction = st;
+}
+
+FLASHMEM void configurepitchbendrange(EncoderMappingStruct *enc, State st = State::MAIN)
+{
+    enc->active = true;
+    enc->Parameter = pitchbendrange;
+    enc->ShowValue = true;
+    enc->Value = currentPatch.PitchBend;
+    enc->DefaultValue = 12;
+    enc->ValueStr = String(currentPatch.PitchBend);
+    enc->Range = 11;
+    enc->ParameterStr = ParameterStrMap[pitchbendrange];
+    enc->Push = true;
+    enc->PushAction = st;
+}
+FLASHMEM void configurefiltermodwheeldepth(EncoderMappingStruct *enc, State st = State::MAIN)
+{
+    enc->active = true;
+    enc->Parameter = filtermodwheeldepth;
+    enc->ShowValue = true;
+    enc->Value = currentPatch.FilterModWheelDepth;
+    enc->DefaultValue = 1;
+    enc->ValueStr = String(currentPatch.FilterModWheelDepth / 10.0f);
+    enc->Range = 10;
+    enc->ParameterStr = ParameterStrMap[filtermodwheeldepth];
+    enc->Push = true;
+    enc->PushAction = st;
+}
+FLASHMEM void configurepitchmodwheeldepth(EncoderMappingStruct *enc, State st = State::MAIN)
+{
+    enc->active = true;
+    enc->Parameter = pitchmodwheeldepth;
+    enc->ShowValue = true;
+    enc->Value = currentPatch.PitchModWheelDepth;
+    enc->DefaultValue = 0;
+    enc->ValueStr = String(currentPatch.PitchModWheelDepth / 10.0f);
+    enc->Range = 10;
+    enc->ParameterStr = ParameterStrMap[pitchmodwheeldepth];
+    enc->Push = true;
+    enc->PushAction = st;
+}
+FLASHMEM void configureCCAmpVelocitySens(EncoderMappingStruct *enc, State st = State::MAIN)
+{
+    enc->active = true;
+    enc->Parameter = CCvelocitySens;
+    enc->ShowValue = true;
+    enc->Value = currentPatch.VelocitySensitivity;
+    enc->DefaultValue = 0;
+    enc->ValueStr = velocityStr[currentPatch.VelocitySensitivity];
+    enc->Range = 4;
+    enc->ParameterStr = ParameterStrMap[CCvelocitySens];
+    enc->Push = true;
+    enc->PushAction = st;
+}
+
+FLASHMEM void configureCCFilterVelocitySens(EncoderMappingStruct *enc, State st = State::MAIN)
+{
+    enc->active = true;
+    enc->Parameter = CCFilterVelocitySens;
+    enc->ShowValue = true;
+    enc->Value = currentPatch.FilterVelocitySensitivity;
+    enc->DefaultValue = 0;
+    enc->ValueStr = velocityStr[currentPatch.FilterVelocitySensitivity];
+    enc->Range = 4;
+    enc->ParameterStr = ParameterStrMap[CCFilterVelocitySens];
+    enc->Push = true;
+    enc->PushAction = st;
+}
+
+FLASHMEM void configureCCmonomode(EncoderMappingStruct *enc, State st = State::MAIN)
+{
+    enc->active = true;
+    enc->Parameter = CCmonomode;
+    enc->ShowValue = true;
+    enc->Value = currentPatch.MonophonicMode;
+    enc->DefaultValue = 0;
+    enc->ValueStr = MonophonicStr[currentPatch.MonophonicMode];
+    enc->Range = 4;
+    enc->ParameterStr = ParameterStrMap[CCmonomode];
+    enc->Push = true;
+    enc->PushAction = st;
+}
+
+FLASHMEM void configureampenvshape(EncoderMappingStruct *enc, State st = State::MAIN)
+{
+    enc->active = true;
+    enc->Parameter = ampenvshape;
+    enc->ShowValue = true;
+    enc->Value = currentPatch.AmpEnvShape;
+    enc->DefaultValue = 0;
+    enc->ValueStr = EnvShapeStr[currentPatch.AmpEnvShape];
+    enc->Range = 17;
+    enc->ParameterStr = ParameterStrMap[ampenvshape];
+    enc->Push = true;
+    enc->PushAction = st;
+}
+
+FLASHMEM void configureCCglide(EncoderMappingStruct *enc, State st = State::MAIN)
+{
+    enc->active = true;
+    enc->Parameter = CCglide;
+    enc->ShowValue = true;
+    enc->Value = currentPatch.Glide;
+    enc->DefaultValue = 0;
+    enc->ValueStr = milliToString(POWER[currentPatch.Glide] * GLIDEFACTOR);
+    enc->Range = 127;
+    enc->ParameterStr = ParameterStrMap[CCglide];
+    enc->Push = true;
+    enc->PushAction = st;
+}
+
+FLASHMEM void configureglideshape(EncoderMappingStruct *enc, State st = State::MAIN)
+{
+    enc->active = true;
+    enc->Parameter = glideshape;
+    enc->ShowValue = true;
+    enc->Value = currentPatch.GlideShape;
+    enc->DefaultValue = 0;
+    enc->ValueStr = GlideShapeStr[currentPatch.GlideShape];
+    enc->Range = 1;
+    enc->ParameterStr = ParameterStrMap[glideshape];
+    enc->Push = true;
+    enc->PushAction = st;
+}
+
+FLASHMEM void setDefaultValue(EncoderMappingStruct *enc)
+{
+    enc->Value = enc->DefaultValue;
 }
 
 // currentPatch.XXX stores relative values (0-127) like MIDI CC
@@ -54,767 +1003,108 @@ FLASHMEM void setEncodersState(State s)
     switch (s)
     {
     case State::MAIN:
-        encMap[ENC_TL].active = false;
-
-        encMap[ENC_TR].active = false;
-
-        encMap[ENC_BL].active = true;
-        encMap[ENC_BL].Parameter = CCbankselectLSB;
-        encMap[ENC_BL].ShowValue = false;
-        encMap[ENC_BL].Value = currentBankIndex;
-        encMap[ENC_BL].Range = BANKS_LIMIT;
-        encMap[ENC_BL].ParameterStr = ParameterStrMap[CCbankselectLSB];
-        encMap[ENC_BL].ValueStr = "";
-        encMap[ENC_BL].Push = true;
-        encMap[ENC_BL].PushAction = State::PATCHLIST;
-
-        encMap[ENC_BR].active = true;
-        encMap[ENC_BR].Parameter = patchselect;
-        encMap[ENC_BR].ShowValue = false;
-        encMap[ENC_BR].Value = currentPatchIndex;
-        encMap[ENC_BR].Range = patches.size();
-        encMap[ENC_BR].ValueStr = "";
-        encMap[ENC_BR].ParameterStr = ParameterStrMap[patchselect];
-        encMap[ENC_BR].Push = true;
-        encMap[ENC_BR].PushAction = State::PATCHLIST;
+        configureOff(&encMap[ENC_TL]);
+        configureOff(&encMap[ENC_TR]);
+        configureCCbankselectLSB(&encMap[ENC_BL], State::PATCHLIST);
+        configurePatchselect(&encMap[ENC_BR], State::PATCHLIST);
         break;
-
     case State::PATCHLIST:
-        encMap[ENC_TL].active = false;
-
-        encMap[ENC_TR].active = true;
-        encMap[ENC_TR].Parameter = cancel;
-        encMap[ENC_TR].ShowValue = false;
-        encMap[ENC_TR].Value = 0;
-        encMap[ENC_TR].Range = 0;
-        encMap[ENC_TR].ValueStr = "";
-        encMap[ENC_TR].ParameterStr = ParameterStrMap[cancel];
-        encMap[ENC_TR].Push = true;
-        encMap[ENC_TR].PushAction = State::MAIN;
-
-        encMap[ENC_BL].active = true;
-        encMap[ENC_BL].Parameter = CCbankselectLSB;
-        encMap[ENC_BL].ShowValue = false;
-        encMap[ENC_BL].Value = currentBankIndex;
-        encMap[ENC_BL].Range = BANKS_LIMIT;
-        encMap[ENC_BL].ValueStr = "";
-        encMap[ENC_BL].ParameterStr = ParameterStrMap[CCbankselectLSB];
-        encMap[ENC_BL].Push = true;
-        encMap[ENC_BL].PushAction = State::MAIN;
-
-        encMap[ENC_BR].active = true;
-        encMap[ENC_BR].Parameter = patchselect;
-        encMap[ENC_BR].ShowValue = false;
-        encMap[ENC_BR].Value = currentPatchIndex;
-        encMap[ENC_BR].Range = patches.size();
-        encMap[ENC_BR].ValueStr = "";
-        encMap[ENC_BR].ParameterStr = ParameterStrMap[patchselect];
-        encMap[ENC_BR].Push = true;
-        encMap[ENC_BR].PushAction = State::MAIN;
+        configureOff(&encMap[ENC_TL]);
+        configureCancel(&encMap[ENC_TR]);
+        configureCCbankselectLSB(&encMap[ENC_BL]);
+        configurePatchselect(&encMap[ENC_BR]);
         break;
     case State::OSCPAGE1:
-        encMap[ENC_BL].active = true;
-        encMap[ENC_BL].Parameter = CCoscwaveformA;
-        encMap[ENC_BL].ShowValue = true;
-        encMap[ENC_BL].Value = currentPatch.WaveformA;
-        encMap[ENC_BL].ValueStr = getWaveformStr(groupvec[activeGroupIndex]->getWaveformA());
-        encMap[ENC_BL].Range = 127;
-        encMap[ENC_BL].ParameterStr = ParameterStrMap[CCoscwaveformA];
-        encMap[ENC_BL].Push = true;
-        encMap[ENC_BL].PushAction = State::OSCPAGE2;
-
-        encMap[ENC_BR].active = true;
-        encMap[ENC_BR].Parameter = CCoscLevelA;
-        encMap[ENC_BR].ShowValue = true;
-        encMap[ENC_BR].Value = currentPatch.OscLevelA;
-        encMap[ENC_BR].ValueStr = String(groupvec[activeGroupIndex]->getOscLevelA());
-        encMap[ENC_BR].Range = 127;
-        encMap[ENC_BR].ParameterStr = ParameterStrMap[CCoscLevelA];
-        encMap[ENC_BR].Push = true;
-        encMap[ENC_BR].PushAction = State::OSCPAGE2;
-
-        encMap[ENC_TL].active = true;
-        encMap[ENC_TL].Parameter = CCdetune;
-        encMap[ENC_TL].ShowValue = true;
-        if (groupvec[activeGroupIndex]->params().unisonMode == 2)
-        {
-            encMap[ENC_TL].Value = currentPatch.ChordDetune;
-            encMap[ENC_TL].ValueStr = String(CDT_STR[groupvec[activeGroupIndex]->params().chordDetune]);
-        }
-        else
-        {
-            encMap[ENC_TL].Value = currentPatch.Detune;
-            encMap[ENC_TL].ValueStr = String((1 - groupvec[activeGroupIndex]->params().detune) * 100) + " %";
-        }
-        encMap[ENC_TL].Range = 127;
-        encMap[ENC_TL].ParameterStr = ParameterStrMap[CCdetune];
-        encMap[ENC_TL].Push = true;
-        encMap[ENC_TL].PushAction = State::OSCPAGE2;
-
-        encMap[ENC_TR].active = true;
-        encMap[ENC_TR].Parameter = CCpitchA;
-        encMap[ENC_TR].ShowValue = true;
-        encMap[ENC_TR].Value = currentPatch.PitchA;
-        encMap[ENC_TR].ValueStr = (groupvec[activeGroupIndex]->params().oscPitchA > 0 ? "+" : "") + String(groupvec[activeGroupIndex]->params().oscPitchA);
-        encMap[ENC_TR].Range = 127;
-        encMap[ENC_TR].ParameterStr = ParameterStrMap[CCpitchA];
-        encMap[ENC_TR].Push = true;
-        encMap[ENC_TR].PushAction = State::OSCPAGE2;
+        configureCCoscwaveformA(&encMap[ENC_BL], State::OSCPAGE1);
+        configureCCoscLevelA(&encMap[ENC_BR], State::OSCPAGE1);
+        configureCCdetune(&encMap[ENC_TL], State::OSCPAGE1);
+        configureCCpitchA(&encMap[ENC_TR], State::OSCPAGE1);
         break;
     case State::OSCPAGE2:
-        encMap[ENC_BL].active = true;
-        encMap[ENC_BL].Parameter = CCoscwaveformB;
-        encMap[ENC_BL].ShowValue = true;
-        encMap[ENC_BL].Value = currentPatch.WaveformB;
-        encMap[ENC_BL].ValueStr = getWaveformStr(groupvec[activeGroupIndex]->getWaveformB());
-        encMap[ENC_BL].Range = 127;
-        encMap[ENC_BL].ParameterStr = ParameterStrMap[CCoscwaveformB];
-        encMap[ENC_BL].Push = true;
-        encMap[ENC_BL].PushAction = State::OSCPAGE1;
-
-        encMap[ENC_BR].active = true;
-        encMap[ENC_BR].Parameter = CCoscLevelB;
-        encMap[ENC_BR].ShowValue = true;
-        encMap[ENC_BR].Value = currentPatch.OscLevelB;
-        encMap[ENC_BR].ValueStr = String(groupvec[activeGroupIndex]->getOscLevelB());
-        encMap[ENC_BR].Range = 127;
-        encMap[ENC_BR].ParameterStr = ParameterStrMap[CCoscLevelB];
-        encMap[ENC_BR].Push = true;
-        encMap[ENC_BR].PushAction = State::OSCPAGE1;
-
-        encMap[ENC_TL].active = true;
-        encMap[ENC_TL].Parameter = CCdetune;
-        encMap[ENC_TL].ShowValue = true;
-        if (groupvec[activeGroupIndex]->params().unisonMode == 2)
-        {
-            encMap[ENC_TL].Value = currentPatch.ChordDetune;
-            encMap[ENC_TL].ValueStr = String(CDT_STR[groupvec[activeGroupIndex]->params().chordDetune]);
-        }
-        else
-        {
-            encMap[ENC_TL].Value = currentPatch.Detune;
-            encMap[ENC_TL].ValueStr = String((1 - groupvec[activeGroupIndex]->params().detune) * 100) + " %";
-        }
-        encMap[ENC_TL].Range = 127;
-        encMap[ENC_TL].ParameterStr = ParameterStrMap[CCdetune];
-        encMap[ENC_TL].Push = true;
-        encMap[ENC_TL].PushAction = State::OSCPAGE1;
-
-        encMap[ENC_TR].active = true;
-        encMap[ENC_TR].Parameter = CCpitchB;
-        encMap[ENC_TR].ShowValue = true;
-        encMap[ENC_TR].Value = currentPatch.PitchB;
-        encMap[ENC_TR].ValueStr = (groupvec[activeGroupIndex]->params().oscPitchB > 0 ? "+" : "") + String(groupvec[activeGroupIndex]->params().oscPitchB);
-        encMap[ENC_TR].Range = 127;
-        encMap[ENC_TR].ParameterStr = ParameterStrMap[CCpitchB];
-        encMap[ENC_TR].Push = true;
-        encMap[ENC_TR].PushAction = State::OSCPAGE1;
+        configureCCoscwaveformB(&encMap[ENC_BL], State::OSCPAGE2);
+        configureCCoscLevelB(&encMap[ENC_BR], State::OSCPAGE2);
+        configureCCdetune(&encMap[ENC_TL], State::OSCPAGE2);
+        configureCCpitchB(&encMap[ENC_TR], State::OSCPAGE2);
         break;
     case State::OSCPAGE3:
-        encMap[ENC_BL].active = true;
-        encMap[ENC_BL].Parameter = CCnoiseLevel;
-        encMap[ENC_BL].ShowValue = true;
-
-        if (groupvec[activeGroupIndex]->getPinkNoiseLevel() > 0)
-        {
-            encMap[ENC_BL].Value = currentPatch.NoiseLevel;
-            encMap[ENC_BL].ValueStr = String(groupvec[activeGroupIndex]->getPinkNoiseLevel());
-        }
-        else if (groupvec[activeGroupIndex]->getWhiteNoiseLevel() > 0)
-        {
-            encMap[ENC_BL].Value = currentPatch.NoiseLevel;
-            encMap[ENC_BL].ValueStr = String(groupvec[activeGroupIndex]->getWhiteNoiseLevel());
-        }
-        else
-        {
-            encMap[ENC_BL].Value = 64;
-            encMap[ENC_BL].ValueStr = "Off";
-        }
-        encMap[ENC_BL].Range = 127;
-        encMap[ENC_BL].ParameterStr = ParameterStrMap[CCnoiseLevel];
-        encMap[ENC_BL].Push = true;
-        encMap[ENC_BL].PushAction = State::OSCPAGE1;
-
-        encMap[ENC_BR].active = true;
-        encMap[ENC_BR].Parameter = CCunison;
-        encMap[ENC_BR].ShowValue = true;
-        encMap[ENC_BR].Value = currentPatch.Unison;
-
-        if (groupvec[activeGroupIndex]->params().unisonMode == 0)
-        {
-            encMap[ENC_BR].ValueStr = "Off";
-        }
-        else if (groupvec[activeGroupIndex]->params().unisonMode == 1)
-        {
-            encMap[ENC_BR].ValueStr = "Dynamic";
-        }
-        else
-        {
-            encMap[ENC_BR].ValueStr = "Chord";
-        }
-        encMap[ENC_BR].Range = 2;
-        encMap[ENC_BR].ParameterStr = ParameterStrMap[CCunison];
-        encMap[ENC_BR].Push = true;
-        encMap[ENC_BR].PushAction = State::OSCPAGE1;
-
-        encMap[ENC_TL].active = true;
-        encMap[ENC_TL].Parameter = CCdetune;
-        encMap[ENC_TL].ShowValue = true;
-        if (groupvec[activeGroupIndex]->params().unisonMode == 2)
-        {
-            encMap[ENC_TL].Value = currentPatch.ChordDetune;
-            encMap[ENC_TL].ValueStr = String(CDT_STR[groupvec[activeGroupIndex]->params().chordDetune]);
-        }
-        else
-        {
-            encMap[ENC_TL].Value = currentPatch.Detune;
-            encMap[ENC_TL].ValueStr = String((1 - groupvec[activeGroupIndex]->params().detune) * 100) + " %";
-        }
-        encMap[ENC_TL].Range = 127;
-        encMap[ENC_TL].ParameterStr = ParameterStrMap[CCdetune];
-        encMap[ENC_TL].Push = true;
-        encMap[ENC_TL].PushAction = State::OSCPAGE1;
-
-        encMap[ENC_TR].active = false;
-
+        configureCCnoiseLevel(&encMap[ENC_BL], State::OSCPAGE3);
+        configureCCunison(&encMap[ENC_BR], State::OSCPAGE3);
+        configureCCdetune(&encMap[ENC_TL], State::OSCPAGE3);
+        configureOff(&encMap[ENC_TR]);
         break;
     case State::OSCMODPAGE1:
-        encMap[ENC_BL].active = true;
-        encMap[ENC_BL].Parameter = CCpwmSourceA;
-        encMap[ENC_BL].ShowValue = true;
-        encMap[ENC_BL].Value = currentPatch.PWMSourceA;
-        switch (currentPatch.PWMSourceA)
-        {
-        case PWMSOURCEMANUAL:
-            encMap[ENC_BL].ValueStr = "Manual";
-            break;
-        case PWMSOURCELFO:
-            encMap[ENC_BL].ValueStr = "LFO";
-            break;
-        case PWMSOURCEFENV:
-            encMap[ENC_BL].ValueStr = "Filter Env";
-            break;
-        }
-        encMap[ENC_BL].Range = 2;
-        encMap[ENC_BL].ParameterStr = ParameterStrMap[CCpwmSourceA];
-        encMap[ENC_BL].Push = true;
-        encMap[ENC_BL].PushAction = State::OSCMODPAGE2;
-
-        currentPatch.PWMSourceA != PWMSOURCEMANUAL ? encMap[ENC_BR].active = true : encMap[ENC_BR].active = false;
-        encMap[ENC_BR].Parameter = CCpwmAmtA;
-        encMap[ENC_BR].ShowValue = true;
-        encMap[ENC_BR].Value = currentPatch.PWMA_Amount;
-        encMap[ENC_BR].ValueStr = String(LINEAR[currentPatch.PWMA_Amount]);
-        encMap[ENC_BR].Range = 127;
-        encMap[ENC_BR].ParameterStr = ParameterStrMap[CCpwmAmtA];
-        encMap[ENC_BR].Push = true;
-        encMap[ENC_BR].PushAction = State::OSCMODPAGE2;
-
-        currentPatch.PWMSourceA == PWMSOURCELFO ? encMap[ENC_TL].active = true : encMap[ENC_TL].active = false;
-        encMap[ENC_TL].Parameter = CCpwmRateA;
-        encMap[ENC_TL].ShowValue = true;
-        encMap[ENC_TL].Value = currentPatch.PWMRateA;
-        encMap[ENC_TL].ValueStr = String(groupvec[activeGroupIndex]->getPwmRateA()) + "Hz";
-        encMap[ENC_TL].Range = 127;
-        encMap[ENC_TL].ParameterStr = ParameterStrMap[CCpwmRateA];
-        encMap[ENC_TL].Push = true;
-        encMap[ENC_TL].PushAction = State::OSCMODPAGE2;
-
-        currentPatch.PWMSourceA == PWMSOURCEMANUAL ? encMap[ENC_TR].active = true : encMap[ENC_TR].active = false;
-        encMap[ENC_TR].Parameter = CCpwA;
-        encMap[ENC_TR].ParameterStr = ParameterStrMap[CCpwA];
-        encMap[ENC_TR].ShowValue = true;
-        encMap[ENC_TR].Value = currentPatch.PWA_Amount;
-        if (groupvec[activeGroupIndex]->getWaveformA() == WAVEFORM_TRIANGLE_VARIABLE)
-        {
-            encMap[ENC_TR].ValueStr = "Tri " + String(groupvec[activeGroupIndex]->getPwA());
-        }
-        else
-        {
-            encMap[ENC_TR].ValueStr = "Pulse " + String(groupvec[activeGroupIndex]->getPwA());
-        }
-        encMap[ENC_TR].Range = 127;
-        encMap[ENC_TR].Push = true;
-        encMap[ENC_TR].PushAction = State::OSCMODPAGE2;
+        configureCCpwmSourceA(&encMap[ENC_BL], State::OSCMODPAGE1);
+        configureCCpwmAmtA(&encMap[ENC_BR], State::OSCMODPAGE1);
+        configureCCpwmRateA(&encMap[ENC_TL], State::OSCMODPAGE1);
+        configureCCpwA(&encMap[ENC_TR], State::OSCMODPAGE1);
         break;
-
     case State::OSCMODPAGE2:
-        encMap[ENC_BL].active = true;
-        encMap[ENC_BL].Parameter = CCpwmSourceB;
-        encMap[ENC_BL].ShowValue = true;
-        encMap[ENC_BL].Value = currentPatch.PWMSourceB;
-        switch (currentPatch.PWMSourceB)
-        {
-        case PWMSOURCEMANUAL:
-            encMap[ENC_BL].ValueStr = "Manual";
-            break;
-        case PWMSOURCELFO:
-            encMap[ENC_BL].ValueStr = "LFO";
-            break;
-        case PWMSOURCEFENV:
-            encMap[ENC_BL].ValueStr = "Filter Env";
-            break;
-        }
-        encMap[ENC_BL].Range = 2;
-        encMap[ENC_BL].ParameterStr = ParameterStrMap[CCpwmSourceB];
-        encMap[ENC_BL].Push = true;
-        encMap[ENC_BL].PushAction = State::OSCMODPAGE3;
-
-        currentPatch.PWMSourceB != PWMSOURCEMANUAL ? encMap[ENC_BR].active = true : encMap[ENC_BR].active = false;
-        encMap[ENC_BR].Parameter = CCpwmAmtB;
-        encMap[ENC_BR].ShowValue = true;
-        encMap[ENC_BR].Value = currentPatch.PWMB_Amount;
-        encMap[ENC_BR].ValueStr = String(LINEAR[currentPatch.PWMB_Amount]);
-        encMap[ENC_BR].Range = 127;
-        encMap[ENC_BR].ParameterStr = ParameterStrMap[CCpwmAmtB];
-        encMap[ENC_BR].Push = true;
-        encMap[ENC_BR].PushAction = State::OSCMODPAGE3;
-
-        currentPatch.PWMSourceB == PWMSOURCELFO ? encMap[ENC_TL].active = true : encMap[ENC_TL].active = false;
-        encMap[ENC_TL].Parameter = CCpwmRateB;
-        encMap[ENC_TL].ShowValue = true;
-        encMap[ENC_TL].Value = currentPatch.PWMRateB;
-        encMap[ENC_TL].ValueStr = String(groupvec[activeGroupIndex]->getPwmRateB()) + "Hz";
-        encMap[ENC_TL].Range = 127;
-        encMap[ENC_TL].ParameterStr = ParameterStrMap[CCpwmRateB];
-        encMap[ENC_TL].Push = true;
-        encMap[ENC_TL].PushAction = State::OSCMODPAGE3;
-
-        currentPatch.PWMSourceB == PWMSOURCEMANUAL ? encMap[ENC_TR].active = true : encMap[ENC_TR].active = false;
-        encMap[ENC_TR].Parameter = CCpwB;
-        encMap[ENC_TR].ParameterStr = ParameterStrMap[CCpwB];
-        encMap[ENC_TR].ShowValue = true;
-        encMap[ENC_TR].Value = currentPatch.PWB_Amount;
-        if (groupvec[activeGroupIndex]->getWaveformB() == WAVEFORM_TRIANGLE_VARIABLE)
-        {
-            encMap[ENC_TR].ValueStr = "Tri " + String(groupvec[activeGroupIndex]->getPwB());
-        }
-        else
-        {
-            encMap[ENC_TR].ValueStr = "Pulse " + String(groupvec[activeGroupIndex]->getPwB());
-        }
-        encMap[ENC_TR].Range = 127;
-        encMap[ENC_TR].Push = true;
-        encMap[ENC_TR].PushAction = State::OSCMODPAGE3;
+        configureCCpwmSourceB(&encMap[ENC_BL], State::OSCMODPAGE2);
+        configureCCpwmAmtB(&encMap[ENC_BR], State::OSCMODPAGE2);
+        configureCCpwmRateB(&encMap[ENC_TL], State::OSCMODPAGE2);
+        configureCCpwB(&encMap[ENC_TR], State::OSCMODPAGE2);
         break;
     case State::OSCMODPAGE3:
-        encMap[ENC_BL].active = true;
-        encMap[ENC_BL].Parameter = CCoscLfoWaveform;
-        encMap[ENC_BL].ShowValue = true;
-        encMap[ENC_BL].Value = currentPatch.PitchLFOWaveform;
-        encMap[ENC_BL].ValueStr = getWaveformStr(groupvec[activeGroupIndex]->getPitchLfoWaveform());
-        encMap[ENC_BL].Range = 127;
-        encMap[ENC_BL].ParameterStr = ParameterStrMap[CCoscLfoWaveform];
-        encMap[ENC_BL].Push = true;
-        encMap[ENC_BL].PushAction = State::OSCMODPAGE4;
-
-        encMap[ENC_BR].active = true;
-        encMap[ENC_BR].Parameter = CCosclfoamt;
-        encMap[ENC_BR].ShowValue = true;
-        encMap[ENC_BR].Value = currentPatch.PitchLFOAmt;
-        encMap[ENC_BR].ValueStr = String(groupvec[activeGroupIndex]->getPitchLfoAmount());
-        encMap[ENC_BR].Range = 127;
-        encMap[ENC_BR].ParameterStr = ParameterStrMap[CCosclfoamt];
-        encMap[ENC_BR].Push = true;
-        encMap[ENC_BR].PushAction = State::OSCMODPAGE4;
-
-        encMap[ENC_TL].active = true;
-        encMap[ENC_TL].Parameter = CCoscLfoRate;
-        encMap[ENC_TL].ShowValue = true;
-        encMap[ENC_TL].Value = currentPatch.PitchLFORate;
-        encMap[ENC_TL].ValueStr = String(groupvec[activeGroupIndex]->getPitchLfoRate()) + " Hz";
-        encMap[ENC_TL].Range = 127;
-        encMap[ENC_TL].ParameterStr = ParameterStrMap[CCoscLfoRate];
-        encMap[ENC_TL].Push = true;
-        encMap[ENC_TL].PushAction = State::OSCMODPAGE4;
-
-        encMap[ENC_TR].active = true;
-        encMap[ENC_TR].Parameter = CCosclforetrig;
-        encMap[ENC_TR].ShowValue = true;
-        encMap[ENC_TR].Value = currentPatch.PitchLFORetrig;
-        encMap[ENC_TR].ValueStr = groupvec[activeGroupIndex]->getPitchLfoRetrig() > 0 ? "On" : "Off";
-        encMap[ENC_TR].Range = 1;
-        encMap[ENC_TR].ParameterStr = ParameterStrMap[CCosclforetrig];
-        encMap[ENC_TR].Push = true;
-        encMap[ENC_TR].PushAction = State::OSCMODPAGE4;
+        configureCCoscLfoWaveform(&encMap[ENC_BL], State::OSCMODPAGE3);
+        configureCCosclfoamt(&encMap[ENC_BR], State::OSCMODPAGE3);
+        configureCCoscLfoRate(&encMap[ENC_TL], State::OSCMODPAGE3);
+        configureCCosclforetrig(&encMap[ENC_TR], State::OSCMODPAGE3);
         break;
-
     case State::OSCMODPAGE4:
-        currentPatch.OscFX == OSCFXXMOD ? encMap[ENC_BR].active = true : encMap[ENC_BR].active = false;
-        encMap[ENC_BR].Parameter = CCoscLevelB;
-        encMap[ENC_BR].ShowValue = true;
-        encMap[ENC_BR].Value = currentPatch.OscLevelB;
-        encMap[ENC_BR].ValueStr = String(groupvec[activeGroupIndex]->getOscLevelB());
-        encMap[ENC_BR].Range = 127;
-        encMap[ENC_BR].ParameterStr = ParameterStrMap[CCoscLevelB];
-        encMap[ENC_BR].Push = true;
-        encMap[ENC_BR].PushAction = State::OSCPAGE1;
-
-        encMap[ENC_BL].active = true;
-        encMap[ENC_BL].Parameter = CCoscfx;
-        encMap[ENC_BL].ShowValue = true;
-        encMap[ENC_BL].Value = currentPatch.OscFX;
-
-        switch (groupvec[activeGroupIndex]->getOscFX())
-        {
-        case 2:
-            encMap[ENC_BL].ValueStr = "X Mod";
-            break;
-        case 1:
-            encMap[ENC_BL].ValueStr = "XOR Mod";
-            break;
-        default:
-            encMap[ENC_BL].ValueStr = "Off";
-            break;
-        }
-        encMap[ENC_BL].Range = 2;
-        encMap[ENC_BL].ParameterStr = ParameterStrMap[CCoscfx];
-        encMap[ENC_BL].Push = true;
-        encMap[ENC_BL].PushAction = State::OSCMODPAGE1;
-
-        encMap[ENC_TL].active = true;
-        encMap[ENC_TL].Parameter = CCpitchenv;
-        encMap[ENC_TL].ShowValue = true;
-        encMap[ENC_TL].Value = currentPatch.PitchEnv;
-        encMap[ENC_TL].ValueStr = String(groupvec[activeGroupIndex]->getPitchEnvelope());
-        encMap[ENC_TL].Range = 127;
-        encMap[ENC_TL].ParameterStr = ParameterStrMap[CCpitchenv];
-        encMap[ENC_TL].Push = true;
-        encMap[ENC_TL].PushAction = State::OSCMODPAGE1;
-
-        currentPatch.OscFX == OSCFXXMOD ? encMap[ENC_TR].active = true : encMap[ENC_TR].active = false;
-        encMap[ENC_TR].Parameter = CCoscLevelA;
-        encMap[ENC_TR].ShowValue = true;
-        encMap[ENC_TR].Value = currentPatch.OscLevelA;
-        encMap[ENC_TR].ValueStr = String(groupvec[activeGroupIndex]->getOscLevelA());
-        encMap[ENC_TR].Range = 127;
-        encMap[ENC_TR].ParameterStr = ParameterStrMap[CCoscLevelA];
-        encMap[ENC_TR].Push = true;
-        encMap[ENC_TR].PushAction = State::OSCPAGE1;
+        configureCCoscLevelB_OscFX(&encMap[ENC_BR], State::OSCMODPAGE4);
+        configureCCoscfx(&encMap[ENC_BL], State::OSCMODPAGE4);
+        configureCCpitchenv(&encMap[ENC_TL], State::OSCMODPAGE4);
+        configureCCoscLevelA_OscFX(&encMap[ENC_TR], State::OSCMODPAGE4);
         break;
-
     case State::FILTERPAGE1:
-        encMap[ENC_BL].active = true;
-        encMap[ENC_BL].Parameter = filterfreq256; // 256 values
-        encMap[ENC_BL].ShowValue = true;
-        encMap[ENC_BL].Value = currentPatch.FilterFreq;
-        encMap[ENC_BL].ValueStr = String(int(groupvec[activeGroupIndex]->getCutoff())) + " Hz";
-        encMap[ENC_BL].Range = 255;
-        encMap[ENC_BL].ParameterStr = ParameterStrMap[CCfilterfreq];
-        encMap[ENC_BL].Push = true;
-        encMap[ENC_BL].PushAction = State::FILTERPAGE1;
-
-        encMap[ENC_BR].active = true;
-        encMap[ENC_BR].Parameter = CCfilterres;
-        encMap[ENC_BR].ShowValue = true;
-        encMap[ENC_BR].Value = currentPatch.FilterRes;
-        encMap[ENC_BR].Range = 127;
-        encMap[ENC_BR].ValueStr = String(groupvec[activeGroupIndex]->getResonance());
-        encMap[ENC_BR].ParameterStr = ParameterStrMap[CCfilterres];
-        encMap[ENC_BR].Push = true;
-        encMap[ENC_BR].PushAction = State::FILTERPAGE1;
-
-        encMap[ENC_TL].active = true;
-        encMap[ENC_TL].Parameter = CCfiltermixer;
-        encMap[ENC_TL].ShowValue = true;
-        encMap[ENC_TL].Value = currentPatch.FilterMixer;
-        if (groupvec[activeGroupIndex]->getFilterMixer() == BANDPASS)
-        {
-            encMap[ENC_TL].ValueStr = "Band Pass";
-        }
-        else
-        {
-            // LP-HP mix mode - a notch filter
-            if (groupvec[activeGroupIndex]->getFilterMixer() == LOWPASS)
-            {
-                encMap[ENC_TL].ValueStr = "Low Pass";
-            }
-            else if (groupvec[activeGroupIndex]->getFilterMixer() == HIGHPASS)
-            {
-                encMap[ENC_TL].ValueStr = "High Pass";
-            }
-            else
-            {
-                encMap[ENC_TL].ValueStr = "Low " + String(100 - int(100 * groupvec[activeGroupIndex]->getFilterMixer())) + " - " + String(int(100 * groupvec[activeGroupIndex]->getFilterMixer())) + " High";
-            }
-        }
-        encMap[ENC_TL].Range = 127;
-        encMap[ENC_TL].ParameterStr = ParameterStrMap[CCfiltermixer];
-        encMap[ENC_TL].Push = true;
-        encMap[ENC_TL].PushAction = State::FILTERPAGE1;
-
-        encMap[ENC_TR].active = true;
-        encMap[ENC_TR].Parameter = CCfilterenv;
-        encMap[ENC_TR].ShowValue = true;
-        encMap[ENC_TR].Value = currentPatch.FilterEnv;
-        encMap[ENC_TR].ValueStr = String(groupvec[activeGroupIndex]->getFilterEnvelope());
-        encMap[ENC_TR].Range = 127;
-        encMap[ENC_TR].ParameterStr = ParameterStrMap[CCfilterenv];
-        encMap[ENC_TR].Push = true;
-        encMap[ENC_TR].PushAction = State::FILTERPAGE1;
+        configurefilterfreq256(&encMap[ENC_BL], State::FILTERPAGE1);
+        configureCCfilterres(&encMap[ENC_BR], State::FILTERPAGE1);
+        configureCCfiltermixer(&encMap[ENC_TL], State::FILTERPAGE1);
+        configureCCfilterenv(&encMap[ENC_TR], State::FILTERPAGE1);
         break;
-
+    case State::FILTERPAGE2:
+        configureCCfilterattack(&encMap[ENC_TL], State::FILTERPAGE2);
+        configureCCfilterdecay(&encMap[ENC_TR], State::FILTERPAGE2);
+        configureCCfiltersustain(&encMap[ENC_BL], State::FILTERPAGE2);
+        configureCCfilterrelease(&encMap[ENC_BR], State::FILTERPAGE2);
+        break;
     case State::FILTERMODPAGE1:
-        encMap[ENC_TL].active = true;
-        encMap[ENC_TL].Parameter = CCfilterattack;
-        encMap[ENC_TL].ShowValue = true;
-        encMap[ENC_TL].Value = currentPatch.FilterAttack;
-        encMap[ENC_TL].ValueStr = milliToString(groupvec[activeGroupIndex]->getFilterAttack());
-        encMap[ENC_TL].Range = 127;
-        encMap[ENC_TL].ParameterStr = ParameterStrMap[CCfilterattack];
-        encMap[ENC_TL].Push = true;
-        encMap[ENC_TL].PushAction = State::FILTERMODPAGE2;
-
-        encMap[ENC_TR].active = true;
-        encMap[ENC_TR].Parameter = CCfilterdecay;
-        encMap[ENC_TR].ShowValue = true;
-        encMap[ENC_TR].Value = currentPatch.FilterDecay;
-        encMap[ENC_TR].ValueStr = milliToString(groupvec[activeGroupIndex]->getFilterDecay());
-        encMap[ENC_TR].Range = 127;
-        encMap[ENC_TR].ParameterStr = ParameterStrMap[CCfilterdecay];
-        encMap[ENC_TR].Push = true;
-        encMap[ENC_TR].PushAction = State::FILTERMODPAGE2;
-
-        encMap[ENC_BL].active = true;
-        encMap[ENC_BL].Parameter = CCfiltersustain;
-        encMap[ENC_BL].ShowValue = true;
-        encMap[ENC_BL].Value = currentPatch.FilterSustain;
-        encMap[ENC_BL].ValueStr = String(groupvec[activeGroupIndex]->getFilterSustain());
-        encMap[ENC_BL].Range = 127;
-        encMap[ENC_BL].ParameterStr = ParameterStrMap[CCfiltersustain];
-        encMap[ENC_BL].Push = true;
-        encMap[ENC_BL].PushAction = State::FILTERMODPAGE2;
-
-        encMap[ENC_BR].active = true;
-        encMap[ENC_BR].Parameter = CCfilterrelease;
-        encMap[ENC_BR].ShowValue = true;
-        encMap[ENC_BR].Value = currentPatch.FilterRelease;
-        encMap[ENC_BR].ValueStr = milliToString(groupvec[activeGroupIndex]->getFilterRelease());
-        encMap[ENC_BR].Range = 127;
-        encMap[ENC_BR].ParameterStr = ParameterStrMap[CCfilterrelease];
-        encMap[ENC_BR].Push = true;
-        encMap[ENC_BR].PushAction = State::FILTERMODPAGE2;
+        configureCCfilterlfowaveform(&encMap[ENC_BL], State::FILTERMODPAGE1);
+        configureCCfilterlfoamt(&encMap[ENC_BR], State::FILTERMODPAGE1);
+        configureCCfilterlforate(&encMap[ENC_TL], State::FILTERMODPAGE1);
+        configureCCfilterlforetrig(&encMap[ENC_TR], State::FILTERMODPAGE1);
         break;
-
     case State::FILTERMODPAGE2:
-        encMap[ENC_BL].active = true;
-        encMap[ENC_BL].Parameter = CCfilterlfowaveform;
-        encMap[ENC_BL].ShowValue = true;
-        encMap[ENC_BL].Value = currentPatch.FilterLFOWaveform;
-        encMap[ENC_BL].ValueStr = getWaveformStr(groupvec[activeGroupIndex]->getFilterLfoWaveform());
-        encMap[ENC_BL].Range = 127;
-        encMap[ENC_BL].ParameterStr = ParameterStrMap[CCfilterlfowaveform];
-        encMap[ENC_BL].Push = true;
-        encMap[ENC_BL].PushAction = State::FILTERMODPAGE3;
-
-        encMap[ENC_BR].active = true;
-        encMap[ENC_BR].Parameter = CCfilterlfoamt;
-        encMap[ENC_BR].ShowValue = true;
-        encMap[ENC_BR].Value = currentPatch.FilterLfoAmt;
-        encMap[ENC_BR].ValueStr = String(groupvec[activeGroupIndex]->getFilterLfoAmt());
-        encMap[ENC_BR].Range = 127;
-        encMap[ENC_BR].ParameterStr = ParameterStrMap[CCfilterlfoamt];
-        encMap[ENC_BR].Push = true;
-        encMap[ENC_BR].PushAction = State::FILTERMODPAGE3;
-
-        encMap[ENC_TL].active = true;
-        encMap[ENC_TL].Parameter = CCfilterlforate;
-        encMap[ENC_TL].ShowValue = true;
-        encMap[ENC_TL].Value = currentPatch.FilterLFORate;
-        encMap[ENC_TL].ValueStr = String(groupvec[activeGroupIndex]->getFilterLfoRate()) + " Hz";
-        encMap[ENC_TL].Range = 127;
-        encMap[ENC_TL].ParameterStr = ParameterStrMap[CCfilterlforate];
-        encMap[ENC_TL].Push = true;
-        encMap[ENC_TL].PushAction = State::FILTERMODPAGE3;
-
-        encMap[ENC_TR].active = true;
-        encMap[ENC_TR].Parameter = CCfilterlforetrig;
-        encMap[ENC_TR].ShowValue = true;
-        encMap[ENC_TR].Value = currentPatch.FilterLFORetrig;
-        encMap[ENC_TR].ValueStr = groupvec[activeGroupIndex]->getFilterLfoRetrig() > 0 ? "On" : "off";
-        encMap[ENC_TR].Range = 1;
-        encMap[ENC_TR].ParameterStr = ParameterStrMap[CCfilterlforetrig];
-        encMap[ENC_TR].Push = true;
-        encMap[ENC_TR].PushAction = State::FILTERMODPAGE3;
-        break;
-    case State::FILTERMODPAGE3:
-        encMap[ENC_BL].active = true;
-        encMap[ENC_BL].Parameter = CCkeytracking;
-        encMap[ENC_BL].ShowValue = true;
-        encMap[ENC_BL].Value = currentPatch.KeyTracking;
-        encMap[ENC_BL].ValueStr = String(LINEAR[currentPatch.KeyTracking]);
-        encMap[ENC_BL].Range = 127;
-        encMap[ENC_BL].ParameterStr = ParameterStrMap[CCkeytracking];
-        encMap[ENC_BL].Push = true;
-        encMap[ENC_BL].PushAction = State::FILTERMODPAGE1;
-
-        encMap[ENC_BR].active = true;
-        encMap[ENC_BR].Parameter = CCfilterenv;
-        encMap[ENC_BR].ShowValue = true;
-        encMap[ENC_BR].Value = currentPatch.FilterEnv;
-        encMap[ENC_BR].ValueStr = String(groupvec[activeGroupIndex]->getFilterEnvelope());
-        encMap[ENC_BR].Range = 127;
-        encMap[ENC_BR].ParameterStr = ParameterStrMap[CCfilterenv];
-        encMap[ENC_BR].Push = true;
-        encMap[ENC_BR].PushAction = State::FILTERMODPAGE1;
-
-        encMap[ENC_TL].active = false;
-
-        encMap[ENC_TR].active = true;
-        encMap[ENC_TR].Parameter = filterenvshape;
-        encMap[ENC_TR].ShowValue = true;
-        encMap[ENC_TR].Value = currentPatch.FilterEnvShape;
-        encMap[ENC_TR].ValueStr = EnvShapeStr[currentPatch.FilterEnvShape];
-        encMap[ENC_TR].Range = 17;
-        encMap[ENC_TR].ParameterStr = ParameterStrMap[filterenvshape];
-        encMap[ENC_TR].Push = true;
-        encMap[ENC_TR].PushAction = State::MAIN;
-
+        configureCCkeytracking(&encMap[ENC_BR], State::FILTERMODPAGE2);
+        configureCCFilterVelocitySens(&encMap[ENC_BL], State::FILTERMODPAGE2);
+        configurefiltermodwheeldepth(&encMap[ENC_TR], State::FILTERMODPAGE2);
+        configurefilterenvshape(&encMap[ENC_TL], State::FILTERMODPAGE2);
         break;
     case State::AMPPAGE1:
-        encMap[ENC_TL].active = true;
-        encMap[ENC_TL].Parameter = CCampattack;
-        encMap[ENC_TL].ShowValue = true;
-        encMap[ENC_TL].Value = currentPatch.Attack;
-        encMap[ENC_TL].ValueStr = milliToString(groupvec[activeGroupIndex]->getAmpAttack());
-        encMap[ENC_TL].Range = 127;
-        encMap[ENC_TL].ParameterStr = ParameterStrMap[CCampattack];
-        encMap[ENC_TL].Push = true;
-        encMap[ENC_TL].PushAction = State::MAIN;
-
-        encMap[ENC_TR].active = true;
-        encMap[ENC_TR].Parameter = CCampdecay;
-        encMap[ENC_TR].ShowValue = true;
-        encMap[ENC_TR].Value = currentPatch.Decay;
-        encMap[ENC_TR].ValueStr = milliToString(groupvec[activeGroupIndex]->getAmpDecay());
-        encMap[ENC_TR].Range = 127;
-        encMap[ENC_TR].ParameterStr = ParameterStrMap[CCampdecay];
-        encMap[ENC_TR].Push = true;
-        encMap[ENC_TR].PushAction = State::MAIN;
-
-        encMap[ENC_BL].active = true;
-        encMap[ENC_BL].Parameter = CCampsustain;
-        encMap[ENC_BL].ShowValue = true;
-        encMap[ENC_BL].Value = currentPatch.Sustain;
-        encMap[ENC_BL].ValueStr = String(groupvec[activeGroupIndex]->getAmpSustain());
-        encMap[ENC_BL].Range = 127;
-        encMap[ENC_BL].ParameterStr = ParameterStrMap[CCampsustain];
-        encMap[ENC_BL].Push = true;
-        encMap[ENC_BL].PushAction = State::MAIN;
-
-        encMap[ENC_BR].active = true;
-        encMap[ENC_BR].Parameter = CCamprelease;
-        encMap[ENC_BR].ShowValue = true;
-        encMap[ENC_BR].Value = currentPatch.Release;
-        encMap[ENC_BR].ValueStr = milliToString(groupvec[activeGroupIndex]->getAmpRelease());
-        encMap[ENC_BR].Range = 127;
-        encMap[ENC_BR].ParameterStr = ParameterStrMap[CCamprelease];
-        encMap[ENC_BR].Push = true;
-        encMap[ENC_BR].PushAction = State::MAIN;
+        configureCCampattack(&encMap[ENC_TL], State::AMPPAGE1);
+        configureCCampdecay(&encMap[ENC_TR], State::AMPPAGE1);
+        configureCCampsustain(&encMap[ENC_BL], State::AMPPAGE1);
+        configureCCamprelease(&encMap[ENC_BR], State::AMPPAGE1);
         break;
 
     case State::AMPPAGE2:
-        encMap[ENC_TL].active = true;
-        encMap[ENC_TL].Parameter = pitchbendrange;
-        encMap[ENC_TL].ShowValue = true;
-        encMap[ENC_TL].Value = currentPatch.PitchBend;
-        encMap[ENC_TL].ValueStr = String(currentPatch.PitchBend);
-        encMap[ENC_TL].Range = 11;
-        encMap[ENC_TL].ParameterStr = ParameterStrMap[pitchbendrange];
-        encMap[ENC_TL].Push = true;
-        encMap[ENC_TL].PushAction = State::MAIN;
-
-        encMap[ENC_TR].active = true;
-        encMap[ENC_TR].Parameter = modwheeldepth;
-        encMap[ENC_TR].ShowValue = true;
-        encMap[ENC_TR].Value = currentPatch.ModWheelDepth;
-        encMap[ENC_TR].ValueStr = String(currentPatch.ModWheelDepth);
-        encMap[ENC_TR].Range = 9;
-        encMap[ENC_TR].ParameterStr = ParameterStrMap[modwheeldepth];
-        encMap[ENC_TR].Push = true;
-        encMap[ENC_TR].PushAction = State::MAIN;
-
-        encMap[ENC_BL].active = true;
-        encMap[ENC_BL].Parameter = CCvelocitySens;
-        encMap[ENC_BL].ShowValue = true;
-        encMap[ENC_BL].Value = currentPatch.VelocitySensitivity;
-        encMap[ENC_BL].ValueStr = velocityStr[currentPatch.VelocitySensitivity];
-        encMap[ENC_BL].Range = 4;
-        encMap[ENC_BL].ParameterStr = ParameterStrMap[CCvelocitySens];
-        encMap[ENC_BL].Push = true;
-        encMap[ENC_BL].PushAction = State::MAIN;
-
-        encMap[ENC_BR].active = true;
-        encMap[ENC_BR].Parameter = CCmonomode;
-        encMap[ENC_BR].ShowValue = true;
-        encMap[ENC_BR].Value = currentPatch.MonophonicMode;
-        encMap[ENC_BR].ValueStr = MonophonicStr[currentPatch.MonophonicMode];
-        encMap[ENC_BR].Range = 4;
-        encMap[ENC_BR].ParameterStr = ParameterStrMap[CCmonomode];
-        encMap[ENC_BR].Push = true;
-        encMap[ENC_BR].PushAction = State::MAIN;
-
+        configurepitchbendrange(&encMap[ENC_TL], State::AMPPAGE2);
+        configurepitchmodwheeldepth(&encMap[ENC_TR], State::AMPPAGE2);
+        configureCCAmpVelocitySens(&encMap[ENC_BL], State::AMPPAGE2);
+        configureCCmonomode(&encMap[ENC_BR], State::AMPPAGE2);
         break;
 
     case State::AMPPAGE3:
-        encMap[ENC_TL].active = false;
-
-        encMap[ENC_TR].active = true;
-        encMap[ENC_TR].Parameter = ampenvshape;
-        encMap[ENC_TR].ShowValue = true;
-        encMap[ENC_TR].Value = currentPatch.AmpEnvShape;
-        encMap[ENC_TR].ValueStr = EnvShapeStr[currentPatch.AmpEnvShape];
-        encMap[ENC_TR].Range = 17;
-        encMap[ENC_TR].ParameterStr = ParameterStrMap[ampenvshape];
-        encMap[ENC_TR].Push = true;
-        encMap[ENC_TR].PushAction = State::MAIN;
-
-        encMap[ENC_BL].active = true;
-        encMap[ENC_BL].Parameter = CCglide;
-        encMap[ENC_BL].ShowValue = true;
-        encMap[ENC_BL].Value = currentPatch.Glide;
-        encMap[ENC_BL].ValueStr = milliToString(POWER[currentPatch.Glide] * GLIDEFACTOR);
-        encMap[ENC_BL].Range = 127;
-        encMap[ENC_BL].ParameterStr = ParameterStrMap[CCglide];
-        encMap[ENC_BL].Push = true;
-        encMap[ENC_BL].PushAction = State::MAIN;
-
-        encMap[ENC_BR].active = true;
-        encMap[ENC_BR].Parameter = glideshape;
-        encMap[ENC_BR].ShowValue = true;
-        encMap[ENC_BR].Value = currentPatch.GlideShape;
-        encMap[ENC_BR].ValueStr = GlideShapeStr[currentPatch.GlideShape];
-        encMap[ENC_BR].Range = 1;
-        encMap[ENC_BR].ParameterStr = ParameterStrMap[glideshape];
-        encMap[ENC_BR].Push = true;
-        encMap[ENC_BR].PushAction = State::MAIN;
-
+        configureOff(&encMap[ENC_TL]);
+        configureampenvshape(&encMap[ENC_TR], State::AMPPAGE3);
+        configureCCglide(&encMap[ENC_BL], State::AMPPAGE3);
+        configureglideshape(&encMap[ENC_BR], State::AMPPAGE3);
         break;
-
     case State::FXPAGE:
-        encMap[ENC_TL].active = false;
-
-        encMap[ENC_TR].active = false;
-
-        encMap[ENC_BL].active = true;
-        encMap[ENC_BL].Parameter = CCfxamt;
-        encMap[ENC_BL].ShowValue = true;
-        encMap[ENC_BL].Value = currentPatch.EffectAmt;
-        encMap[ENC_BL].ValueStr = String(ENSEMBLE_LFO[currentPatch.EffectAmt]) + " Hz";
-        encMap[ENC_BL].Range = 127;
-        encMap[ENC_BL].ParameterStr = ParameterStrMap[CCfxamt];
-        encMap[ENC_BL].Push = true;
-        encMap[ENC_BL].PushAction = State::MAIN;
-
-        encMap[ENC_BR].active = true;
-        encMap[ENC_BR].Parameter = CCfxmix;
-        encMap[ENC_BR].ShowValue = true;
-        encMap[ENC_BR].Value = currentPatch.EffectMix;
-        encMap[ENC_BR].ValueStr = String(groupvec[activeGroupIndex]->getEffectMix());
-        encMap[ENC_BR].Range = 127;
-        encMap[ENC_BR].ParameterStr = ParameterStrMap[CCfxmix];
-        encMap[ENC_BR].Push = true;
-        encMap[ENC_BR].PushAction = State::MAIN;
+        configureOff(&encMap[ENC_TL]);
+        configureOff(&encMap[ENC_TR]);
+        configureCCfxamt(&encMap[ENC_BL], State::FXPAGE);
+        configureCCfxmix(&encMap[ENC_BR], State::FXPAGE);
         break;
 
     case State::SAVE:
@@ -834,7 +1124,7 @@ FLASHMEM void setEncodersState(State s)
         encMap[ENC_BR].active = true;
         encMap[ENC_BR].Parameter = renamepatch;
         encMap[ENC_BR].ShowValue = false;
-        encMap[ENC_BL].Value = 0;
+        encMap[ENC_BR].Value = 0;
         encMap[ENC_BR].Range = 127;
         encMap[ENC_BR].ParameterStr = ParameterStrMap[renamepatch];
         encMap[ENC_BR].Push = true;
@@ -872,12 +1162,12 @@ FLASHMEM void setEncodersState(State s)
         encMap[ENC_BL].Push = false;
 
         encMap[ENC_BR].active = true;
-        encMap[ENC_BR].Parameter = savepatchselect;
+        encMap[ENC_BR].Parameter = namepatch;
         encMap[ENC_BR].ShowValue = false;
         encMap[ENC_BR].Value = currentPatchIndex;
         encMap[ENC_BR].Range = patches.size();
         encMap[ENC_BR].ValueStr = "";
-        encMap[ENC_BR].ParameterStr = ParameterStrMap[savepatchselect];
+        encMap[ENC_BR].ParameterStr = ParameterStrMap[namepatch];
         encMap[ENC_BR].Push = true;
         encMap[ENC_BR].PushAction = State::RENAMEPATCH;
         break;
@@ -887,7 +1177,7 @@ FLASHMEM void setEncodersState(State s)
         encMap[ENC_TL].Parameter = deleteCharacterPatch;
         encMap[ENC_TL].ShowValue = false;
         encMap[ENC_TL].Value = 0;
-        encMap[ENC_TL].Range = 0;
+        encMap[ENC_TL].Range = 4; // More encoder rotation for accuracy
         encMap[ENC_TL].ValueStr = "";
         encMap[ENC_TL].ParameterStr = ParameterStrMap[deleteCharacterPatch];
         encMap[ENC_TL].Push = true;
@@ -1004,32 +1294,175 @@ FLASHMEM void setEncodersState(State s)
         encMap[ENC_BR].Push = false;
         break;
 
-    case State::PERFORMANCEPAGE:
-        encMap[ENC_TL].active = false;
+    case State::PERFORMANCEENCEDIT:
+        encMap[ENC_TL].active = true;
+        encMap[ENC_TL].Parameter = chooseEncoderTL;
+        encMap[ENC_TL].ShowValue = true;
+        encMap[ENC_TL].ValueStr = ParameterStrMap[currentPerformance.TL];
+        encMap[ENC_TL].Value = getIndexForParametersForPerformanceEncoders(currentPerformance.TL);
+        encMap[ENC_TL].Range = PARAMETERSFORENCS - 1;
+        encMap[ENC_TL].ParameterStr = "";
+        encMap[ENC_TL].Push = true;
+        encMap[ENC_TL].PushAction = State::PERFORMANCERECALL;
+
+        encMap[ENC_TR].active = true;
+        encMap[ENC_TR].Parameter = chooseEncoderTR;
+        encMap[ENC_TR].ShowValue = true;
+        encMap[ENC_TR].Value = getIndexForParametersForPerformanceEncoders(currentPerformance.TR);
+        encMap[ENC_TR].Range = PARAMETERSFORENCS - 1;
+        encMap[ENC_TR].ValueStr = ParameterStrMap[currentPerformance.TR];
+        encMap[ENC_TR].ParameterStr = "";
+        encMap[ENC_TR].Push = true;
+        encMap[ENC_TR].PushAction = State::PERFORMANCERECALL;
+
+        encMap[ENC_BL].active = true;
+        encMap[ENC_BL].Parameter = chooseEncoderBL;
+        encMap[ENC_BL].ShowValue = true;
+        encMap[ENC_BL].ValueStr = ParameterStrMap[currentPerformance.BL];
+        encMap[ENC_BL].Value = getIndexForParametersForPerformanceEncoders(currentPerformance.BL);
+        encMap[ENC_BL].Range = PARAMETERSFORENCS - 1;
+        encMap[ENC_BL].ParameterStr = "";
+        encMap[ENC_BL].Push = true;
+        encMap[ENC_BL].PushAction = State::PERFORMANCERECALL;
+
+        encMap[ENC_BR].active = true;
+        encMap[ENC_BR].Parameter = chooseEncoderBR;
+        encMap[ENC_BR].ShowValue = true;
+        encMap[ENC_BR].ValueStr = ParameterStrMap[currentPerformance.BR];
+        encMap[ENC_BR].Value = getIndexForParametersForPerformanceEncoders(currentPerformance.BR);
+        encMap[ENC_BR].Range = PARAMETERSFORENCS - 1;
+        encMap[ENC_BR].ParameterStr = "";
+        encMap[ENC_BR].Push = true;
+        encMap[ENC_BR].PushAction = State::PERFORMANCERECALL;
+        break;
+    case State::PERFORMANCEMIDIEDIT:
+        encMap[ENC_TL].active = true;
+        encMap[ENC_TL].Parameter = chooseMIDIThruMode;
+        encMap[ENC_TL].ShowValue = true;
+        encMap[ENC_TL].Value = MIDIThru;
+        encMap[ENC_TL].Range = 3;
+        encMap[ENC_TL].ParameterStr = ParameterStrMap[MIDIThruMode];
+        encMap[ENC_TL].ValueStr = MIDIThruStr[MIDIThru];
+        encMap[ENC_TL].Push = false;
 
         encMap[ENC_TR].active = false;
 
         encMap[ENC_BL].active = true;
-        encMap[ENC_BL].Parameter = PerfSelect;
-        encMap[ENC_BL].ShowValue = false;
-        encMap[ENC_BL].Value = 0;
-        encMap[ENC_BL].Range = 127;
-        encMap[ENC_BL].ParameterStr = ParameterStrMap[PerfSelect];
-        encMap[ENC_BL].ValueStr = String(midiChannel);
+        encMap[ENC_BL].Parameter = chooseMIDIChIn;
+        encMap[ENC_BL].ShowValue = true;
+        encMap[ENC_BL].Value = midiChannel;
+        encMap[ENC_BL].Range = 16;
+        if (midiChannel == 0)
+        {
+            encMap[ENC_BL].ValueStr = "All";
+        }
+        else
+        {
+            encMap[ENC_BL].ValueStr = String(midiChannel);
+        }
+        encMap[ENC_BL].ParameterStr = ParameterStrMap[MIDIChIn];
         encMap[ENC_BL].Push = false;
 
         encMap[ENC_BR].active = true;
-        encMap[ENC_BR].Parameter = PerfEdit;
-        encMap[ENC_BR].ShowValue = false;
-        encMap[ENC_BR].ValueStr = "";
-        encMap[ENC_BR].ParameterStr = ParameterStrMap[PerfEdit];
-        encMap[ENC_BR].Push = true;
+        encMap[ENC_BR].Parameter = chooseMIDIChOut;
+        encMap[ENC_BR].ShowValue = true;
+        encMap[ENC_BR].Value = midiOutCh;
+        encMap[ENC_BR].Range = 16;
+        if (midiOutCh == 0)
+        {
+            encMap[ENC_BR].ValueStr = "Off";
+        }
+        else
+        {
+            encMap[ENC_BR].ValueStr = String(midiOutCh);
+        }
+        encMap[ENC_BR].ParameterStr = ParameterStrMap[MIDIChOut];
+        encMap[ENC_BR].Push = false;
+        break;
+
+    case State::RENAMEPERFORMANCE:
+        encMap[ENC_TL].active = true;
+        encMap[ENC_TL].Parameter = deleteCharacterPerformance;
+        encMap[ENC_TL].ShowValue = false;
+        encMap[ENC_TL].Value = 0;
+        encMap[ENC_TL].Range = 4; // More encoder rotation for accuracy
+        encMap[ENC_TL].ValueStr = "";
+        encMap[ENC_TL].ParameterStr = ParameterStrMap[deleteCharacterPerformance];
+        encMap[ENC_TL].Push = true;
+        encMap[ENC_TL].PushAction = State::DELETECHARPERFORMANCE;
+
+        encMap[ENC_TR].active = false;
+        // encMap[ENC_TR].Parameter = cancel;
+        // encMap[ENC_TR].ShowValue = false;
+        // encMap[ENC_TR].Value = 0;
+        // encMap[ENC_TR].Range = 0;
+        // encMap[ENC_TR].ValueStr = "";
+        // encMap[ENC_TR].ParameterStr = ParameterStrMap[cancel];
+        // encMap[ENC_TR].Push = true;
+        // encMap[ENC_TR].PushAction = State::MAIN;
+
+        encMap[ENC_BL].active = true;
+        encMap[ENC_BL].Parameter = choosecharacterPerformance;
+        encMap[ENC_BL].ShowValue = false;
+        encMap[ENC_BL].Value = 0;
+        encMap[ENC_BL].Range = TOTALCHARS;
+        encMap[ENC_BL].ValueStr = "";
+        encMap[ENC_BL].ParameterStr = ParameterStrMap[choosecharacterPerformance];
+        encMap[ENC_BL].Push = true;
+        encMap[ENC_BL].PushAction = State::CHOOSECHARPERFORMANCE;
+
+        encMap[ENC_BR].active = false;
+        // encMap[ENC_BR].Parameter = savepatch;
+        // encMap[ENC_BR].ShowValue = false;
+        // encMap[ENC_BR].ValueStr = "";
+        // encMap[ENC_BR].ParameterStr = ParameterStrMap[savepatch];
+        // encMap[ENC_BR].Push = true;
+        // encMap[ENC_BR].PushAction = State::MAIN;
+        break;
+    case State::PERFORMANCERECALL:
+        encMap[ENC_TL].active = true;
+        encMap[ENC_TL].Parameter = PerfEdit;
+        encMap[ENC_TL].ShowValue = false;
+        encMap[ENC_TL].ValueStr = "";
+        encMap[ENC_TL].Value = 0;
+        encMap[ENC_TL].ParameterStr = ParameterStrMap[PerfEdit];
+        encMap[ENC_TL].Push = true;
+        encMap[ENC_TL].PushAction = State::PERFORMANCEPATCHEDIT;
+
+        encMap[ENC_TR].active = true;
+        encMap[ENC_TR].Parameter = cancel;
+        encMap[ENC_TR].ShowValue = false;
+        encMap[ENC_TR].Value = 0;
+        encMap[ENC_TR].Range = 0;
+        encMap[ENC_TR].ValueStr = "";
+        encMap[ENC_TR].ParameterStr = ParameterStrMap[cancel];
+        encMap[ENC_TR].Push = true;
+        encMap[ENC_TR].PushAction = State::MAIN;
+
+        encMap[ENC_BL].active = true;
+        encMap[ENC_BL].Parameter = PerfSelect;
+        encMap[ENC_BL].ShowValue = false;
+        encMap[ENC_BL].ValueStr = "";
+        encMap[ENC_BL].Value = 0;
+        encMap[ENC_BL].Range = PERFORMANCES_LIMIT - 1;
+        encMap[ENC_BL].ParameterStr = ParameterStrMap[PerfSelect];
+        encMap[ENC_BL].Push = true;
+        encMap[ENC_BL].PushAction = State::PERFORMANCEPAGE;
+
+        encMap[ENC_BR].active = false;
+        break;
+
+    case State::PERFORMANCEPAGE:
+        // Configure encoders
+        setConfigurationForCC(ENC_TL, currentPerformance.TL);
+        setConfigurationForCC(ENC_TR, currentPerformance.TR);
+        setConfigurationForCC(ENC_BL, currentPerformance.BL);
+        setConfigurationForCC(ENC_BR, currentPerformance.BR);
         break;
 
     case State::SETTINGS:
-        encMap[ENC_TL].active = false;
-
-        encMap[ENC_TR].active = false;
+        configureOff(&encMap[ENC_TL]);
+        configureOff(&encMap[ENC_TR]);
 
         encMap[ENC_BL].active = true;
         encMap[ENC_BL].Parameter = settingoption;
@@ -1043,30 +1476,24 @@ FLASHMEM void setEncodersState(State s)
         encMap[ENC_BR].active = true;
         encMap[ENC_BR].Parameter = settingvalue;
         encMap[ENC_BR].ShowValue = true;
-        encMap[ENC_BR].Value = settings::index();
+        encMap[ENC_BR].Value = (int)settings::index();
         encMap[ENC_BR].Range = settings::current_setting_size() - 1;
-         encMap[ENC_BR].ValueStr = settings::current_setting_value();
+        encMap[ENC_BR].ValueStr = settings::current_setting_value();
         encMap[ENC_BR].ParameterStr = ParameterStrMap[settingvalue];
         encMap[ENC_BR].Push = false;
         break;
 
     case State::ARPPAGE:
         encMap[ENC_TL].active = false;
-
         encMap[ENC_TR].active = false;
-
         encMap[ENC_BL].active = false;
-
         encMap[ENC_BR].active = false;
         break;
 
     case State::SEQPAGE:
         encMap[ENC_TL].active = false;
-
         encMap[ENC_TR].active = false;
-
         encMap[ENC_BL].active = false;
-
         encMap[ENC_BR].active = false;
         break;
 
@@ -1145,6 +1572,175 @@ FLASHMEM void setEncodersState(State s)
         encMap[ENC_BR].PushAction = State::MAIN;
         break;
     default:
+        break;
+    }
+}
+
+FLASHMEM void setConfigurationForCC(uint8_t enc, uint8_t cc)
+{
+    switch (cc)
+    {
+    case CCunison:
+        configureCCunison(&encMap[enc], State::PERFORMANCEPAGE);
+        break;
+    case CCglide:
+        configureCCglide(&encMap[enc], State::PERFORMANCEPAGE);
+        break;
+    case CCpitchenv:
+        configureCCpitchenv(&encMap[enc], State::PERFORMANCEPAGE);
+        break;
+    case CCoscwaveformA:
+        configureCCoscwaveformA(&encMap[enc], State::PERFORMANCEPAGE);
+        break;
+    case CCoscwaveformB:
+        configureCCoscwaveformB(&encMap[enc], State::PERFORMANCEPAGE);
+        break;
+    case CCpitchA:
+        configureCCpitchA(&encMap[enc], State::PERFORMANCEPAGE);
+        break;
+    case CCpitchB:
+        configureCCpitchB(&encMap[enc], State::PERFORMANCEPAGE);
+        break;
+    case CCdetune:
+        configureCCdetune(&encMap[enc], State::PERFORMANCEPAGE);
+        break;
+    case CCpwmSourceA:
+        configureCCpwmSourceA(&encMap[enc], State::PERFORMANCEPAGE);
+        break;
+    case CCpwmSourceB:
+        configureCCpwmSourceB(&encMap[enc], State::PERFORMANCEPAGE);
+        break;
+    case CCpwmRateA:
+        configureCCpwmRateA(&encMap[enc], State::PERFORMANCEPAGE);
+        break;
+    case CCpwmRateB:
+        configureCCpwmRateB(&encMap[enc], State::PERFORMANCEPAGE);
+        break;
+    case CCpwmAmtA:
+        configureCCpwmAmtA(&encMap[enc], State::PERFORMANCEPAGE);
+        break;
+    case CCpwmAmtB:
+        configureCCpwmAmtB(&encMap[enc], State::PERFORMANCEPAGE);
+        break;
+    case CCpwA:
+        configureCCpwA(&encMap[enc], State::PERFORMANCEPAGE);
+        break;
+    case CCpwB:
+        configureCCpwB(&encMap[enc], State::PERFORMANCEPAGE);
+        break;
+    case CCoscLevelA:
+        configureCCoscLevelA(&encMap[enc], State::PERFORMANCEPAGE);
+        break;
+    case CCoscLevelB:
+        configureCCoscLevelB(&encMap[enc], State::PERFORMANCEPAGE);
+        break;
+    case CCnoiseLevel:
+        configureCCnoiseLevel(&encMap[enc], State::PERFORMANCEPAGE);
+        break;
+    case filterfreq256:
+        configurefilterfreq256(&encMap[enc], State::PERFORMANCEPAGE);
+        break;
+    case CCfilterres:
+        configureCCfilterres(&encMap[enc], State::PERFORMANCEPAGE);
+        break;
+    case CCfiltermixer:
+        configureCCfiltermixer(&encMap[enc], State::PERFORMANCEPAGE);
+        break;
+    case CCfilterenv:
+        configureCCfilterenv(&encMap[enc], State::PERFORMANCEPAGE);
+        break;
+    case CCkeytracking:
+        configureCCkeytracking(&encMap[enc], State::PERFORMANCEPAGE);
+        break;
+    case CCosclfoamt:
+        configureCCosclfoamt(&encMap[enc], State::PERFORMANCEPAGE);
+        break;
+    case CCoscLfoRate:
+        configureCCoscLfoRate(&encMap[enc], State::PERFORMANCEPAGE);
+        break;
+    case CCoscLfoWaveform:
+        configureCCoscLfoWaveform(&encMap[enc], State::PERFORMANCEPAGE);
+        break;
+    case CCosclforetrig:
+        configureCCosclforetrig(&encMap[enc], State::PERFORMANCEPAGE);
+        break;
+    case CCfilterLFOMidiClkSync:
+        configureCCfilterLFOMidiClkSync(&encMap[enc], State::PERFORMANCEPAGE);
+        break;
+    case CCfilterlforate:
+        configureCCfilterlforate(&encMap[enc], State::PERFORMANCEPAGE);
+        break;
+    case CCfilterlfoamt:
+        configureCCfilterlfoamt(&encMap[enc], State::PERFORMANCEPAGE);
+        break;
+    case CCfilterlfowaveform:
+        configureCCfilterlfowaveform(&encMap[enc], State::PERFORMANCEPAGE);
+        break;
+    case CCfilterlforetrig:
+        configureCCfilterlforetrig(&encMap[enc], State::PERFORMANCEPAGE);
+        break;
+    case CCoscLFOMidiClkSync:
+        configureCCoscLFOMidiClkSync(&encMap[enc], State::PERFORMANCEPAGE);
+        break;
+    case CCfilterattack:
+        configureCCfilterattack(&encMap[enc], State::PERFORMANCEPAGE);
+        break;
+    case CCfilterdecay:
+        configureCCfilterdecay(&encMap[enc], State::PERFORMANCEPAGE);
+        break;
+    case CCfiltersustain:
+        configureCCfiltersustain(&encMap[enc], State::PERFORMANCEPAGE);
+        break;
+    case CCfilterrelease:
+        configureCCfilterrelease(&encMap[enc], State::PERFORMANCEPAGE);
+        break;
+    case CCampattack:
+        configureCCampattack(&encMap[enc], State::PERFORMANCEPAGE);
+        break;
+    case CCampdecay:
+        configureCCampdecay(&encMap[enc], State::PERFORMANCEPAGE);
+        break;
+    case CCampsustain:
+        configureCCampsustain(&encMap[enc], State::PERFORMANCEPAGE);
+        break;
+    case CCamprelease:
+        configureCCamprelease(&encMap[enc], State::PERFORMANCEPAGE);
+        break;
+    case CCoscfx:
+        configureCCoscfx(&encMap[enc], State::PERFORMANCEPAGE);
+        break;
+    case CCfxamt:
+        configureCCfxamt(&encMap[enc], State::PERFORMANCEPAGE);
+        break;
+    case CCfxmix:
+        configureCCfxmix(&encMap[enc], State::PERFORMANCEPAGE);
+        break;
+    case CCvelocitySens:
+        configureCCAmpVelocitySens(&encMap[enc], State::PERFORMANCEPAGE);
+        break;
+    case CCmonomode:
+        configureCCmonomode(&encMap[enc], State::PERFORMANCEPAGE);
+        break;
+    case ampenvshape:
+        configureampenvshape(&encMap[enc], State::PERFORMANCEPAGE);
+        break;
+    case filterenvshape:
+        configurefilterenvshape(&encMap[enc], State::PERFORMANCEPAGE);
+        break;
+    case glideshape:
+        configureglideshape(&encMap[enc], State::PERFORMANCEPAGE);
+        break;
+    case pitchbendrange:
+        configurepitchbendrange(&encMap[enc], State::PERFORMANCEPAGE);
+        break;
+    case pitchmodwheeldepth:
+        configurepitchmodwheeldepth(&encMap[enc], State::PERFORMANCEPAGE);
+        break;
+    case filtermodwheeldepth:
+        configurefiltermodwheeldepth(&encMap[enc], State::PERFORMANCEPAGE);
+        break;
+    default:
+        configureOff(&encMap[enc]);
         break;
     }
 }

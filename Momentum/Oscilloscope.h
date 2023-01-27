@@ -25,8 +25,9 @@ class Oscilloscope : public AudioStream {
 };
 #endif
 
-void Oscilloscope::ScreenSetup(ILI9341_t3n *screen) {
-  display = screen;
+FLASHMEM void Oscilloscope::ScreenSetup(ILI9341_t3n *screen)
+{
+    display = screen;
 }
 
 void Oscilloscope::Display()

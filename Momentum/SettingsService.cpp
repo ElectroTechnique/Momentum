@@ -1,5 +1,4 @@
 #include "SettingsService.h"
-#include <stdint.h>
 #include <vector>
 
 // global settings buffer

@@ -85,7 +85,8 @@ private:
     bool pitchLfoRetrig;
     float pitchLfoAmount;
     float pitchLfoRate;
-    float modWhAmount;
+    float pitchModWheelDepth;
+    float filterModWheelDepth;
     float effectAmount;
     float effectMix;
 
@@ -104,56 +105,57 @@ public:
                                        monophonic(0),
                                        waveformA(WAVEFORM_SQUARE),
                                        waveformB(WAVEFORM_SQUARE),
-                                       pitchEnvelope(0.0),
+                                       pitchEnvelope(0.0f),
                                        pwmSourceA(PWMSOURCELFO),
                                        pwmSourceB(PWMSOURCELFO),
-                                       pwmAmtA(1.0),
-                                       pwmAmtB(1.0),
-                                       pwA(0.0),
-                                       pwB(0.0),
+                                       pwmAmtA(1.0f),
+                                       pwmAmtB(1.0f),
+                                       pwA(0.0f),
+                                       pwB(0.0f),
                                        pwmRateA(0.5),
-                                       pwmRateB(0.5),
+                                       pwmRateB(0.5f),
                                        oscFX(0),
-                                       oscLevelA(1.0),
-                                       oscLevelB(1.0),
-                                       cutoff(12000.0),
-                                       resonance(1.1),
-                                       filterMixer(0.0),
-                                       filterEnvelope(0.0),
-                                       filterAttack(100.0),
-                                       filterDecay(350.0),
-                                       filterSustain(0.7),
-                                       filterRelease(300.0),
-                                       ampAttack(10.0),
-                                       ampDecay(35.0),
-                                       ampSustain(1.0),
-                                       ampRelease(300.0),
+                                       oscLevelA(1.0f),
+                                       oscLevelB(1.0f),
+                                       cutoff(12000.0f),
+                                       resonance(0.71f),
+                                       filterMixer(0.0f),
+                                       filterEnvelope(0.0f),
+                                       filterAttack(100.0f),
+                                       filterDecay(350.0f),
+                                       filterSustain(0.7f),
+                                       filterRelease(300.0f),
+                                       ampAttack(10.0f),
+                                       ampDecay(35.0f),
+                                       ampSustain(1.0f),
+                                       ampRelease(300.0f),
                                        filterLfoRetrig(false),
                                        filterLfoRate(2.0),
-                                       filterLfoAmt(0.0),
+                                       filterLfoAmt(0.0f),
                                        filterLfoWaveform(WAVEFORM_SINE),
-                                       pinkLevel(0),
-                                       whiteLevel(0),
+                                       pinkLevel(0.0f),
+                                       whiteLevel(0.0f),
                                        pitchLfoWaveform(WAVEFORM_SINE),
                                        pitchLfoRetrig(false),
-                                       pitchLfoAmount(0),
-                                       pitchLfoRate(4.0),
-                                       modWhAmount(0.0),
-                                       effectAmount(1.0),
-                                       effectMix(0.0)
+                                       pitchLfoAmount(0.0f),
+                                       pitchLfoRate(4.0f),
+                                       pitchModWheelDepth(0.0f),
+                                       filterModWheelDepth(0.0f),
+                                       effectAmount(1.0f),
+                                       effectMix(0.0f)
     {
-        _params.keytrackingAmount = 0.0;
-        _params.mixerLevel = 0.0;
+        _params.keytrackingAmount = 0.0f;
+        _params.mixerLevel = 0.0f;
         _params.prevNote = 48;
-        _params.glideSpeed = 0.0;
+        _params.glideSpeed = 0.0f;
         _params.unisonMode = 0;
         _params.chordDetune = 0;
-        _params.detune = 0;
+        _params.detune = 0.0f;
         _params.oscPitchA = 0;
         _params.oscPitchB = 12;
 
-        shared.noiseMixer.gain(0, 0);
-        shared.noiseMixer.gain(1, 0);
+        shared.noiseMixer.gain(0, 0.0f);
+        shared.noiseMixer.gain(1, 0.0f);
 
         shared.pitchLfo.begin(WAVEFORM_SINE);
         shared.pwmLfoA.amplitude(ONE);
@@ -209,7 +211,8 @@ public:
     uint32_t getPitchLfoWaveform() { return pitchLfoWaveform; }
     float getPitchLfoAmount() { return pitchLfoAmount; }
     float getPitchLfoRate() { return pitchLfoRate; }
-    float getModWhAmount() { return modWhAmount; }
+    float getPitchModWheelDepth() { return pitchModWheelDepth; }
+    float getfilterModWheelDepth() { return filterModWheelDepth; }
     float getEffectAmount() { return effectAmount; }
     float getEffectMix() { return effectMix; }
 
@@ -553,26 +556,27 @@ public:
 
         VG_FOR_EACH_OSC(filter_.frequency(value))
 
-        float filterOctave = 0.0;
-        // Altering filterOctave to give more cutoff width for deeper bass, but sharper cutoff at higher frequncies
-        if (value <= 2000)
-        {
-            filterOctave = 4.0f + ((2000.0f - value) / 710.0f); // More bass
-        }
-        else if (value > 2000 && value <= 3500)
-        {
-            filterOctave = 3.0f + ((3500.0f - value) / 1500.0f); // Sharper cutoff
-        }
-        else if (value > 3500 && value <= 7000)
-        {
-            filterOctave = 2.0f + ((7000.0f - value) / 4000.0f); // Sharper cutoff
-        }
-        else
-        {
-            filterOctave = 1.0f + ((12000.0f - value) / 5100.0f); // Sharper cutoff
-        }
+        // float filterOctave = 0.0;
+        // // Altering filterOctave to give more cutoff width for deeper bass, but sharper cutoff at higher frequncies
+        // // This is how TSynth sounds different from other Teensy Audio Library based synths
+        // if (value <= 2000)
+        // {
+        //     filterOctave = 4.0f + ((2000.0f - value) / 710.0f); // More bass
+        // }
+        // else if (value > 2000 && value <= 3500)
+        // {
+        //     filterOctave = 3.0f + ((3500.0f - value) / 1500.0f); // Sharper cutoff
+        // }
+        // else if (value > 3500 && value <= 7000)
+        // {
+        //     filterOctave = 2.0f + ((7000.0f - value) / 4000.0f); // Sharper cutoff
+        // }
+        // else
+        // {
+        //     filterOctave = 1.0f + ((12000.0f - value) / 5100.0f); // Sharper cutoff
+        // }
 
-        VG_FOR_EACH_OSC(filter_.octaveControl(filterOctave))
+        // VG_FOR_EACH_OSC(filter_.octaveControl(filterOctave))
     }
 
     void setResonance(float value)
@@ -610,15 +614,10 @@ public:
             voices[i]->patch().filterMixer_.gain(2, HP);)
     }
 
-    void setFilterModMixer(int channel, float level)
-    {
-        VG_FOR_EACH_OSC(filterModMixer_.gain(channel, level))
-    }
-
     void setFilterEnvelope(float value)
     {
         filterEnvelope = value;
-        this->setFilterModMixer(0, filterEnvelope);
+        VG_FOR_EACH_OSC(filterModMixer_.gain(0, filterEnvelope))
     }
 
     void setFilterAttack(float value)
@@ -673,7 +672,17 @@ public:
     {
         // TODO: Move this out of params to avoid setting it directly without updating the mixer.
         _params.keytrackingAmount = value;
-        setFilterModMixer(2, value);
+    }
+
+    void setFilterModWheelDepth(float value)
+    {
+        filterModWheelDepth = value;
+    }
+
+    void setFilterModWheelAmount(float value)
+    {
+        // TODO
+        VG_FOR_EACH_OSC(filter_.frequency(value + cutoff))
     }
 
     void setFilterLfoRetrig(bool value)
@@ -741,7 +750,7 @@ public:
     void setPitchLfoAmount(float value)
     {
         pitchLfoAmount = value;
-        shared.pitchLfo.amplitude(value + modWhAmount);
+        shared.pitchLfo.amplitude(value); // TODO Add PitchModWheelAmount
     }
 
     void setPitchLfoRate(float value)
@@ -750,10 +759,14 @@ public:
         shared.pitchLfo.frequency(value);
     }
 
-    void setModWhAmount(float value)
+    void setPitchModWheelAmount(float value)
     {
-        modWhAmount = value;
         shared.pitchLfo.amplitude(value + pitchLfoAmount);
+    }
+
+    void setPitchModWheelDepth(float value)
+    {
+        pitchModWheelDepth = value;
     }
 
     void setEffectAmount(float value)
@@ -1047,7 +1060,7 @@ private:
         return;
     }
 
-    // Get the oldest free voice, of none free get the oldest active voice.
+    // Get the oldest free voice, if none free, get the oldest active voice.
     Voice *getVoice()
     {
         Voice *result = nullptr;
@@ -1087,6 +1100,7 @@ private:
 
     void noteOn(uint8_t note, uint8_t velocity, bool monoRetrigger)
     {
+
         if (filterLfoRetrig)
         {
             shared.filterLfo.sync();

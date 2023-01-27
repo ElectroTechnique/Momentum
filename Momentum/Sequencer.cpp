@@ -26,14 +26,11 @@ This code is taken from:
 #include "Sequencer.h"
 
 extern uint8_t drum_midi_channel;
-extern uint8_t activesample;
-extern uint8_t get_sample_note(uint8_t sample);
+
 extern void UI_func_seq_pattern_editor(uint8_t);
 extern void UI_func_arpeggio(uint8_t);
 extern const char *seq_find_shortname(uint8_t);
-extern void set_sample_pitch(uint8_t, float); // float32_t not working
-extern float get_sample_vol_max(uint8_t);
-extern float get_sample_p_offset(uint8_t);
+
 bool interrupt_swapper = false;
 
 sequencer_t seq;
@@ -48,48 +45,43 @@ void myNoteOffX(byte channel, byte note, byte velocity)
   return;
 }
 
-void seq_live_recording(void)
+void seq_live_recording()
 {
-  // record to sequencer if sequencer menu is active and recording is active
-  // if (seq.note_in > 0 && seq.recording == true  && LCDML.FUNC_getID() == LCDML.OTHER_getIDFromFunction(UI_func_seq_pattern_editor))
+  // record to sequencer if recording is active
   if (seq.note_in > 0 && seq.recording == true)
   {
     seq.note_data[seq.active_track][seq.step] = seq.note_in;
-    if (get_sample_note(activesample) > 209) // pitched sample
-    {
-      seq.vel[seq.active_track][seq.step] = get_sample_note(activesample);
-    }
-    else
-      seq.vel[seq.active_track][seq.step] = seq.note_in_velocity;
+    seq.vel[seq.active_track][seq.step] = seq.note_in_velocity;
 
     seq.note_in = 0;
     seq.note_in_velocity = 0;
   }
 }
-void sequencer_part1(void)
+
+void noteOnRoutine()
 {
-  // if (seq.note_in > 0 && seq.note_in < 62 && seq.recording == false ) {
-  // myNoteOffX(midiChannel, seq.note_data[3][seq.step] + seq.transpose , 0);
-  // myNoteOffX(midiChannel, seq.note_data[3][seq.step - 1] + seq.transpose , 0);
-  // if (seq.note_in>65)seq.note_in=seq.note_in-12;
-  // seq.transpose = seq.note_in % 12 ;
-  // seq.transpose=seq.transpose-12;
-  // seq.note_in = 0;
-  // }
+  if (seq.note_in > 0 && seq.note_in < 62 && seq.recording == false)
+  {
+    myNoteOffX(midiChannel, seq.note_data[3][seq.step] + seq.transpose, 0);
+    myNoteOffX(midiChannel, seq.note_data[3][seq.step - 1] + seq.transpose, 0);
+    if (seq.note_in > 65)
+      seq.note_in = seq.note_in - 12;
+    seq.transpose = seq.note_in % 12;
+    seq.transpose = seq.transpose - 12;
+    seq.note_in = 0;
+  }
 
   seq_live_recording();
   for (uint8_t d = 0; d < NUM_SEQ_TRACKS; d++)
   {
     if (seq.patternchain[seq.chain_active_step][d] < NUM_SEQ_PATTERN) // sequence not empty or muted
     {
-      if (seq.track_type[d] == 0)
+      if (seq.track_type[d] == TrackType::DRUM)
       { // drum track (drum samples and pitched one-shot samples)
         if (seq.note_data[seq.patternchain[seq.chain_active_step][d]][seq.step] > 0)
         {
           if (seq.vel[seq.patternchain[seq.chain_active_step][d]][seq.step] > 209) // it is a pitched sample
           {
-            // Drum[slot]->setPlaybackRate( pow (2, (inNote - 72) / 12.00) * drum_config[sample].pitch ); get_sample_vol_max(sample)
-            set_sample_pitch(seq.vel[seq.patternchain[seq.chain_active_step][d]][seq.step] - 210, (float)pow(2, (seq.note_data[seq.patternchain[seq.chain_active_step][d]][seq.step] - 72) / 12.00) * get_sample_p_offset(seq.vel[seq.patternchain[seq.chain_active_step][d]][seq.step] - 210));
             myNoteOnX(drum_midi_channel, seq.vel[seq.patternchain[seq.chain_active_step][d]][seq.step], 90);
           }
           else // else play normal drum sample
@@ -100,7 +92,7 @@ void sequencer_part1(void)
       {
         if (seq.note_data[seq.patternchain[seq.chain_active_step][d]][seq.step] > 0) // instrument track
         {
-          if (seq.track_type[d] == 1 || (seq.track_type[d] == 3 && seq.arp_play_basenote))
+          if (seq.track_type[d] == TrackType::INSTRUMENT || (seq.track_type[d] == TrackType::ARP && seq.arp_play_basenote))
           {
             if (seq.note_data[seq.patternchain[seq.chain_active_step][d]][seq.step] != 130)
             {
@@ -109,7 +101,7 @@ void sequencer_part1(void)
               seq.prev_vel[d] = seq.vel[seq.patternchain[seq.chain_active_step][d]][seq.step];
             }
           }
-          else if (seq.track_type[d] == 2) // Chords
+          else if (seq.track_type[d] == TrackType::CHORD) // Chords
           {
             if (seq.vel[seq.patternchain[seq.chain_active_step][d]][seq.step] > 199)
             {
@@ -124,7 +116,7 @@ void sequencer_part1(void)
               seq.prev_vel[d] = seq.vel[seq.patternchain[seq.chain_active_step][d]][seq.step];
             }
           }
-          if (seq.track_type[d] == 3)
+          if (seq.track_type[d] == TrackType::ARP)
           { // Arp
             seq.arp_step = 0;
             seq.arp_counter = 0;
@@ -134,7 +126,7 @@ void sequencer_part1(void)
         }
 
         // after here not triggered by a key input -  arp only
-        if (seq.track_type[d] == 3)
+        if (seq.track_type[d] == TrackType::ARP)
         { // Arp
           if (seq.arp_speed == 0 || (seq.arp_speed == 1 && seq.arp_counter == 0))
           {
@@ -226,7 +218,7 @@ void sequencer_part1(void)
   }
 }
 
-void sequencer_part2(void)
+void noteOffRoutine()
 {
   seq_live_recording();
   for (uint8_t d = 0; d < NUM_SEQ_TRACKS; d++)
@@ -240,7 +232,7 @@ void sequencer_part2(void)
           myNoteOffX(midiChannel, seq.prev_note[d], 0);
           seq.noteoffsent[d] = true;
         }
-        if (seq.track_type[d] == 2)
+        if (seq.track_type[d] == TrackType::CHORD)
         { // Chords
           if (seq.prev_vel[d] > 199)
           {
@@ -251,7 +243,7 @@ void sequencer_part2(void)
             }
           }
         }
-        else if (seq.track_type[d] == 3)
+        else if (seq.track_type[d] == TrackType::ARP)
         { // Arp
           myNoteOffX(midiChannel, seq.arp_note_prev, 0);
           seq.noteoffsent[d] = true;
@@ -260,13 +252,13 @@ void sequencer_part2(void)
     }
   }
 }
-void sequencer(void)
+
+void sequencer()
 { // Runs in Interrupt Timer. Switches between the Noteon and Noteoff Task, each cycle
-
+  Serial.println("sequencer()");
   interrupt_swapper = !interrupt_swapper;
-
   if (interrupt_swapper)
-    sequencer_part1();
+    noteOnRoutine();
   else
-    sequencer_part2();
+    noteOffRoutine();
 }

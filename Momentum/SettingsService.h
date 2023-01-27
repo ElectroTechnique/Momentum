@@ -24,8 +24,8 @@ namespace settings
 
   struct SettingsOption
   {
-    const char *option;                  // Settings option string
-    const char *value[20]; // Array of strings of settings option values
+    const char *option;     // Settings option string
+    const char *value[102]; // Array of strings of settings option values
     updater updateHandler;
     index currentIndex;
   };

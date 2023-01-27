@@ -1,5 +1,5 @@
 #include <EEPROM.h>
-
+#define FIRSTRUN 111
 #define EEPROM_MIDI_CH 0
 #define EEPROM_MIDI_OUT_CH 1
 #define EEPROM_MIDI_THRU 2
@@ -8,6 +8,18 @@
 #define EEPROM_VOLUME 5
 #define EEPROM_LAST_BANK 6
 #define EEPROM_LAST_PATCH 7
+#define EEPROM_TUNING 8
+#define EEPROM_FIRST_RUN 9
+
+FLASHMEM int8_t getFirstRun()
+{
+  return EEPROM.read(EEPROM_FIRST_RUN) == FIRSTRUN; // Assuming it's never this from the factory
+}
+
+FLASHMEM void storeFirstRun()
+{
+  EEPROM.update(EEPROM_FIRST_RUN, FIRSTRUN);
+}
 
 FLASHMEM int8_t getLastBank()
 {
@@ -19,8 +31,7 @@ FLASHMEM int8_t getLastBank()
 
 FLASHMEM void storeLastBankToEEPROM(byte type)
 {
-  if (type != getLastBank())
-    EEPROM.update(EEPROM_LAST_BANK, type);
+  EEPROM.update(EEPROM_LAST_BANK, type);
 }
 
 FLASHMEM int8_t getLastPatch()
@@ -33,8 +44,7 @@ FLASHMEM int8_t getLastPatch()
 
 FLASHMEM void storeLastPatchToEEPROM(byte type)
 {
-  if (type != getLastPatch())
-    EEPROM.update(EEPROM_LAST_PATCH, type);
+  EEPROM.update(EEPROM_LAST_PATCH, type);
 }
 
 FLASHMEM void loadLastPatchUsed()
@@ -53,8 +63,7 @@ FLASHMEM int8_t getVolume()
 
 FLASHMEM void storeVolumeToEEPROM(byte type)
 {
-  if (type != getVolume())
-    EEPROM.update(EEPROM_VOLUME, type);
+  EEPROM.update(EEPROM_VOLUME, type);
 }
 
 FLASHMEM int getMIDIChannel()
@@ -67,8 +76,7 @@ FLASHMEM int getMIDIChannel()
 
 FLASHMEM void storeMidiChannel(byte channel)
 {
-  if (channel != getMIDIChannel())
-    EEPROM.update(EEPROM_MIDI_CH, channel);
+  EEPROM.update(EEPROM_MIDI_CH, channel);
 }
 
 FLASHMEM int getMIDIOutCh()
@@ -81,8 +89,7 @@ FLASHMEM int getMIDIOutCh()
 
 FLASHMEM void storeMidiOutCh(byte channel)
 {
-  if (channel != getMIDIOutCh())
-    EEPROM.update(EEPROM_MIDI_OUT_CH, channel);
+  EEPROM.update(EEPROM_MIDI_OUT_CH, channel);
 }
 
 FLASHMEM midi::Thru::Mode getMidiThru()
@@ -95,8 +102,7 @@ FLASHMEM midi::Thru::Mode getMidiThru()
 
 FLASHMEM void storeMidiThru(byte thru)
 {
-  if (thru != getMidiThru())
-    EEPROM.update(EEPROM_MIDI_THRU, thru);
+  EEPROM.update(EEPROM_MIDI_THRU, thru);
 }
 
 FLASHMEM boolean getScopeEnable()
@@ -109,8 +115,7 @@ FLASHMEM boolean getScopeEnable()
 
 FLASHMEM void storeScopeEnable(byte ScopeEnable)
 {
-  if (ScopeEnable != getScopeEnable())
-    EEPROM.update(EEPROM_SCOPE_ENABLE, ScopeEnable);
+  EEPROM.update(EEPROM_SCOPE_ENABLE, ScopeEnable);
 }
 
 FLASHMEM boolean getVUEnable()
@@ -123,6 +128,36 @@ FLASHMEM boolean getVUEnable()
 
 FLASHMEM void storeVUEnable(byte VUEnable)
 {
-  if (VUEnable != getVUEnable())
-    EEPROM.update(EEPROM_VU_ENABLE, VUEnable);
+  EEPROM.update(EEPROM_VU_ENABLE, VUEnable);
+}
+
+FLASHMEM int8_t getTuningCents()
+{
+  byte t = EEPROM.read(EEPROM_TUNING);
+  if (t < 0 || t > 100)
+    return 0;    // If EEPROM has no value stored
+  return t - 50; // zero is stored as 50, +/-50cents
+}
+
+FLASHMEM void storeTuning(byte tuning)
+{
+  EEPROM.update(EEPROM_TUNING, tuning + 50); // zero is stored as 50, +/-50cents
+}
+
+FLASHMEM void checkFirstRun()
+{
+  if (!getFirstRun())
+  {
+    // Default the EEPROM contents
+    storeMidiChannel(0);
+    storeMidiOutCh(0);
+    storeMidiThru(midi::Thru::Full);
+    storeLastBankToEEPROM(0);
+    storeLastPatchToEEPROM(0);
+    storeTuning(0);
+    storeVUEnable(0);
+    storeVolumeToEEPROM(currentVolume);
+    storeScopeEnable(0);
+    storeFirstRun();
+  }
 }

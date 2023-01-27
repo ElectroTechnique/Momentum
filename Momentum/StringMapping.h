@@ -2,7 +2,9 @@
 #include "Constants.h"
 #include "MidiCC.h"
 
+const uint8_t PARAMETERSFORENCS = 55;
 const char *ParameterStrMap[256] = {};
+uint8_t ParametersForPerformanceEncoders[PARAMETERSFORENCS] = {};
 
 FLASHMEM void assignStrings()
 {
@@ -63,20 +65,24 @@ FLASHMEM void assignStrings()
     ParameterStrMap[CCvelocitySens] = "Velocity Sens";
     ParameterStrMap[ampenvshape] = "Amp. Env. Shape";
     ParameterStrMap[filterenvshape] = "Filter Env. Shape";
+    ParameterStrMap[CCFilterVelocitySens] = "Filter Vel. Sens";
     ParameterStrMap[glideshape] = "Glide Shape";
     ParameterStrMap[pitchbendrange] = "Pitch Bend";
-    ParameterStrMap[modwheeldepth] = "Mod Wheel Depth";
+    ParameterStrMap[pitchmodwheeldepth] = "Pitch Mod W. Dep";
+    ParameterStrMap[filtermodwheeldepth] = "Filter Mod W. Dep";
     ParameterStrMap[savebankselect] = "Bank";
-    ParameterStrMap[savepatchselect] = "Name Patch";
+    ParameterStrMap[namepatch] = "Name Patch";
     ParameterStrMap[MIDIChIn] = "Channel In";
     ParameterStrMap[MIDIChOut] = "Channel Out";
     ParameterStrMap[MIDIThruMode] = "MIDI Thru Mode";
     ParameterStrMap[PerfSelect] = "Performance";
-    ParameterStrMap[PerfEdit] = "Edit";
+    ParameterStrMap[PerfEdit] = "Save/Edit";
+    ParameterStrMap[deleteCharacterPerformance] = "Del. Char";
+    ParameterStrMap[choosecharacterPerformance] = "Character";
     ParameterStrMap[cancel] = "Cancel";
     ParameterStrMap[settingoption] = "Setting";
     ParameterStrMap[settingvalue] = "Value";
-    ParameterStrMap[editbank] = "Edit Bank";
+    ParameterStrMap[editbank] = "Edit Banks";
     ParameterStrMap[deletepatches] = "Delete";
     ParameterStrMap[deletebank] = "Del Bank";
     ParameterStrMap[renamebank] = "Rename Bank";
@@ -86,9 +92,81 @@ FLASHMEM void assignStrings()
     ParameterStrMap[choosecharacterBank] = "Character";
     ParameterStrMap[deleteCharacterPatch] = "Del. Char";
     ParameterStrMap[deleteCharacterBank] = "Del. Char";
+    ParameterStrMap[noencoder] = "None";
 }
 
-FLASHMEM String getWaveformStr(int value)
+FLASHMEM void assignParametersForPerformanceEncoders()
+{
+    uint8_t i = 0;
+    ParametersForPerformanceEncoders[i] = noencoder;
+    ParametersForPerformanceEncoders[++i] = CCosclfoamt;
+    ParametersForPerformanceEncoders[++i] = CCglide;
+    ParametersForPerformanceEncoders[++i] = CCoscwaveformA;
+    ParametersForPerformanceEncoders[++i] = CCoscwaveformB;
+    ParametersForPerformanceEncoders[++i] = CCfilterenv;
+    ParametersForPerformanceEncoders[++i] = CCfiltermixer;
+    ParametersForPerformanceEncoders[++i] = CCoscLevelA;
+    ParametersForPerformanceEncoders[++i] = CCoscLevelB;
+    ParametersForPerformanceEncoders[++i] = CCnoiseLevel;
+    ParametersForPerformanceEncoders[++i] = CCoscfx;
+    ParametersForPerformanceEncoders[++i] = CCpitchA;
+    ParametersForPerformanceEncoders[++i] = CCpitchB;
+    ParametersForPerformanceEncoders[++i] = CCpitchenv;
+    ParametersForPerformanceEncoders[++i] = CCosclforetrig;
+    ParametersForPerformanceEncoders[++i] = CCfilterlforetrig;
+    ParametersForPerformanceEncoders[++i] = CCfilterres;
+    ParametersForPerformanceEncoders[++i] = CCamprelease;
+    ParametersForPerformanceEncoders[++i] = CCampattack;
+    ParametersForPerformanceEncoders[++i] = CCfilterfreq;
+    ParametersForPerformanceEncoders[++i] = filterfreq256;
+    ParametersForPerformanceEncoders[++i] = CCampdecay;
+    ParametersForPerformanceEncoders[++i] = CCfilterlforate;
+    ParametersForPerformanceEncoders[++i] = CCfilterlfoamt;
+    ParametersForPerformanceEncoders[++i] = CCampsustain;
+    ParametersForPerformanceEncoders[++i] = CCfilterattack;
+    ParametersForPerformanceEncoders[++i] = CCfilterdecay;
+    ParametersForPerformanceEncoders[++i] = CCfiltersustain;
+    ParametersForPerformanceEncoders[++i] = CCfilterrelease;
+    ParametersForPerformanceEncoders[++i] = CCpwA;
+    ParametersForPerformanceEncoders[++i] = CCpwB;
+    ParametersForPerformanceEncoders[++i] = CCpwmRateA;
+    ParametersForPerformanceEncoders[++i] = CCpwmRateB;
+    ParametersForPerformanceEncoders[++i] = CCpwmAmtA;
+    ParametersForPerformanceEncoders[++i] = CCpwmAmtB;
+    ParametersForPerformanceEncoders[++i] = CCkeytracking;
+    ParametersForPerformanceEncoders[++i] = CCfilterlfowaveform;
+    ParametersForPerformanceEncoders[++i] = CCfxamt;
+    ParametersForPerformanceEncoders[++i] = CCfxmix;
+    ParametersForPerformanceEncoders[++i] = CCdetune;
+    ParametersForPerformanceEncoders[++i] = CCoscLfoRate;
+    ParametersForPerformanceEncoders[++i] = CCoscLfoWaveform;
+    ParametersForPerformanceEncoders[++i] = CCfilterLFOMidiClkSync;
+    ParametersForPerformanceEncoders[++i] = CCoscLFOMidiClkSync;
+    ParametersForPerformanceEncoders[++i] = CCpwmSourceA;
+    ParametersForPerformanceEncoders[++i] = CCpwmSourceB;
+    ParametersForPerformanceEncoders[++i] = CCunison;
+    ParametersForPerformanceEncoders[++i] = CCmonomode;
+    ParametersForPerformanceEncoders[++i] = temposync;
+    ParametersForPerformanceEncoders[++i] = CCvelocitySens;
+    ParametersForPerformanceEncoders[++i] = ampenvshape;
+    ParametersForPerformanceEncoders[++i] = filterenvshape;
+    ParametersForPerformanceEncoders[++i] = glideshape;
+    ParametersForPerformanceEncoders[++i] = pitchbendrange;
+    ParametersForPerformanceEncoders[++i] = pitchmodwheeldepth;
+}
+
+FLASHMEM uint8_t getIndexForParametersForPerformanceEncoders(uint8_t cc)
+{
+    for (uint8_t i = 0; i < 81; i++)
+    {
+        if (ParametersForPerformanceEncoders[i] == cc)
+            return i;
+    }
+    Serial.println(F("getIndexForParametersForPerformanceEncoders() not matched:") + String(cc));
+}
+
+FLASHMEM String
+getWaveformStr(int value)
 {
     switch (value)
     {

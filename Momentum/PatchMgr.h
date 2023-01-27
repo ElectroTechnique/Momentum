@@ -1,25 +1,12 @@
 // Janelia Array available in libraries manager
-/*
-
-TESTS
-Save new patch without naming / cancel
-Save new patch with naming / cancel
-
-Save over existing patch without renaming / cancel
-Save over existing patch with renaming / cancel
-
-Delete patch from first, middle and end
-
-Rename bank / cancel
-Delete bank contents / cancel
-
-
-*/
 
 #include <Array.h>
 #include "Constants.h"
 #include "Utils.h"
 #include <ArduinoJson.h>
+
+FLASHMEM void deletePatch(uint8_t bank, uint8_t index);
+FLASHMEM boolean savePatch(uint8_t bankIndex, uint8_t index);
 
 uint8_t tempBankIndex = 0;
 uint8_t currentBankIndex = 0;
@@ -43,7 +30,7 @@ FLASHMEM void concatBankAndUID(uint8_t bank, uint32_t uid, char *result)
 {
   char buf[12];
   strcpy(result, BANK_FOLDER_NAMES_SLASH[bank]); // copy string one into the result.
-  strcat(result, utoa(uid, buf, 10));       // append string two to the result
+  strcat(result, utoa(uid, buf, 10));            // append string two to the result
 }
 
 FLASHMEM void concatBankAndFilename(uint8_t bank, const char *filename, char *result)
@@ -54,6 +41,8 @@ FLASHMEM void concatBankAndFilename(uint8_t bank, const char *filename, char *re
 
 FLASHMEM void insertIntoPatchIndexFile(uint8_t bankIndex, uint8_t index, uint32_t UID)
 {
+  if (!cardStatus)
+    return;
   char result[30];
   concatBankAndFilename(bankIndex, PATCH_INDEX_FILE_NAME, result);
   DynamicJsonDocument doc(1024);
@@ -80,9 +69,11 @@ FLASHMEM void insertIntoPatchIndexFile(uint8_t bankIndex, uint8_t index, uint32_
 
 FLASHMEM void recreatePatchIndexFile(uint8_t bankIndex)
 {
+  if (!cardStatus)
+    return;
   char result[30];
   concatBankAndFilename(bankIndex, PATCH_INDEX_FILE_NAME, result);
-  SD.remove(result);
+  SD.remove(result); // Delete PatchIndex file
   File file = SD.open(result, FILE_WRITE);
   StaticJsonDocument<1024> doc;
   for (uint8_t i = 0; i < patches.size(); i++)
@@ -107,6 +98,8 @@ FLASHMEM Patches getPatchesCopy()
 // Patchname from a files and return it
 FLASHMEM char *getPatchName(File file)
 {
+
+  Serial.println(file.name());
   // Allocate a temporary JsonDocument
   // Don't forget to change the capacity to match your requirements.
   // Use https://arduinojson.org/v6/assistant to compute the capacity.
@@ -123,9 +116,25 @@ FLASHMEM char *getPatchName(File file)
   return doc["PatchName"];
 }
 
+// Patchname from a UID and return it
+FLASHMEM char *getPatchName(uint8_t bankIndex, uint32_t uid)
+{
+  char result[30];
+  concatBankAndUID(bankIndex, uid, result);
+  Serial.println(result);
+  File file = SD.open(result);
+  if (!file)
+    return "- MISSING -";
+  char *patchName = getPatchName(file);
+  file.close();
+  return patchName;
+}
+
 // Loads Patchnames into array for display only and uses UID (filename) to recall
 FLASHMEM void loadPatchNamesFromBank(uint8_t bankIndex)
 {
+  if (!cardStatus)
+    return;
   Serial.println(F("LoadPatchNames from Bank") + String(bankIndex + 1));
   patches.clear();
   File bankDir = SD.open(BANK_FOLDER_NAMES_SLASH[bankIndex]);
@@ -164,7 +173,7 @@ FLASHMEM void loadPatchNamesFromBank(uint8_t bankIndex)
     File file = SD.open(result);
     if (file)
     {
-      StaticJsonDocument<1024> doc;
+      StaticJsonDocument<2048> doc;
       DeserializationError error = deserializeJson(doc, file);
       // file.close();
       if (error)
@@ -194,10 +203,227 @@ FLASHMEM void loadPatchNamesFromBank(uint8_t bankIndex)
   }
 }
 
+FLASHMEM void saveBankName(String bankname)
+{
+  if (!cardStatus)
+    return;
+  DynamicJsonDocument doc(1024);
+
+  File file = SD.open(BANKS_FILE_NAME);
+  if (!file)
+  {
+    Serial.println(F("Banks file missing"));
+  }
+  else
+  {
+    deserializeJson(doc, file);
+    serializeJsonPretty(doc, Serial);
+  }
+  file.close();
+  file = SD.open(BANKS_FILE_NAME, FILE_WRITE);
+  file.seek(0);
+  file.print("");
+  doc[String(BANK_FOLDER_NAMES[tempBankIndex])] = bankname;
+  serializeJsonPretty(doc, Serial);
+  serializeJson(doc, file);
+  file.close();
+}
+
+FLASHMEM void checkSDCardStructure()
+{
+  if (!cardStatus)
+    return;
+  // Expecting 8 Bank folders,Sequence folder and Bankname file
+  for (uint8_t i = 0; i < 8; i++)
+  {
+    if (!SD.exists(BANK_FOLDER_NAMES_SLASH[i]))
+    {
+      SD.mkdir(BANK_FOLDER_NAMES[i]);
+      Serial.println(F("Creating Bank dir:") + String(BANK_FOLDER_NAMES[i]));
+      // Save default patch file into Bank 1 folder at first index
+      if (i == 0)
+        savePatch(0, 0);
+    }
+  }
+  if (!SD.exists(SEQUENCE_FOLDER_NAME_SLASH))
+  {
+    SD.mkdir(SEQUENCE_FOLDER_NAME);
+  }
+  if (!SD.exists(PERFORMANCE_FOLDER_NAME_SLASH))
+  {
+    SD.mkdir(PERFORMANCE_FOLDER_NAME);
+  }
+
+  if (!SD.exists(BANKS_FILE_NAME))
+  {
+    File banksfile = SD.open(BANKS_FILE_NAME, FILE_WRITE);
+    if (banksfile)
+    {
+      banksfile.println(BANKS_FILE_CONTENTS);
+      banksfile.close();
+    }
+  }
+}
+
+FLASHMEM void loadBankNames()
+{
+  if (!cardStatus)
+    return;
+  File file = SD.open("Banknames");
+  if (!file)
+  {
+    Serial.println(F("Failed to read banknames file"));
+  }
+
+  StaticJsonDocument<512> doc;
+
+  // Deserialize the JSON document
+  DeserializationError error = deserializeJson(doc, file);
+  if (error)
+  {
+    Serial.println(F("Failed to deserialise banknames file"));
+    return;
+  }
+  // Copy values from the JsonDocument to the banknames array
+  for (u_int8_t i = 0; i < 8; i++)
+  {
+    bankNames[i] = doc[BANK_FOLDER_NAMES[i]].as<String>();
+  }
+  file.close();
+}
+
+// Filename is UID
+FLASHMEM boolean loadPatch(uint8_t bank, uint32_t filename)
+{
+  if (!cardStatus)
+    return false;
+  // Open file for reading - UID is Filename
+  char result[30];
+  concatBankAndUID(bank, filename, result);
+  File file = SD.open(result);
+
+  // Allocate a temporary JsonDocument
+  // Don't forget to change the capacity to match your requirements.
+  // Use https://arduinojson.org/v6/assistant to compute the capacity.
+  StaticJsonDocument<2048> doc;
+
+  // Deserialize the JSON document
+  DeserializationError error = deserializeJson(doc, file);
+  if (error)
+  {
+    Serial.print(F("loadPatch() - Failed to read file:"));
+    Serial.println(filename);
+    return false;
+  }
+  // Copy values from the JsonDocument to the PatchStruct
+  strncpy(currentPatch.PatchName, doc["PatchName"], sizeof(currentPatch.PatchName));
+  currentPatch.UID = doc["UID"];
+
+  JsonObject OSC1 = doc["OSC1"];
+  currentPatch.PitchA = OSC1["Pitch"];
+  currentPatch.WaveformA = OSC1["Waveform"];
+  currentPatch.OscLevelA = OSC1["Level"];
+  currentPatch.PWA_Amount = OSC1["PWAmount"];
+  currentPatch.PWMA_Amount = OSC1["PWMAmount"];
+  currentPatch.PWMSourceA = OSC1["PWMSource"];
+  currentPatch.PWMRateA = OSC1["PWMRate"];
+
+  JsonObject OSC2 = doc["OSC2"];
+  currentPatch.PitchB = OSC2["Pitch"];
+  currentPatch.WaveformB = OSC2["Waveform"];
+  currentPatch.OscLevelB = OSC2["Level"];
+  currentPatch.PWB_Amount = OSC2["PWAmount"];
+  currentPatch.PWMB_Amount = OSC2["PWMAmount"];
+  currentPatch.PWMSourceB = OSC2["PWMSource"];
+  currentPatch.PWMRateB = OSC2["PWMRate"];
+
+  currentPatch.Detune = doc["Detune"];
+  currentPatch.NoiseLevel = doc["NoiseLevel"];
+  currentPatch.Unison = doc["Unison"];
+  currentPatch.OscFX = doc["OscFX"];
+  currentPatch.PitchEnv = doc["PitchEnv"];
+  currentPatch.PitchLFOAmt = doc["PitchLFOAmt"];
+  currentPatch.PitchLFORate = doc["PitchLFORate"];
+  currentPatch.PitchLFOWaveform = doc["PitchLFOWaveform"];
+  currentPatch.PitchLFORetrig = doc["PitchLFORetrig"];
+  currentPatch.PitchLFOMidiClkSync = doc["PitchLFOMidiClkSync"];
+
+  JsonObject Filter = doc["Filter"];
+  currentPatch.FilterFreq = Filter["Freq"];
+  currentPatch.FilterRes = Filter["Res"];
+  currentPatch.FilterMixer = Filter["Mixer"];
+  currentPatch.FilterEnv = Filter["FilterEnv"];
+  currentPatch.FilterLFORate = Filter["LFORate"];
+  currentPatch.FilterLFORetrig = Filter["LFORetrig"];
+  currentPatch.FilterLFOMidiClkSync = Filter["LFOMidiClkSync"];
+  currentPatch.FilterLfoAmt = Filter["LfoAmt"];
+  currentPatch.FilterLFOWaveform = Filter["LFOWaveform"];
+  currentPatch.FilterAttack = Filter["Attack"];
+  currentPatch.FilterDecay = Filter["Decay"];
+  currentPatch.FilterSustain = Filter["Sustain"];
+  currentPatch.FilterRelease = Filter["Release"];
+  currentPatch.FilterVelocitySensitivity = Filter["FilterVelocitySensitivity"];
+
+  JsonObject Amp = doc["Amp"];
+  currentPatch.Attack = Amp["Attack"];
+  currentPatch.Decay = Amp["Decay"];
+  currentPatch.Sustain = Amp["Sustain"];
+  currentPatch.Release = Amp["Release"];
+
+  currentPatch.KeyTracking = doc["KeyTracking"];
+  currentPatch.LFOTempoValue = doc["LFOTempoValue"];
+  currentPatch.LFOSyncFreq = doc["LFOSyncFreq"];
+  currentPatch.MidiClkTimeInterval = doc["MidiClkTimeInterval"];
+  currentPatch.VelocitySensitivity = doc["VelocitySensitivity"];
+  currentPatch.ChordDetune = doc["ChordDetune"];
+  currentPatch.MonophonicMode = doc["MonophonicMode"];
+  currentPatch.Glide = doc["Glide"];
+  currentPatch.EffectAmt = doc["EffectAmt"];
+  currentPatch.EffectMix = doc["EffectMix"];
+  currentPatch.FilterEnvShape = doc["FilterEnvShape"];
+  currentPatch.AmpEnvShape = doc["AmpEnvShape"];
+  currentPatch.GlideShape = doc["GlideShape"];
+  currentPatch.PitchBend = doc["PitchBend"];
+  currentPatch.PitchModWheelDepth = doc["PitchModWheelDepth"];
+  currentPatch.FilterModWheelDepth = doc["FilterModWheelDepth"];
+  file.close();
+  return true;
+}
+
+FLASHMEM void reinitialisePatch()
+{
+  Serial.println(F("Reinitialise Patch"));
+  PatchStruct ps;
+  currentPatch = ps;
+}
+
+FLASHMEM int8_t findPatchIndex(uint32_t UID)
+{
+  for (uint8_t i = 0; i < patches.size(); i++)
+  {
+    Serial.printf("findPatchIndex()  UID:%u currentUID:%u index:%i \n", UID, patches[i].patchUID, i);
+    if (UID == patches[i].patchUID)
+    {
+      return i;
+    }
+  }
+  // Could be that patch array isn't for this bank, but patches
+  // can be deleted from SD card from other bank folders
+  Serial.println(F("UID not found in patch array:") + String(UID));
+  return -1;
+}
+
 FLASHMEM boolean savePatch(uint8_t bankIndex, uint8_t index)
 {
-  StaticJsonDocument<1024> doc;
-
+  if (!cardStatus)
+    return false;
+  if (patches[index].patchUID != 0)
+  {
+    // Overwriting, need to delete existing patch at this index, or it will stay on card (UID is filename)
+    Serial.println("Overwriting");
+    deletePatch(bankIndex, index);
+  }
+  StaticJsonDocument<2048> doc;
   doc["PatchName"] = currentPatch.PatchName;
 
   JsonObject OSC1 = doc.createNestedObject("OSC1");
@@ -243,6 +469,7 @@ FLASHMEM boolean savePatch(uint8_t bankIndex, uint8_t index)
   Filter["Decay"] = currentPatch.FilterDecay;
   Filter["Sustain"] = currentPatch.FilterSustain;
   Filter["Release"] = currentPatch.FilterRelease;
+  Filter["FilterVelocitySensitivity"] = currentPatch.FilterVelocitySensitivity;
 
   JsonObject Amp = doc.createNestedObject("Amp");
   Amp["Attack"] = currentPatch.Attack;
@@ -264,7 +491,8 @@ FLASHMEM boolean savePatch(uint8_t bankIndex, uint8_t index)
   doc["AmpEnvShape"] = currentPatch.AmpEnvShape;
   doc["GlideShape"] = currentPatch.GlideShape;
   doc["PitchBend"] = currentPatch.PitchBend;
-  doc["ModWheelDepth"] = currentPatch.ModWheelDepth;
+  doc["PitchModWheelDepth"] = currentPatch.PitchModWheelDepth;
+  doc["FilterModWheelDepth"] = currentPatch.FilterModWheelDepth;
 
   // Need to generate a new UID as the patch settings may have changed if overwriting an existing patch
   String output;
@@ -298,210 +526,12 @@ FLASHMEM boolean savePatch(uint8_t bankIndex, uint8_t index)
   return true;
 }
 
-FLASHMEM void saveBankName(String bankname)
-{
-  DynamicJsonDocument doc(1024);
-
-  File file = SD.open(BANKS_FILE_NAME);
-  if (!file)
-  {
-    Serial.println(F("Banks file missing"));
-  }
-  else
-  {
-    deserializeJson(doc, file);
-    serializeJsonPretty(doc, Serial);
-  }
-  file.close();
-  file = SD.open(BANKS_FILE_NAME, FILE_WRITE);
-  file.seek(0);
-  file.print("");
-  doc[String(BANK_FOLDER_NAMES[tempBankIndex])] = bankname;
-  serializeJsonPretty(doc, Serial);
-  serializeJson(doc, file);
-  file.close();
-}
-
-FLASHMEM void checkSDCardStructure()
-{
-  // Expecting 8 Bank folders,Sequence folder and Bankname file
-  for (uint8_t i = 0; i < 8; i++)
-  {
-    if (!SD.exists(BANK_FOLDER_NAMES_SLASH[i]))
-    {
-      SD.mkdir(BANK_FOLDER_NAMES[i]);
-      Serial.println(F("Creating Bank dir:") + String(BANK_FOLDER_NAMES[i]));
-      // Save default patch file into Bank 1 folder at first index
-      if (i == 0)
-        savePatch(0, 0);
-    }
-  }
-  if (!SD.exists(SEQUENCE_FOLDER_NAME_SLASH))
-  {
-    SD.mkdir(SEQUENCE_FOLDER_NAME);
-  }
-  if (!SD.exists(PERFORMANCE_FOLDER_NAME_SLASH))
-  {
-    SD.mkdir(PERFORMANCE_FOLDER_NAME);
-  }
-  if (!SD.exists(BANKS_FILE_NAME))
-  {
-    File banksfile = SD.open(BANKS_FILE_NAME, FILE_WRITE);
-    if (banksfile)
-    {
-      banksfile.println(BANKS_FILE_CONTENTS);
-      banksfile.close();
-    }
-  }
-}
-
-FLASHMEM void loadBankNames()
-{
-  File file = SD.open("Banknames");
-  if (!file)
-  {
-    Serial.println(F("Failed to read banknames file"));
-  }
-
-  StaticJsonDocument<512> doc;
-
-  // Deserialize the JSON document
-  DeserializationError error = deserializeJson(doc, file);
-  if (error)
-  {
-    Serial.println(F("Failed to deserialise banknames file"));
-    return;
-  }
-  // Copy values from the JsonDocument to the banknames array
-  for (u_int8_t i = 0; i < 8; i++)
-  {
-    bankNames[i] = doc[BANK_FOLDER_NAMES[i]].as<String>();
-  }
-  file.close();
-}
-
-// Filename is UID
-FLASHMEM void loadPatch(uint8_t bank, uint32_t filename)
-{
-  // Open file for reading - UID is Filename
-  char result[30];
-  concatBankAndUID(bank, filename, result);
-  File file = SD.open(result);
-
-  // Allocate a temporary JsonDocument
-  // Don't forget to change the capacity to match your requirements.
-  // Use https://arduinojson.org/v6/assistant to compute the capacity.
-  StaticJsonDocument<2048> doc;
-
-  // Deserialize the JSON document
-  DeserializationError error = deserializeJson(doc, file);
-  if (error)
-  {
-    Serial.print(F("loadPatch() - Failed to read file:"));
-    Serial.println(filename);
-    return;
-  }
-  // Copy values from the JsonDocument to the PatchStruct
-  strncpy(currentPatch.PatchName, doc["PatchName"], sizeof(currentPatch.PatchName));
-  currentPatch.UID = doc["UID"];
-
-  JsonObject OSC1 = doc["OSC1"];
-  currentPatch.PitchA = OSC1["Pitch"];
-  currentPatch.WaveformA = OSC1["Waveform"];
-  currentPatch.OscLevelA = OSC1["Level"];
-  currentPatch.PWA_Amount = OSC1["PWAmount"];
-  currentPatch.PWMA_Amount = OSC1["PWMAmount"];
-  currentPatch.PWMSourceA = OSC1["PWMSource"];
-  currentPatch.PWMRateA = OSC1["PWMRate"];
-
-  JsonObject OSC2 = doc["OSC2"];
-  currentPatch.PitchB = OSC2["Pitch"];
-  currentPatch.WaveformB = OSC2["Waveform"];
-  currentPatch.OscLevelB = OSC2["Level"];
-  currentPatch.PWB_Amount = OSC2["PWAmount"];
-  currentPatch.PWMB_Amount = OSC2["PWMAmount"];
-  currentPatch.PWMSourceB = OSC2["PWMSource"];
-  currentPatch.PWMRateB = OSC2["PWMRate"];
-
-  currentPatch.Detune = doc["Detune"];
-  currentPatch.NoiseLevel = doc["NoiseLevel"];
-  currentPatch.Unison = doc["Unison"];
-  currentPatch.OscFX = doc["OscFX"];
-  currentPatch.PitchEnv = doc["PitchEnv"];
-  currentPatch.PitchLFOAmt = doc["PitchLFOAmt"];
-  currentPatch.PitchLFORate = doc["PitchLFORate"];
-  currentPatch.PitchLFOWaveform = doc["PitchLFOWaveform"];
-  currentPatch.PitchLFORetrig = doc["PitchLFORetrig"];
-  currentPatch.PitchLFOMidiClkSync = doc["PitchLFOMidiClkSync"];
-
-  JsonObject Filter = doc["Filter"];
-  currentPatch.FilterFreq = Filter["Freq"];
-  currentPatch.FilterRes = Filter["Res"];
-  currentPatch.FilterMixer = Filter["Mixer"];
-  currentPatch.FilterEnv = Filter["Env"];
-  currentPatch.FilterLFORate = Filter["LFORate"];
-  currentPatch.FilterLFORetrig = Filter["LFORetrig"];
-  currentPatch.FilterLFOMidiClkSync = Filter["LFOMidiClkSync"];
-  currentPatch.FilterLfoAmt = Filter["LfoAmt"];
-  currentPatch.FilterLFOWaveform = Filter["LFOWaveform"];
-  currentPatch.FilterAttack = Filter["Attack"];
-  currentPatch.FilterDecay = Filter["Decay"];
-  currentPatch.FilterSustain = Filter["Sustain"];
-  currentPatch.FilterRelease = Filter["Release"];
-
-  JsonObject Amp = doc["Amp"];
-  currentPatch.Attack = Amp["Attack"];
-  currentPatch.Decay = Amp["Decay"];
-  currentPatch.Sustain = Amp["Sustain"];
-  currentPatch.Release = Amp["Release"];
-
-  currentPatch.KeyTracking = doc["KeyTracking"];
-  currentPatch.LFOTempoValue = doc["LFOTempoValue"];
-  currentPatch.LFOSyncFreq = doc["LFOSyncFreq"];
-  currentPatch.MidiClkTimeInterval = doc["MidiClkTimeInterval"];
-  currentPatch.VelocitySensitivity = doc["VelocitySensitivity"];
-  currentPatch.ChordDetune = doc["ChordDetune"];
-  currentPatch.MonophonicMode = doc["MonophonicMode"];
-  currentPatch.Glide = doc["Glide"];
-  currentPatch.EffectAmt = doc["EffectAmt"];
-  currentPatch.EffectMix = doc["EffectMix"];
-  currentPatch.FilterEnvShape = doc["FilterEnvShape"];
-  currentPatch.AmpEnvShape = doc["AmpEnvShape"];
-  currentPatch.GlideShape = doc["GlideShape"];
-  currentPatch.PitchBend = doc["PitchBend"];
-  currentPatch.ModWheelDepth = doc["ModWheelDepth"];
-
-  file.close();
-}
-
-FLASHMEM void reinitialisePatch()
-{
-  Serial.println(F("Reinitialise Patch"));
-  PatchStruct ps;
-  currentPatch = ps;
-}
-
-FLASHMEM int8_t findPatchIndex(uint32_t UID)
-{
-  for (uint8_t i = 0; i < patches.size(); i++)
-  {
-    Serial.printf("findPatchIndex()  UID:%u currentUID:%u index:%i \n", UID, patches[i].patchUID, i);
-    if (UID == patches[i].patchUID)
-    {
-      return i;
-    }
-  }
-  // Could be that patch array isn't for this bank, but patches
-  // can be deleted from SD card from other bank folders
-  Serial.println(F("UID not found in patch array:") + String(UID));
-  return -1;
-}
-
 FLASHMEM void deletePatch(uint8_t bank, uint8_t index)
 {
   // delete from SD card
   char result[30];
   concatBankAndUID(bank, patches[index].patchUID, result);
+  Serial.printf("Deleting Patch:%s index:%i \n", result, index);
   if (!SD.remove(result))
   {
     Serial.println(F("Couldn't delete from SD card"));
@@ -510,24 +540,22 @@ FLASHMEM void deletePatch(uint8_t bank, uint8_t index)
   // Remove from array if patch is in current bank
   if (bank == currentBankIndex)
   {
-    if (index > -1)
-    {
-      patches.remove(index);
-      Serial.printf("Deleted Patch:%s index:%i \n", result, index);
-      recreatePatchIndexFile(bank);
-    }
+    patches.remove(index);
+    Serial.printf("Deleted Patch:%s index:%i \n", result, index);
   }
+  // Recreate patchindex file
+  recreatePatchIndexFile(bank);
 }
 
 FLASHMEM void deleteBank(uint8_t bank)
 {
-  if (patches[0].patchUID == 0)
+  if (patches[0].patchUID == 0) // Check for empty bank
     return;
   char result[30];
   for (uint8_t index = 0; index < patches.size(); index++)
   {
     concatBankAndUID(bank, patches[index].patchUID, result);
-    Serial.println(">" + String(index) + "-" + String(result));
+    Serial.println("deleteBank:" + String(index) + "-" + String(result));
     if (!SD.remove(result))
     {
       Serial.println(F("Couldn't delete from SD card"));

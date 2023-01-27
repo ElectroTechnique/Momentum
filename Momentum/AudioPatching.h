@@ -4,23 +4,26 @@
 #include <vector>
 #include "Constants.h"
 
-//waveformX      -->   waveformMixerX   -->   voiceMixer1-3   -->   voiceMixerM  --> volumeMixer
-//WAVEFORMLEVEL        oscA/BLevel             VELOCITY    VOICEMIXERLEVEL/UNISONVOICEMIXERLEVEL    volume
+// waveformX      -->   waveformMixerX   -->   voiceMixer1-3   -->   voiceMixerM  --> volumeMixer
+// WAVEFORMLEVEL        oscA/BLevel             VELOCITY    VOICEMIXERLEVEL/UNISONVOICEMIXERLEVEL    volume
 
-class Mixer {
-    private:
-    AudioMixer4& mixer;
+class Mixer
+{
+private:
+    AudioMixer4 &mixer;
     uint8_t index;
 
-    public:
-    Mixer(AudioMixer4& mixer_, uint8_t index_): mixer(mixer_), index(index_) {}
+public:
+    Mixer(AudioMixer4 &mixer_, uint8_t index_) : mixer(mixer_), index(index_) {}
 
-    void gain(float value) {
+    void gain(float value)
+    {
         mixer.gain(index, value);
     }
 };
 
-struct PatchShared {
+struct PatchShared
+{
     AudioSynthWaveformDcTS pitchBend;
     AudioSynthWaveformTS pitchLfo;
     AudioMixer4 pitchMixer;
@@ -55,22 +58,23 @@ struct PatchShared {
         {volumeMixer, 0, effectMixerR, 0},
     };
 
-    private:
+private:
     AudioConnection *pinkNoiseConnection = nullptr;
     AudioConnection *whiteNoiseConnection = nullptr;
     AudioConnection *outputLConnection = nullptr;
     AudioConnection *outputRConnection = nullptr;
 
-    public:
-    
-    void connectNoise(AudioSynthNoisePink& pink, AudioSynthNoiseWhite& white) {
+public:
+    void connectNoise(AudioSynthNoisePink &pink, AudioSynthNoiseWhite &white)
+    {
         delete pinkNoiseConnection;
         delete whiteNoiseConnection;
         pinkNoiseConnection = new AudioConnection(pink, 0, noiseMixer, 0);
         whiteNoiseConnection = new AudioConnection(white, 0, noiseMixer, 1);
     }
 
-    void connectOutput(AudioMixer4& left, AudioMixer4& right, uint8_t index) {
+    void connectOutput(AudioMixer4 &left, AudioMixer4 &right, uint8_t index)
+    {
         delete outputLConnection;
         delete outputRConnection;
         outputLConnection = new AudioConnection(effectMixerL, 0, left, index);
@@ -79,7 +83,8 @@ struct PatchShared {
 };
 
 // Oscillator configurations.
-struct Patch {
+struct Patch
+{
     AudioEffectEnvelopeTS filterEnvelope_;
 
     AudioMixer4 pwMixer_a;
@@ -87,7 +92,7 @@ struct Patch {
 
     AudioSynthWaveformDcTS glide_;
 
-    AudioSynthWaveformDcTS keytracking_;
+    AudioSynthWaveformDcTS filterVelocity_;
 
     AudioMixer4 oscModMixer_a;
     AudioMixer4 oscModMixer_b;
@@ -108,7 +113,7 @@ struct Patch {
     AudioEffectEnvelopeTS ampEnvelope_;
 
     AudioConnection connections[25] = {
-        {keytracking_, 0, filterModMixer_, 2},
+        {filterVelocity_, 0, filterModMixer_, 3},
         {pwMixer_a, 0, waveformMod_a, 1},
         {pwMixer_b, 0, waveformMod_b, 1},
         {waveformMod_a, 0, waveformMixer_, 0},
@@ -136,10 +141,9 @@ struct Patch {
         {glide_, 0, oscModMixer_b, 2},
         // X Mod
         {waveformMod_a, 0, oscModMixer_b, 3},
-        {waveformMod_b, 0, oscModMixer_a, 3}
-    };
+        {waveformMod_b, 0, oscModMixer_a, 3}};
 
-    private:
+private:
     // When added to a voice group, connect PWA/PWB.
     AudioConnection *pitchMixerAConnection = nullptr;
     AudioConnection *pitchMixerBConnection = nullptr;
@@ -151,9 +155,10 @@ struct Patch {
     AudioConnection *noiseMixerConnection = nullptr;
     AudioConnection *ampConnection = nullptr;
 
-    public:
+public:
     // Connect the shared audio objects to the per-voice audio objects.
-    Mixer* connectTo(PatchShared& shared, uint8_t index) {
+    Mixer *connectTo(PatchShared &shared, uint8_t index)
+    {
         delete pitchMixerAConnection;
         delete pitchMixerBConnection;
         delete pwmLfoAConnection;
@@ -173,31 +178,38 @@ struct Patch {
         pwbConnection = new AudioConnection(shared.pwb, 0, pwMixer_b, 1);
         noiseMixerConnection = new AudioConnection(shared.noiseMixer, 0, waveformMixer_, 2);
 
+        // filterModMixer_.gain(0, 1.0f);  // Env +1
+        // filterModMixer_.gain(1, 1.0f); // LFO +/-1
+        // filterModMixer_.gain(2, 0.16f);  // Key Tracking  +/-5
+        // filterModMixer_.gain(3, 1.0f);  // Vel +1
+
         uint8_t voiceMixerIndex = 0;
         uint8_t indexMod4 = index % 4;
-        if (index != 0) voiceMixerIndex = index / 4;
+        if (index != 0)
+            voiceMixerIndex = index / 4;
         ampConnection = new AudioConnection(ampEnvelope_, 0, shared.voiceMixer[voiceMixerIndex], indexMod4);
         return new Mixer{shared.voiceMixer[voiceMixerIndex], indexMod4};
     }
 };
 
-struct Global {
-    private:
+struct Global
+{
+private:
     static const uint8_t MAX_NO_TIMBER = 2;
     static const uint8_t MAX_NO_VOICE = 12;
 
-    public:
-    AudioOutputUSB           usbAudio;
-    AudioSynthWaveformDcTS     constant1Dc;
-    AudioSynthNoisePink      pink;
-    AudioSynthNoiseWhite     white;
-    AudioAnalyzePeak         peak;
-    Oscilloscope             scope;
-    AudioMixer4              effectMixerR[3];
-    AudioMixer4              effectMixerRM;
-    AudioMixer4              effectMixerL[3];
-    AudioMixer4              effectMixerLM;
-    AudioOutputI2S           i2s;
+public:
+    AudioOutputUSB usbAudio;
+    AudioSynthWaveformDcTS constant1Dc;
+    AudioSynthNoisePink pink;
+    AudioSynthNoiseWhite white;
+    AudioAnalyzePeak peak;
+    Oscilloscope scope;
+    AudioMixer4 effectMixerR[3];
+    AudioMixer4 effectMixerRM;
+    AudioMixer4 effectMixerL[3];
+    AudioMixer4 effectMixerLM;
+    AudioOutputI2S i2s;
 
     PatchShared SharedAudio[MAX_NO_TIMBER];
     Patch Oscillators[MAX_NO_VOICE];
@@ -214,21 +226,25 @@ struct Global {
         {effectMixerRM, 0, usbAudio, 1},
         {effectMixerRM, 0, i2s, 1},
         {effectMixerLM, 0, i2s, 0},
-        {effectMixerLM, 0, usbAudio, 0}
-    };
+        {effectMixerLM, 0, usbAudio, 0}};
 
-    std::vector<AudioConnection*> connections;
+    std::vector<AudioConnection *> connections;
 
-    Global(float mixerLevel) {
-        for (int i = 0; i < MAX_NO_VOICE; i++) {
+    Global(float mixerLevel)
+    {
+        for (int i = 0; i < MAX_NO_VOICE; i++)
+        {
             connections.push_back(new AudioConnection{constant1Dc, Oscillators[i].filterEnvelope_});
+            connections.push_back(new AudioConnection{constant1Dc, 0, Oscillators[i].filterModMixer_, 2}); // Key tracking
         }
 
-        for (int i = 0; i < MAX_NO_TIMBER; i++) {
+        for (int i = 0; i < MAX_NO_TIMBER; i++)
+        {
             SharedAudio[i].connectNoise(pink, white);
 
             uint8_t mixerIdx = 0;
-            if (i > 0) mixerIdx = i / 12;
+            if (i > 0)
+                mixerIdx = i / 12;
             SharedAudio[i].connectOutput(effectMixerL[mixerIdx], effectMixerR[mixerIdx], i % 4);
 
             SharedAudio[i].voiceMixerM.gain(0, mixerLevel);
@@ -236,17 +252,17 @@ struct Global {
             SharedAudio[i].voiceMixerM.gain(2, mixerLevel);
             SharedAudio[i].voiceMixerM.gain(3, mixerLevel);
 
-            SharedAudio[i].volumeMixer.gain(0, 1.6f);
+            SharedAudio[i].volumeMixer.gain(0, 1); // Set by VoiceGroup setVolume(float amount)
             SharedAudio[i].volumeMixer.gain(1, 0);
             SharedAudio[i].volumeMixer.gain(2, 0);
             SharedAudio[i].volumeMixer.gain(3, 0);
-            
-            //This removes dc offset (mostly from unison pulse waves) before the ensemble effect
+
+            // This removes dc offset (mostly from unison pulse waves) before the ensemble effect
             SharedAudio[i].dcOffsetFilter.octaveControl(1.0f);
-            SharedAudio[i].dcOffsetFilter.frequency(12.0f);//Lower values will give clicks on note on/off
+            SharedAudio[i].dcOffsetFilter.frequency(12.0f); // Lower values will give clicks on note on/off
         }
 
-        constant1Dc.amplitude(1.0);
+        constant1Dc.amplitude(1.0f);
 
         effectMixerLM.gain(0, 1.0f);
         effectMixerLM.gain(1, 1.0f);
@@ -257,8 +273,8 @@ struct Global {
         effectMixerRM.gain(2, 1.0f);
         effectMixerRM.gain(3, 1.0f);
 
-        pink.amplitude(1.0);
-        white.amplitude(1.0);
+        pink.amplitude(1.0f);
+        white.amplitude(1.0f);
     }
 
     inline int maxVoices() { return MAX_NO_VOICE; }

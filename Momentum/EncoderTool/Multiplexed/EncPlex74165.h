@@ -24,6 +24,12 @@ namespace EncoderTool
 
     protected:
         const unsigned A, B, Btn, LD, CLK;
+        uint32_t now = 0;
+        int32_t previousState[8] = {LOW};
+        uint32_t WINDOWTIME[7] = {500, 390, 330, 220, 140, 80, 20};
+        uint32_t btnStarttime[8] = {0};
+        boolean buttonHeld[8] = {false};
+        uint8_t w = 0;
     };
 
     // IMPLEMENTATION ============================================
@@ -74,7 +80,7 @@ namespace EncoderTool
         delayNanoseconds(50);
         digitalWriteFast(LD, HIGH);
 
-        long now = millis();
+        now = millis();
 
         for (unsigned i = 0; i < encoderCount; i++)
         {
@@ -87,11 +93,22 @@ namespace EncoderTool
             if (i > 3)
             {
                 int delta = encoders[i].update(digitalReadFast(A), digitalReadFast(B), digitalReadFast(Btn));
-                // Condition removes some unwanted changes to the encoder value when pushing its button
-                if (btnCallback != nullptr && encoders[i].buttonChanged() && encoders[i].getButton() == LOW)
+                if (callback != nullptr && encoders[i].buttonChanged())
                 {
-                    btnCallback(i, encoders[i].getButton());
+                    if (encoders[i].getButton() == LOW)
+                    {
+                        btnStarttime[i] = millis();
+                        w = 0;
+                    }
+                    else
+                    {
+                        if (!buttonHeld[i])
+                            btnCallback(i, encoders[i].getButton());
+                        buttonHeld[i] = false;
+                        w = 0;
+                    }
                 }
+
                 else if (delta != 0 && callback != nullptr)
                 {
                     callback(i, encoders[i].getValue(), delta);
@@ -102,12 +119,30 @@ namespace EncoderTool
                         {
                             callback(i, encoders[i].getValue(), delta);
                             callback(i, encoders[i].getValue(), delta);
+                            callback(i, encoders[i].getValue(), delta);
                         }
                     }
                     last[i] = now;
                 }
+
+                if (btnCallback != nullptr && encoders[i].getButton() == LOW && (millis() - btnStarttime[i]) > WINDOWTIME[w])
+                {
+                    buttonHeld[i] = true;
+                    btnStarttime[i] = millis();
+                    // Acceleration of callbacks when button is held down
+                    if (w < 6)
+                        w++;
+                    if (w > 1)
+                    {
+                        btnCallback(i, HELD_REPEAT); // HELD REPEAT
+                    }
+                    else
+                    {
+                        btnCallback(i, HELD); // HELD ONCE
+                    }
+                }
             }
-            //Clock after first is read
+            // Clock after first is read
             if (i > 0)
             {
                 digitalWriteFast(CLK, LOW);

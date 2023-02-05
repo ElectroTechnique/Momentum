@@ -118,7 +118,7 @@ namespace ButtonTool
     void ButtonPlex74165::readButton(unsigned i)
     {
         if (i == 2 || i == 5 || i > 11)
-            return; // Ignore unconnected shift register inputs
+            return; // Ignore unconnected shift register inputs ***** This is Momentium specific *****
 
         if (callback != nullptr && buttons[i].buttonChanged())
         {

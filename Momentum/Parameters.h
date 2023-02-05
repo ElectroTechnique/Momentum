@@ -27,7 +27,7 @@ extern int8_t glideShape;
 extern uint8_t currentVolume;
 
 extern int8_t charCursor;
-extern int8_t patchNameCursor;
+extern int8_t nameCursor;
 
 // extern uint8_t currentSettingsOption;
 // extern uint8_t currentSettingsValue;

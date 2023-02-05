@@ -1197,4 +1197,106 @@ private:
     }
 };
 
+FLASHMEM int getLFOWaveform(int value)
+{
+    if (value >= 0 && value < 8)
+    {
+        return WAVEFORM_SINE;
+    }
+    else if (value >= 8 && value < 30)
+    {
+        return WAVEFORM_TRIANGLE;
+    }
+    else if (value >= 30 && value < 63)
+    {
+        return WAVEFORM_SAWTOOTH_REVERSE;
+    }
+    else if (value >= 63 && value < 92)
+    {
+        return WAVEFORM_SAWTOOTH;
+    }
+    else if (value >= 92 && value < 111)
+    {
+        return WAVEFORM_SQUARE;
+    }
+    else
+    {
+        return WAVEFORM_SAMPLE_HOLD;
+    }
+}
+
+FLASHMEM int getWaveformA(int value)
+{
+    if (value >= 0 && value < 7)
+    {
+        // This will turn the osc off
+        return WAVEFORM_SILENT;
+    }
+    else if (value >= 7 && value < 23)
+    {
+        return WAVEFORM_TRIANGLE;
+    }
+    else if (value >= 23 && value < 40)
+    {
+        return WAVEFORM_BANDLIMIT_SQUARE;
+    }
+    else if (value >= 40 && value < 60)
+    {
+        return WAVEFORM_BANDLIMIT_SAWTOOTH;
+    }
+    else if (value >= 60 && value < 80)
+    {
+        return WAVEFORM_BANDLIMIT_PULSE;
+    }
+    else if (value >= 80 && value < 100)
+    {
+        return WAVEFORM_TRIANGLE_VARIABLE;
+    }
+    else if (value >= 100 && value < 120)
+    {
+        return WAVEFORM_PARABOLIC;
+    }
+    else
+    {
+        return WAVEFORM_HARMONIC;
+    }
+}
+
+FLASHMEM int getWaveformB(int value)
+{
+    if (value >= 0 && value < 7)
+    {
+        // This will turn the osc off
+        return WAVEFORM_SILENT;
+    }
+    else if (value >= 7 && value < 23)
+    {
+        return WAVEFORM_SAMPLE_HOLD;
+    }
+    else if (value >= 23 && value < 40)
+    {
+        return WAVEFORM_BANDLIMIT_SQUARE;
+    }
+    else if (value >= 40 && value < 60)
+    {
+        return WAVEFORM_BANDLIMIT_SAWTOOTH;
+    }
+    else if (value >= 60 && value < 80)
+    {
+        return WAVEFORM_BANDLIMIT_PULSE;
+    }
+    else if (value >= 80 && value < 100)
+    {
+        return WAVEFORM_TRIANGLE_VARIABLE;
+    }
+    else if (value >= 100 && value < 120)
+    {
+        return WAVEFORM_PARABOLIC;
+    }
+    else
+    {
+        return WAVEFORM_HARMONIC;
+    }
+}
+
 #endif

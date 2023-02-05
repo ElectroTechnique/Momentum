@@ -26,17 +26,17 @@ typedef Array<PatchUIDAndName, PATCHES_LIMIT> Patches;
 
 Patches patches;
 
-FLASHMEM void concatBankAndUID(uint8_t bank, uint32_t uid, char *result)
+FLASHMEM void concatBankAndUID(uint8_t bankIndex, uint32_t uid, char *result)
 {
   char buf[12];
-  strcpy(result, BANK_FOLDER_NAMES_SLASH[bank]); // copy string one into the result.
-  strcat(result, utoa(uid, buf, 10));            // append string two to the result
+  strcpy(result, BANK_FOLDER_NAMES_SLASH[bankIndex]); // copy string one into the result.
+  strcat(result, utoa(uid, buf, 10));                 // append string two to the result
 }
 
-FLASHMEM void concatBankAndFilename(uint8_t bank, const char *filename, char *result)
+FLASHMEM void concatBankAndFilename(uint8_t bankIndex, const char *filename, char *result)
 {
-  strcpy(result, BANK_FOLDER_NAMES_SLASH[bank]); // copy string one into the result.
-  strcat(result, filename);                      // append string two to the result
+  strcpy(result, BANK_FOLDER_NAMES_SLASH[bankIndex]); // copy string one into the result.
+  strcat(result, filename);                           // append string two to the result
 }
 
 FLASHMEM void insertIntoPatchIndexFile(uint8_t bankIndex, uint8_t index, uint32_t UID)
@@ -401,7 +401,7 @@ FLASHMEM int8_t findPatchIndex(uint32_t UID)
 {
   for (uint8_t i = 0; i < patches.size(); i++)
   {
-    Serial.printf("findPatchIndex()  UID:%u currentUID:%u index:%i \n", UID, patches[i].patchUID, i);
+    //Serial.printf("findPatchIndex()  UID:%u currentUID:%u index:%i \n", UID, patches[i].patchUID, i);
     if (UID == patches[i].patchUID)
     {
       return i;

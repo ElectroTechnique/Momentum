@@ -151,7 +151,7 @@ FLASHMEM void configureCCdetune(EncoderMappingStruct *enc, State st = State::MAI
     {
         enc->Value = currentPatch.Detune;
         enc->DefaultValue = 20; // 0.15%
-        enc->ValueStr = String((1 - groupvec[activeGroupIndex]->params().detune) * 100) + " %";
+        enc->ValueStr = String((1 - groupvec[activeGroupIndex]->params().detune) * 100) + "%";
     }
     enc->Range = 127;
     enc->ParameterStr = ParameterStrMap[CCdetune];
@@ -900,7 +900,7 @@ FLASHMEM void configurepitchmodwheeldepth(EncoderMappingStruct *enc, State st = 
     enc->Parameter = pitchmodwheeldepth;
     enc->ShowValue = true;
     enc->Value = currentPatch.PitchModWheelDepth;
-    enc->DefaultValue = 0;
+    enc->DefaultValue = 1;
     enc->ValueStr = String(currentPatch.PitchModWheelDepth / 10.0f);
     enc->Range = 10;
     enc->ParameterStr = ParameterStrMap[pitchmodwheeldepth];
@@ -955,7 +955,7 @@ FLASHMEM void configureampenvshape(EncoderMappingStruct *enc, State st = State::
     enc->Parameter = ampenvshape;
     enc->ShowValue = true;
     enc->Value = currentPatch.AmpEnvShape;
-    enc->DefaultValue = 0;
+    enc->DefaultValue = 9;
     enc->ValueStr = EnvShapeStr[currentPatch.AmpEnvShape];
     enc->Range = 17;
     enc->ParameterStr = ParameterStrMap[ampenvshape];
@@ -1298,88 +1298,106 @@ FLASHMEM void setEncodersState(State s)
         encMap[ENC_TL].active = true;
         encMap[ENC_TL].Parameter = chooseEncoderTL;
         encMap[ENC_TL].ShowValue = true;
-        encMap[ENC_TL].ValueStr = ParameterStrMap[currentPerformance.TL];
         encMap[ENC_TL].Value = getIndexForParametersForPerformanceEncoders(currentPerformance.TL);
+        encMap[ENC_TL].ValueStr = ParameterStrMap[ParametersForPerformanceEncoders[encMap[ENC_TL].Value]];
         encMap[ENC_TL].Range = PARAMETERSFORENCS - 1;
         encMap[ENC_TL].ParameterStr = "";
-        encMap[ENC_TL].Push = true;
-        encMap[ENC_TL].PushAction = State::PERFORMANCERECALL;
+        encMap[ENC_TL].Push = false;
 
         encMap[ENC_TR].active = true;
         encMap[ENC_TR].Parameter = chooseEncoderTR;
         encMap[ENC_TR].ShowValue = true;
         encMap[ENC_TR].Value = getIndexForParametersForPerformanceEncoders(currentPerformance.TR);
+        encMap[ENC_TR].ValueStr = ParameterStrMap[ParametersForPerformanceEncoders[encMap[ENC_TR].Value]];
         encMap[ENC_TR].Range = PARAMETERSFORENCS - 1;
-        encMap[ENC_TR].ValueStr = ParameterStrMap[currentPerformance.TR];
         encMap[ENC_TR].ParameterStr = "";
-        encMap[ENC_TR].Push = true;
-        encMap[ENC_TR].PushAction = State::PERFORMANCERECALL;
+        encMap[ENC_TR].Push = false;
 
         encMap[ENC_BL].active = true;
         encMap[ENC_BL].Parameter = chooseEncoderBL;
         encMap[ENC_BL].ShowValue = true;
-        encMap[ENC_BL].ValueStr = ParameterStrMap[currentPerformance.BL];
         encMap[ENC_BL].Value = getIndexForParametersForPerformanceEncoders(currentPerformance.BL);
+        encMap[ENC_BL].ValueStr = ParameterStrMap[ParametersForPerformanceEncoders[encMap[ENC_BL].Value]];
         encMap[ENC_BL].Range = PARAMETERSFORENCS - 1;
         encMap[ENC_BL].ParameterStr = "";
-        encMap[ENC_BL].Push = true;
-        encMap[ENC_BL].PushAction = State::PERFORMANCERECALL;
+        encMap[ENC_BL].Push = false;
 
         encMap[ENC_BR].active = true;
         encMap[ENC_BR].Parameter = chooseEncoderBR;
         encMap[ENC_BR].ShowValue = true;
-        encMap[ENC_BR].ValueStr = ParameterStrMap[currentPerformance.BR];
         encMap[ENC_BR].Value = getIndexForParametersForPerformanceEncoders(currentPerformance.BR);
+        encMap[ENC_BR].ValueStr = ParameterStrMap[ParametersForPerformanceEncoders[encMap[ENC_BR].Value]];
         encMap[ENC_BR].Range = PARAMETERSFORENCS - 1;
         encMap[ENC_BR].ParameterStr = "";
-        encMap[ENC_BR].Push = true;
-        encMap[ENC_BR].PushAction = State::PERFORMANCERECALL;
+        encMap[ENC_BR].Push = false;
         break;
     case State::PERFORMANCEMIDIEDIT:
         encMap[ENC_TL].active = true;
-        encMap[ENC_TL].Parameter = chooseMIDIThruMode;
+        encMap[ENC_TL].Parameter = choosePerfMIDIThruMode;
         encMap[ENC_TL].ShowValue = true;
-        encMap[ENC_TL].Value = MIDIThru;
+        encMap[ENC_TL].Value = currentPerformance.patches[0].midiThru; // Multitimbrality not supported yet
         encMap[ENC_TL].Range = 3;
-        encMap[ENC_TL].ParameterStr = ParameterStrMap[MIDIThruMode];
-        encMap[ENC_TL].ValueStr = MIDIThruStr[MIDIThru];
+        encMap[ENC_TL].ParameterStr = ParameterStrMap[choosePerfMIDIThruMode];
+        encMap[ENC_TL].ValueStr = MIDIThruStr[currentPerformance.patches[0].midiThru]; // Multitimbrality not supported yet
         encMap[ENC_TL].Push = false;
 
-        encMap[ENC_TR].active = false;
+        configureCancel(&encMap[ENC_TR], State::PERFORMANCERECALL);
 
         encMap[ENC_BL].active = true;
-        encMap[ENC_BL].Parameter = chooseMIDIChIn;
+        encMap[ENC_BL].Parameter = choosePerfMIDIChIn;
         encMap[ENC_BL].ShowValue = true;
-        encMap[ENC_BL].Value = midiChannel;
+        encMap[ENC_BL].Value = currentPerformance.patches[0].midiCh; // Multitimbrality not supported yet
         encMap[ENC_BL].Range = 16;
-        if (midiChannel == 0)
+        if (currentPerformance.patches[0].midiCh == 0) // Multitimbrality not supported yet
         {
             encMap[ENC_BL].ValueStr = "All";
         }
         else
         {
-            encMap[ENC_BL].ValueStr = String(midiChannel);
+            encMap[ENC_BL].ValueStr = String(currentPerformance.patches[0].midiCh); // Multitimbrality not supported yet
         }
-        encMap[ENC_BL].ParameterStr = ParameterStrMap[MIDIChIn];
+        encMap[ENC_BL].ParameterStr = ParameterStrMap[choosePerfMIDIChIn];
         encMap[ENC_BL].Push = false;
 
         encMap[ENC_BR].active = true;
-        encMap[ENC_BR].Parameter = chooseMIDIChOut;
+        encMap[ENC_BR].Parameter = choosePerfMIDIChOut;
         encMap[ENC_BR].ShowValue = true;
-        encMap[ENC_BR].Value = midiOutCh;
+        encMap[ENC_BR].Value = currentPerformance.patches[0].midiChOut; // Multitimbrality not supported yet
         encMap[ENC_BR].Range = 16;
-        if (midiOutCh == 0)
+        if (currentPerformance.patches[0].midiChOut == 0) // Multitimbrality not supported yet
         {
             encMap[ENC_BR].ValueStr = "Off";
         }
         else
         {
-            encMap[ENC_BR].ValueStr = String(midiOutCh);
+            encMap[ENC_BR].ValueStr = String(currentPerformance.patches[0].midiChOut); // Multitimbrality not supported yet
         }
-        encMap[ENC_BR].ParameterStr = ParameterStrMap[MIDIChOut];
+        encMap[ENC_BR].ParameterStr = ParameterStrMap[choosePerfMIDIChOut];
         encMap[ENC_BR].Push = false;
         break;
+    case State::PERFORMANCEPATCHEDIT:
+        encMap[ENC_TL].active = false;
 
+        configureCancel(&encMap[ENC_TR], State::PERFORMANCERECALL);
+
+        encMap[ENC_BL].active = true;
+        encMap[ENC_BL].Parameter = CCbankselectLSB;
+        encMap[ENC_BL].ShowValue = false;
+        encMap[ENC_BL].Value = currentBankIndex;
+        encMap[ENC_BL].Range = BANKS_LIMIT;
+        encMap[ENC_BL].ParameterStr = ParameterStrMap[CCbankselectLSB];
+        encMap[ENC_BL].ValueStr = "";
+        encMap[ENC_BL].Push = false;
+
+        encMap[ENC_BR].active = true;
+        encMap[ENC_BR].Parameter = patchselect;
+        encMap[ENC_BR].ShowValue = false;
+        encMap[ENC_BR].Value = currentPatchIndex;
+        encMap[ENC_BR].Range = patches.size();
+        encMap[ENC_BR].ValueStr = "";
+        encMap[ENC_BR].ParameterStr = ParameterStrMap[patchselect];
+        encMap[ENC_BR].Push = false;
+        break;
     case State::RENAMEPERFORMANCE:
         encMap[ENC_TL].active = true;
         encMap[ENC_TL].Parameter = deleteCharacterPerformance;
@@ -1391,15 +1409,7 @@ FLASHMEM void setEncodersState(State s)
         encMap[ENC_TL].Push = true;
         encMap[ENC_TL].PushAction = State::DELETECHARPERFORMANCE;
 
-        encMap[ENC_TR].active = false;
-        // encMap[ENC_TR].Parameter = cancel;
-        // encMap[ENC_TR].ShowValue = false;
-        // encMap[ENC_TR].Value = 0;
-        // encMap[ENC_TR].Range = 0;
-        // encMap[ENC_TR].ValueStr = "";
-        // encMap[ENC_TR].ParameterStr = ParameterStrMap[cancel];
-        // encMap[ENC_TR].Push = true;
-        // encMap[ENC_TR].PushAction = State::MAIN;
+        configureCancel(&encMap[ENC_TR], State::PERFORMANCERECALL);
 
         encMap[ENC_BL].active = true;
         encMap[ENC_BL].Parameter = choosecharacterPerformance;
@@ -1412,12 +1422,6 @@ FLASHMEM void setEncodersState(State s)
         encMap[ENC_BL].PushAction = State::CHOOSECHARPERFORMANCE;
 
         encMap[ENC_BR].active = false;
-        // encMap[ENC_BR].Parameter = savepatch;
-        // encMap[ENC_BR].ShowValue = false;
-        // encMap[ENC_BR].ValueStr = "";
-        // encMap[ENC_BR].ParameterStr = ParameterStrMap[savepatch];
-        // encMap[ENC_BR].Push = true;
-        // encMap[ENC_BR].PushAction = State::MAIN;
         break;
     case State::PERFORMANCERECALL:
         encMap[ENC_TL].active = true;
@@ -1453,7 +1457,6 @@ FLASHMEM void setEncodersState(State s)
         break;
 
     case State::PERFORMANCEPAGE:
-        // Configure encoders
         setConfigurationForCC(ENC_TL, currentPerformance.TL);
         setConfigurationForCC(ENC_TR, currentPerformance.TR);
         setConfigurationForCC(ENC_BL, currentPerformance.BL);

@@ -25,4 +25,4 @@ int8_t glideShape = 1; // Exp
 uint8_t currentVolume = 63;
 
 int8_t charCursor = 0;
-int8_t patchNameCursor = 0;
+int8_t nameCursor = 0;

@@ -66,7 +66,10 @@ using namespace TeensyTimerTool;
 
 FLASHMEM void silence();
 volatile boolean cardStatus = false;
-volatile State state = State::MAIN;
+volatile boolean sdCardInterrupt = false;
+boolean usbHostPluggedIn = false;
+elapsedMillis usb_host_wait_timer;
+State state = State::MAIN;
 
 #include "PatchMgr.h"
 #include "SequenceMgr.h"
@@ -76,7 +79,6 @@ volatile State state = State::MAIN;
 #include "utils.h"
 #include "Voice.h"
 #include "VoiceGroup.h"
-#include "Sequencer.h"
 
 // Initialize the audio configuration.
 Global global{VOICEMIXERLEVEL};
@@ -112,7 +114,8 @@ void myNoteOn(byte channel, byte note, byte velocity);
 FLASHMEM void setCurrentPatchData();
 FLASHMEM void recallPatch(uint8_t bank, long patchUID);
 FLASHMEM void recallPerformance(uint8_t filename);
-void myControlChange(byte channel, byte control, byte value);
+FLASHMEM void myControlChange(byte channel, byte control, byte value);
+FLASHMEM void usbHostControlChange(byte channel, byte control, byte value);
 FLASHMEM void myMIDIClock();
 FLASHMEM void myMIDIClockStart();
 FLASHMEM void myMIDIClockStop();
@@ -122,11 +125,12 @@ void encoderCallback(unsigned enc_idx, int value, int delta);
 void encoderButtonCallback(unsigned button_idx, int state);
 void buttonCallback(unsigned button_idx, int state);
 
+#include "Sequencer.h"
 #include "Settings.h"
 
 boolean firstPatchLoaded = false;
 
-float previousMillis = millis(); // For MIDI Clk Sync
+uint32_t previousMillis = millis(); // For MIDI Clk Sync
 
 uint32_t count = 0;     // For MIDI Clk Sync
 int voiceToReturn = -1; // Initialise
@@ -144,6 +148,7 @@ FLASHMEM void setup()
     // while (!Serial)
     // {
     // }
+    Serial.print(CrashReport);
     AudioMemory(60);
     checkFirstRun();
     // Initialize the voice groups.
@@ -184,7 +189,6 @@ FLASHMEM void setup()
     {
         setCurrentPatchData(); // Initialise to default
         Serial.println(F("SD card is not connected or unusable"));
-        // setPatchNoAndNameForDisp(F(""), F("No SD Card"));
     }
 
     // Read MIDI Channel from EEPROM
@@ -193,7 +197,7 @@ FLASHMEM void setup()
 
     // USB HOST MIDI Class Compliant
     myusb.begin();
-    midi1.setHandleControlChange(myControlChange);
+    midi1.setHandleControlChange(usbHostControlChange);
     midi1.setHandleNoteOff(myNoteOff);
     midi1.setHandleNoteOn(myNoteOn);
     midi1.setHandlePitchChange(myPitchBend);
@@ -235,7 +239,7 @@ FLASHMEM void setup()
     enableScope(getScopeEnable());
     // Read VU enable from EEPROM
     vuMeter = getVUEnable();
-    // Read volumed  from EEPROM
+    // Read volume  from EEPROM
     currentVolume = getVolume();
     // Read global tuning from EEPROM
     tuningCents = getTuningCents();
@@ -260,108 +264,6 @@ void myNoteOn(byte channel, byte note, byte velocity)
 void myNoteOff(byte channel, byte note, byte velocity)
 {
     groupvec[activeGroupIndex]->noteOff(note);
-}
-
-FLASHMEM int getLFOWaveform(int value)
-{
-    if (value >= 0 && value < 8)
-    {
-        return WAVEFORM_SINE;
-    }
-    else if (value >= 8 && value < 30)
-    {
-        return WAVEFORM_TRIANGLE;
-    }
-    else if (value >= 30 && value < 63)
-    {
-        return WAVEFORM_SAWTOOTH_REVERSE;
-    }
-    else if (value >= 63 && value < 92)
-    {
-        return WAVEFORM_SAWTOOTH;
-    }
-    else if (value >= 92 && value < 111)
-    {
-        return WAVEFORM_SQUARE;
-    }
-    else
-    {
-        return WAVEFORM_SAMPLE_HOLD;
-    }
-}
-
-FLASHMEM int getWaveformA(int value)
-{
-    if (value >= 0 && value < 7)
-    {
-        // This will turn the osc off
-        return WAVEFORM_SILENT;
-    }
-    else if (value >= 7 && value < 23)
-    {
-        return WAVEFORM_TRIANGLE;
-    }
-    else if (value >= 23 && value < 40)
-    {
-        return WAVEFORM_BANDLIMIT_SQUARE;
-    }
-    else if (value >= 40 && value < 60)
-    {
-        return WAVEFORM_BANDLIMIT_SAWTOOTH;
-    }
-    else if (value >= 60 && value < 80)
-    {
-        return WAVEFORM_BANDLIMIT_PULSE;
-    }
-    else if (value >= 80 && value < 100)
-    {
-        return WAVEFORM_TRIANGLE_VARIABLE;
-    }
-    else if (value >= 100 && value < 120)
-    {
-        return WAVEFORM_PARABOLIC;
-    }
-    else
-    {
-        return WAVEFORM_HARMONIC;
-    }
-}
-
-FLASHMEM int getWaveformB(int value)
-{
-    if (value >= 0 && value < 7)
-    {
-        // This will turn the osc off
-        return WAVEFORM_SILENT;
-    }
-    else if (value >= 7 && value < 23)
-    {
-        return WAVEFORM_SAMPLE_HOLD;
-    }
-    else if (value >= 23 && value < 40)
-    {
-        return WAVEFORM_BANDLIMIT_SQUARE;
-    }
-    else if (value >= 40 && value < 60)
-    {
-        return WAVEFORM_BANDLIMIT_SAWTOOTH;
-    }
-    else if (value >= 60 && value < 80)
-    {
-        return WAVEFORM_BANDLIMIT_PULSE;
-    }
-    else if (value >= 80 && value < 100)
-    {
-        return WAVEFORM_TRIANGLE_VARIABLE;
-    }
-    else if (value >= 100 && value < 120)
-    {
-        return WAVEFORM_PARABOLIC;
-    }
-    else
-    {
-        return WAVEFORM_HARMONIC;
-    }
 }
 
 FLASHMEM void updatePatchnameAndIndex(String name, uint32_t index, uint32_t UID)
@@ -396,13 +298,13 @@ void myControlChange(byte channel, byte control, byte value)
 
         if (value == 0)
         {
-            setEncValue(CCdetune, currentPatch.Detune, String((1 - groupvec[activeGroupIndex]->params().detune) * 100) + F(" %"));
+            setEncValue(CCdetune, currentPatch.Detune, String((1 - groupvec[activeGroupIndex]->params().detune) * 100) + F("%"));
             if (!setEncValue(CCunison, value, F("Off")))
                 showCurrentParameterOverlay(F("Unison"), F("Off"));
         }
         else if (value == 1)
         {
-            setEncValue(CCdetune, currentPatch.Detune, String((1 - groupvec[activeGroupIndex]->params().detune) * 100) + " %");
+            setEncValue(CCdetune, currentPatch.Detune, String((1 - groupvec[activeGroupIndex]->params().detune) * 100) + "%");
             if (!setEncValue(CCunison, value, F("Dynamic")))
                 showCurrentParameterOverlay(F("Dynamic"), F("On"));
         }
@@ -475,8 +377,8 @@ void myControlChange(byte channel, byte control, byte value)
         }
         else
         {
-            if (!setEncValue(CCdetune, value, String((1 - detune) * 100) + F(" %")))
-                showCurrentParameterOverlay(ParameterStrMap[CCdetune], String((1 - detune) * 100) + F(" %"));
+            if (!setEncValue(CCdetune, value, String((1 - detune) * 100) + F("%")))
+                showCurrentParameterOverlay(ParameterStrMap[CCdetune], String((1 - detune) * 100) + F("%"));
         }
         break;
     }
@@ -489,7 +391,7 @@ void myControlChange(byte channel, byte control, byte value)
             if (!setEncValue(CCpwmSourceA, value, F("LFO")))
                 showCurrentParameterOverlay(ParameterStrMap[CCpwmSourceA], F("LFO"));
             // Turn on rate control
-            setEncValue(true, CCpwmRateA, currentPatch.PWMRateA, String(2 * PWMRATE[currentPatch.PWMRateA]) + F(" Hz"), CCpwmRateA);
+            setEncValue(true, CCpwmRateA, currentPatch.PWMRateA, String(PWMRATE[currentPatch.PWMRateA]) + F("Hz"), CCpwmRateA);
             setEncInactive(CCpwA);
         }
         else if (value == PWMSOURCEFENV)
@@ -498,7 +400,7 @@ void myControlChange(byte channel, byte control, byte value)
                 showCurrentParameterOverlay(ParameterStrMap[CCpwmSourceA], F("Filter Env"));
             setEncInactive(CCpwmRateA);
             setEncInactive(CCpwA);
-            // Turn on pwm amot control
+            // Turn on pwm amt control
             setEncValue(true, CCpwmAmtA, currentPatch.PWMA_Amount, String(LINEAR[currentPatch.PWMA_Amount]), CCpwmAmtA);
         }
         else
@@ -526,7 +428,7 @@ void myControlChange(byte channel, byte control, byte value)
             if (!setEncValue(CCpwmSourceB, value, F("LFO")))
                 showCurrentParameterOverlay(ParameterStrMap[CCpwmSourceB], F("LFO"));
             // Turn on rate control
-            setEncValue(true, CCpwmRateB, currentPatch.PWMRateB, String(2 * PWMRATE[currentPatch.PWMRateB]) + F(" Hz"), CCpwmRateB);
+            setEncValue(true, CCpwmRateB, currentPatch.PWMRateB, String(PWMRATE[currentPatch.PWMRateB]) + F("Hz"), CCpwmRateB);
             setEncInactive(CCpwB);
         }
         else if (value == PWMSOURCEFENV)
@@ -1116,6 +1018,7 @@ FLASHMEM void myProgramChange(byte channel, byte program)
         {
             currentPerformanceIndex = program;
             recallPerformance(currentPerformanceIndex + 1);
+            setEncodersState(State::PERFORMANCEPAGE);
             Serial.print(F("MIDI Pgm Change Performance:"));
             Serial.println(performances[currentPerformanceIndex]);
         }
@@ -1196,6 +1099,7 @@ FLASHMEM void silence()
 
 FLASHMEM void recallPatch(uint8_t bank, long patchUID)
 {
+    Serial.println("recallPatch");
     if (patchUID == 0)
         return;
     silence();
@@ -1221,16 +1125,29 @@ FLASHMEM void recallPerformance(uint8_t filename)
         if (loadPatch(currentPerformance.patches[0].bankIndex, currentPerformance.patches[0].UID))
         {
             midiChannel = currentPerformance.patches[0].midiCh;
-            midiOutCh = currentPerformance.patches[0].midiCh;
+            midiOutCh = currentPerformance.patches[0].midiChOut;
             MIDIThru = currentPerformance.patches[0].midiThru;
             changeMIDIThruMode();
+
+            Serial.println(midiChannel);
             // TODO Set min and max note range but this is only useful for split and layer(multitimbral functionality)
             setCurrentPatchData();
+            currentBankIndex = currentPerformance.patches[0].bankIndex;
+            loadPatchNamesFromBank(currentBankIndex);
+            currentPatchIndex = findPatchIndex(currentPerformance.patches[0].UID);
         }
         else
         {
             // Patch missing
+            Serial.print(F("Patch Missing:"));
+            Serial.println(currentPerformance.patches[0].UID);
         }
+    }
+    else
+    {
+        // Performance missing
+        Serial.print(F("Performance Missing:"));
+        Serial.println(filename);
     }
 }
 
@@ -1370,6 +1287,13 @@ FLASHMEM void encoderCallback(unsigned enc_idx, int value, int delta)
             {
                 currentPatchName = patches[currentPatchIndex].patchName;
             }
+            else if (state == State::PERFORMANCEPATCHEDIT)
+            {
+                recallPatch(currentBankIndex, patches[currentPatchIndex].patchUID);
+                currentPerformance.patches[0].bankIndex = currentBankIndex;
+                currentPerformance.patches[0].UID = patches[currentPatchIndex].patchUID;
+                currentPerformance.patches[0].patchName = currentPatchName;
+            }
             break;
         case CCbankselectLSB:
             if (!cardStatus)
@@ -1381,6 +1305,12 @@ FLASHMEM void encoderCallback(unsigned enc_idx, int value, int delta)
             {
                 currentBankIndex = tempBankIndex;
                 currentPatchIndex = 0;
+            }
+            else if (state == State::PERFORMANCEPATCHEDIT)
+            {
+                currentBankIndex = tempBankIndex;
+                currentPatchIndex = patches.size() - 1;
+                recallPatch(currentBankIndex, patches[currentPatchIndex].patchUID);
             }
             else
             {
@@ -1413,6 +1343,7 @@ FLASHMEM void encoderCallback(unsigned enc_idx, int value, int delta)
             break;
         case choosecharacterPatch:
         case choosecharacterBank:
+        case choosecharacterPerformance:
             charCursor += newDelta;
             if (charCursor >= TOTALCHARS)
                 charCursor = 0;
@@ -1420,18 +1351,34 @@ FLASHMEM void encoderCallback(unsigned enc_idx, int value, int delta)
                 charCursor = TOTALCHARS - 1;
             break;
         case deleteCharacterBank:
-            patchNameCursor += newDelta;
-            if (patchNameCursor >= bankNames[currentBankIndex].length())
-                patchNameCursor = 0;
-            if (patchNameCursor <= -1)
-                patchNameCursor = bankNames[currentBankIndex].length() - 1;
+            if (newDelta > 0 && ++nameCursor > bankNames[currentBankIndex].length() - 1)
+            {
+                nameCursor = bankNames[currentBankIndex].length() - 1;
+            }
+            else if (newDelta < 0 && --nameCursor < 0)
+            {
+                nameCursor = 0;
+            }
             break;
         case deleteCharacterPatch:
-            patchNameCursor += newDelta;
-            if (patchNameCursor >= currentPatchName.length() - 1)
-                patchNameCursor = currentPatchName.length() - 1;
-            if (patchNameCursor <= 0)
-                patchNameCursor = 0;
+            if (newDelta > 0 && ++nameCursor > currentPatchName.length() - 1)
+            {
+                nameCursor = currentPatchName.length() - 1;
+            }
+            else if (newDelta < 0 && --nameCursor < 0)
+            {
+                nameCursor = 0;
+            }
+            break;
+        case deleteCharacterPerformance:
+            if (newDelta > 0 && ++nameCursor > currentPerformance.performanceName.length() - 1)
+            {
+                nameCursor = currentPerformance.performanceName.length() - 1;
+            }
+            else if (newDelta < 0 && --nameCursor < 0)
+            {
+                nameCursor = 0;
+            }
             break;
         case PerfSelect:
         case PerfEdit:
@@ -1454,31 +1401,51 @@ FLASHMEM void encoderCallback(unsigned enc_idx, int value, int delta)
             currentPerformance.BR = ParametersForPerformanceEncoders[encMap[ENC_BR].Value];
             break;
         case chooseMIDIChIn:
+        case choosePerfMIDIChIn:
         {
             String sIn = F("All");
             if (encMap[enc_idx].Value > MIDI_CHANNEL_OMNI)
-                sIn = String(midiChannel);
+                sIn = String(encMap[enc_idx].Value);
             if (state == State::PERFORMANCEMIDIEDIT)
+            {
                 currentPerformance.patches[0].midiCh = encMap[enc_idx].Value;
-            if (!setEncValue(chooseMIDIChIn, value, sIn))
+                setEncValue(choosePerfMIDIChIn, encMap[enc_idx].Value, sIn);
+            }
+            else if (!setEncValue(chooseMIDIChIn, encMap[enc_idx].Value, sIn))
+            {
                 showCurrentParameterOverlay(ParameterStrMap[chooseMIDIChIn], sIn);
+            }
         }
         break;
-        case chooseMIDIThruMode:
-            if (state == State::PERFORMANCEMIDIEDIT)
-                currentPerformance.patches[0].midiThru = encMap[enc_idx].Value;
-            if (!setEncValue(chooseMIDIThruMode, encMap[enc_idx].Value, MIDIThruStr[encMap[enc_idx].Value]))
-                showCurrentParameterOverlay(ParameterStrMap[MIDIThruMode], MIDIThruStr[encMap[enc_idx].Value]);
-            break;
         case chooseMIDIChOut:
+        case choosePerfMIDIChOut:
         {
             String sOut = F("Off");
             if (encMap[enc_idx].Value > 0)
-                sOut = String(midiOutCh);
+                sOut = String(encMap[enc_idx].Value);
             if (state == State::PERFORMANCEMIDIEDIT)
+            {
                 currentPerformance.patches[0].midiChOut = encMap[enc_idx].Value;
-            if (!setEncValue(chooseMIDIChOut, encMap[enc_idx].Value, sOut))
-                showCurrentParameterOverlay(ParameterStrMap[MIDIChOut], sOut);
+                setEncValue(choosePerfMIDIChOut, encMap[enc_idx].Value, sOut);
+            }
+            else if (!setEncValue(chooseMIDIChOut, encMap[enc_idx].Value, sOut))
+            {
+                showCurrentParameterOverlay(ParameterStrMap[chooseMIDIChOut], sOut);
+            }
+        }
+        break;
+        case chooseMIDIThruMode:
+        case choosePerfMIDIThruMode:
+        {
+            if (state == State::PERFORMANCEMIDIEDIT)
+            {
+                currentPerformance.patches[0].midiThru = encMap[enc_idx].Value;
+                setEncValue(choosePerfMIDIThruMode, encMap[enc_idx].Value, MIDIThruStr[encMap[enc_idx].Value]);
+            }
+            else if (!setEncValue(chooseMIDIThruMode, encMap[enc_idx].Value, MIDIThruStr[encMap[enc_idx].Value]))
+            {
+                showCurrentParameterOverlay(ParameterStrMap[chooseMIDIThruMode], MIDIThruStr[encMap[enc_idx].Value]);
+            }
         }
         break;
         case settingoption:
@@ -1509,6 +1476,11 @@ FLASHMEM void encoderButtonCallback(unsigned enc_idx, int buttonState)
 {
     // Subtract 4 from encoder index due to numbering on shift registers
     enc_idx -= 4;
+
+    // Ignore encoder button held repeatedly
+    if (buttonState == HELD_REPEAT)
+        return;
+
     if (encMap[enc_idx].Push && encMap[enc_idx].active)
     {
         switch (encMap[enc_idx].Parameter)
@@ -1529,7 +1501,10 @@ FLASHMEM void encoderButtonCallback(unsigned enc_idx, int buttonState)
         case namepatch:
             if (patches[currentPatchIndex].patchUID == 0)
                 currentPatchName = "";
-            patchNameCursor = currentPatchName.length() - 1;
+            nameCursor = currentPatchName.length() - 1;
+            break;
+        case editbank:
+            nameCursor = bankNames[tempBankIndex].length() - 1;
             break;
         case cancel:
             currentPatchIndex = previousPatchIndex;
@@ -1542,24 +1517,57 @@ FLASHMEM void encoderButtonCallback(unsigned enc_idx, int buttonState)
         case choosecharacterPatch:
             if (currentPatchName.length() < PATCHNAMEMAXLEN)
             {
-                currentPatchName = currentPatchName.substring(0, patchNameCursor + 1) + CHARACTERS[charCursor] + currentPatchName.substring(patchNameCursor + 1, currentPatchName.length());
-                patchNameCursor++;
+                currentPatchName = currentPatchName.substring(0, nameCursor + 1) + CHARACTERS[charCursor] + currentPatchName.substring(nameCursor + 1, currentPatchName.length());
+                nameCursor++;
             }
-
             break;
         case choosecharacterBank:
             if (bankNames[tempBankIndex].length() < BANKNAMEMAXLEN)
-                bankNames[tempBankIndex].concat(CHARACTERS[charCursor]);
+                bankNames[tempBankIndex] = bankNames[tempBankIndex].substring(0, nameCursor + 1) + CHARACTERS[charCursor] + bankNames[tempBankIndex].substring(nameCursor + 1, bankNames[tempBankIndex].length());
+            break;
+        case choosecharacterPerformance:
+            if (currentPerformance.performanceName.length() < PATCHNAMEMAXLEN)
+            {
+                currentPerformance.performanceName = currentPerformance.performanceName.substring(0, nameCursor + 1) + CHARACTERS[charCursor] + currentPerformance.performanceName.substring(nameCursor + 1, currentPerformance.performanceName.length());
+                nameCursor++;
+            }
             break;
         case deleteCharacterPatch:
+            if (buttonState == HELD)
+            {
+                currentPatchName = "";
+                nameCursor = 0;
+                break;
+            }
             if (currentPatchName.length() == 0)
                 break;
-            currentPatchName = currentPatchName.substring(0, patchNameCursor) + currentPatchName.substring(patchNameCursor + 1, currentPatchName.length());
+            currentPatchName = currentPatchName.substring(0, nameCursor) + currentPatchName.substring(nameCursor + 1, currentPatchName.length());
+            nameCursor--;
             break;
         case deleteCharacterBank:
+            if (buttonState == HELD)
+            {
+                bankNames[tempBankIndex] = "";
+                nameCursor = 0;
+                break;
+            }
             if (bankNames[tempBankIndex].length() == 0)
                 break;
+            nameCursor--;
             bankNames[tempBankIndex] = String(bankNames[tempBankIndex]).substring(0, bankNames[tempBankIndex].length() - 1);
+            break;
+        case deleteCharacterPerformance:
+            if (buttonState == HELD)
+            {
+                currentPerformance.performanceName = "";
+                nameCursor = 0;
+                break;
+            }
+            if (currentPerformance.performanceName.length() == 0)
+                break;
+            currentPerformance.performanceName = currentPerformance.performanceName.substring(0, nameCursor) +
+                                                 currentPerformance.performanceName.substring(nameCursor + 1, currentPerformance.performanceName.length());
+            nameCursor--;
             break;
         case savepatch:
             state = State::SAVE;
@@ -1626,7 +1634,6 @@ FLASHMEM void encoderButtonCallback(unsigned enc_idx, int buttonState)
             break;
         }
         state = encMap[enc_idx].PushAction;
-        //  Serial.println("encoderButtonCallback:" + String(state));
         setEncodersState(state);
     }
 }
@@ -1680,13 +1687,13 @@ FLASHMEM void buttonCallback(unsigned button_idx, int button)
                 state = State::OSCPAGE1;
                 singleLED(RED, 1);
                 break;
-            case State::PERFORMANCERECALL:
-                state = State::MAIN;
-                singleLED(ledColour::OFF, 1);
-                break;
             case State::PERFORMANCEPAGE:
                 state = State::PERFORMANCERECALL;
                 singleLED(ledColour::GREEN, 1);
+                break;
+            case State::PERFORMANCERECALL:
+                state = State::MAIN;
+                singleLED(ledColour::OFF, 1);
                 break;
             case State::PERFORMANCEPATCHEDIT:
                 savePerformance();
@@ -1700,6 +1707,14 @@ FLASHMEM void buttonCallback(unsigned button_idx, int button)
                 break;
             case State::PERFORMANCEMIDIEDIT:
                 savePerformance();
+                state = State::RENAMEPERFORMANCE;
+                singleLED(ledColour::GREEN, 1);
+                break;
+            case State::RENAMEPERFORMANCE:
+            case State::CHOOSECHARPERFORMANCE:
+            case State::DELETECHARPERFORMANCE:
+                savePerformance();
+                loadPerformanceNames();
                 state = State::PERFORMANCERECALL;
                 singleLED(ledColour::GREEN, 1);
                 break;
@@ -1934,6 +1949,7 @@ FLASHMEM void buttonCallback(unsigned button_idx, int button)
                 // If Back button held, Panic - all notes off
                 silence();
                 flashLED(GREEN, 6, 250);
+                state = State::MAIN;
             }
             else
             {
@@ -2101,7 +2117,49 @@ void midiCCOut(byte cc, byte value)
     }
 }
 
-void CPUMonitor()
+FLASHMEM void sdCardDetect()
+{
+    if (sdCardInterrupt)
+    {
+        silence();
+        delayMicroseconds(100000);
+        cardStatus = !digitalReadFast(pinCD);
+        if (cardStatus)
+        {
+            cardStatus = SD.begin(BUILTIN_SDCARD); // Reinitialise when card inserted
+        }
+        else
+        {
+            state = State::MAIN;
+            setEncodersState(state);
+            lightRGLEDs(0, 0);
+        }
+        sdCardInterrupt = false;
+    }
+}
+
+FLASHMEM void usbHostControlChange(byte channel, byte control, byte value)
+{
+    if (usbHostPluggedIn && usb_host_wait_timer > 4000) // wait 4s
+    {
+        myControlChange(channel, control, value);
+    }
+}
+
+FLASHMEM void checkUSBHostStatus()
+{
+    if (midi1 && !usbHostPluggedIn)
+    {
+        usb_host_wait_timer = 0;
+        usbHostPluggedIn = true;
+    }
+    else if (!midi1 && usbHostPluggedIn)
+    {
+        usbHostPluggedIn = false;
+    }
+}
+
+FLASHMEM void CPUMonitor()
 {
     Serial.print(F(" CPU:"));
     Serial.print(AudioProcessorUsage());
@@ -2117,8 +2175,9 @@ void CPUMonitor()
 
 void loop()
 {
-    // USB HOST MIDI Class Compliant
     myusb.Task();
+    checkUSBHostStatus();
+    // USB Host MIDI Class Compliant
     midi1.read(midiChannel);
     // USB Client MIDI
     usbMIDI.read(midiChannel);
@@ -2127,30 +2186,34 @@ void loop()
     encoders.read();
     buttons.read();
     lightLEDs();
+    sdCardDetect();
+
     // CPUMonitor();
 
-    // if (seq.running)
-    // {
-    //     Serial.println("seq.running");
-    //     if (seq.step != seq_UI_last_step)
-    //     {
-    //         seq_UI_last_step = seq.step;
-    //         if (1 == 1) // Sequencer
-    //         {
-    //             if (seq.step == 0)
-    //             {
-    //             }
-    //             else
-    //             {
-    //             }
-    //         }
-    //         else if (1 == 0) // Arpeggiator
-    //         {
-    //             // display.print(seq.chord_names[seq.arp_chord][0]);
-    //             // display.print(seq.chord_names[seq.arp_chord][1]);
-    //             // display.print(seq.chord_names[seq.arp_chord][2]);
-    //             // display.print(seq.chord_names[seq.arp_chord][3]);
-    //         }
-    //     }
-    // }
+    if (seq.running)
+    {
+        // Serial.println("seq.running");
+        if (seq.step != seq_UI_last_step)
+        {
+            seq_UI_last_step = seq.step;
+            if (1 == 1) // Sequencer
+            {
+                if (seq.step == 0)
+                {
+
+                }
+                else
+                {
+
+                }
+            }
+            else if (1 == 0) // Arpeggiator
+            {
+                Serial.println(seq.chord_names[seq.arp_chord][0]);
+                Serial.println(seq.chord_names[seq.arp_chord][1]);
+                Serial.println(seq.chord_names[seq.arp_chord][2]);
+                Serial.println(seq.chord_names[seq.arp_chord][3]);
+            }
+        }
+    }
 }

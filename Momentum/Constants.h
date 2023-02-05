@@ -51,6 +51,9 @@
 #define deleteCharacterPerformance 166
 #define choosecharacterPerformance 167
 #define filtermodwheeldepth 168
+#define choosePerfMIDIThruMode 169
+#define choosePerfMIDIChIn 170
+#define choosePerfMIDIChOut 171
 #define noencoder 255
 
 const static char *SEQUENCE_FOLDER_NAME = "Sequences";

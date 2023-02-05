@@ -193,23 +193,9 @@ void ledAnimation(long millis)
   lightRGLEDs(0, 0);
 }
 
-void sdCardDetect()
+FLASHMEM void sdCardInteruptRoutine()
 {
-  silence();
-  for (volatile long wait = 0; wait < 10000000; wait++)
-  {
-    // Cannot use delay(), so wait like this
-  }
-  cardStatus = !digitalReadFast(pinCD);
-  if (cardStatus)
-  {
-    cardStatus = SD.begin(BUILTIN_SDCARD); // Reinitialise when card inserted
-  }
-  else
-  {
-    state = State::MAIN;
-    lightRGLEDs(0, 0);
-  }
+  sdCardInterrupt = true;
 }
 
 FLASHMEM void setupHardware(EncoderTool::allCallback_t ec, EncoderTool::allBtnCallback_t ebc, ButtonTool::allBtnCallback_t bc)
@@ -228,7 +214,7 @@ FLASHMEM void setupHardware(EncoderTool::allCallback_t ec, EncoderTool::allBtnCa
   ledAnimation(50);
 
   pinMode(pinCD, INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(pinCD), sdCardDetect, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(pinCD), sdCardInteruptRoutine, CHANGE);
 
   // Display backlight - Can be used to turn off or dim using PWM
   // Not used but you never know

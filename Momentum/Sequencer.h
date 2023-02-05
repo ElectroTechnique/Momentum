@@ -31,10 +31,9 @@ This code is taken from:
 #define NUM_SEQ_PATTERN 10
 #define FILENAME_LEN 20
 
-// 0 = track is Drumtrack, 1 = Instrumenttrack, 2 = Chord, 3 = Arp
+//  1 = Instrumenttrack, 2 = Chord, 3 = Arp
 typedef enum TrackType
 {
-    DRUM = 0,
     INSTRUMENT = 1,
     CHORD = 2,
     ARP = 3
@@ -43,7 +42,6 @@ typedef enum TrackType
 typedef struct sequencer_t
 {
     bool midi_learn_active = false;
-    float drums_volume;
     uint8_t active_track = 0;
     uint8_t menu;
     bool noteoffsent[NUM_SEQ_TRACKS] = {false, false, false, false, false, false};
@@ -131,12 +129,12 @@ typedef struct sequencer_t
         {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
         {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
         {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}};
-    // uint8_t content_type[NUM_SEQ_PATTERN] = {DRUM, DRUM, DRUM, DRUM, DRUM, DRUM, DRUM, DRUM, DRUM, DRUM}; // 0 = track is Drumtrack, 1 = Instrumenttrack, 2 = Chord or Arpeggio
+
     uint8_t patternchain[4][NUM_SEQ_TRACKS] = {
         {0, 2, 6, 9, 99, 99},
         {1, 2, 5, 8, 99, 99},
         {0, 2, 6, 9, 99, 99},
         {1, 2, 5, 7, 99, 99}};
-    uint8_t track_type[NUM_SEQ_TRACKS] = {DRUM, DRUM, INSTRUMENT, INSTRUMENT, INSTRUMENT, INSTRUMENT}; // 0 = track is Drumtrack, 1 = Instrumenttrack, 2 = Chord, 3 = Arp
+    uint8_t track_type[NUM_SEQ_TRACKS] = {INSTRUMENT, INSTRUMENT, INSTRUMENT, INSTRUMENT, INSTRUMENT, INSTRUMENT}; //  1 = Instrumenttrack, 2 = Chord, 3 = Arp
 } sequencer_t;
 #endif

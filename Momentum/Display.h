@@ -20,6 +20,7 @@
 
 #include "Voice.h"
 #include <utils.h>
+#include "Momentum20pt7b.h"
 #include "Yeysk12pt7b.h"
 #include "Yeysk16pt7b.h"
 #include <ili9341_t3n_font_Arial.h>
@@ -176,6 +177,50 @@ FLASHMEM void renderPageIndicator(uint8_t pages, uint8_t current)
   }
 }
 
+FLASHMEM void renderWaveformSymbol(uint8_t waveform)
+{
+
+  tft.setFont(&Momentum20pt7b);
+  tft.setTextSize(1);
+  tft.setCursor(6, 165);
+  switch (waveform)
+  {
+  case WAVEFORM_TRIANGLE_VARIABLE:
+    tft.println("A");
+    break;
+  case WAVEFORM_BANDLIMIT_PULSE:
+    tft.println("B");
+    break;
+  case WAVEFORM_BANDLIMIT_SAWTOOTH:
+  case WAVEFORM_SAWTOOTH:
+    tft.println("C");
+    break;
+  case WAVEFORM_BANDLIMIT_SQUARE:
+  case WAVEFORM_SQUARE:
+    tft.println("D");
+    break;
+  case WAVEFORM_TRIANGLE:
+    tft.println("E");
+    break;
+  case WAVEFORM_SAMPLE_HOLD:
+    tft.println("F");
+    break;
+  case WAVEFORM_PARABOLIC:
+    tft.println("G");
+    break;
+  case WAVEFORM_HARMONIC:
+    tft.println("H");
+    break;
+  case WAVEFORM_SINE:
+    tft.println("I");
+    break;
+  case WAVEFORM_BANDLIMIT_SAWTOOTH_REVERSE:
+  case WAVEFORM_SAWTOOTH_REVERSE:
+    tft.println("J");
+    break;
+  }
+}
+
 FLASHMEM void renderCorners()
 {
   // ENC_TL
@@ -249,6 +294,14 @@ FLASHMEM void renderCorners()
     {
       tft.setFont(Arial_16);
       tft.drawString(encMap[ENC_BL].ValueStr, 4, 196);
+      if (encMap[ENC_BL].Parameter == CCoscwaveformA || encMap[ENC_BL].Parameter == CCoscwaveformB)
+      {
+        renderWaveformSymbol(encMap[ENC_BL].Parameter == CCoscwaveformA ? getWaveformA(encMap[ENC_BL].Value) : getWaveformB(encMap[ENC_BL].Value));
+      }
+      else if (encMap[ENC_BL].Parameter == CCoscLfoWaveform || encMap[ENC_BL].Parameter == CCfilterlfowaveform)
+      {
+        renderWaveformSymbol(getLFOWaveform(encMap[ENC_BL].Value));
+      }
     }
   }
 }
@@ -357,8 +410,8 @@ FLASHMEM void renderVarTriangle(float value)
 {
   const int16_t a = 220; // x1
   const int16_t b = 192; // y1
-  const int16_t c = 194; // x2
-  const int16_t d = 26;  // factor
+  const int16_t c = 196; // x2
+  const int16_t d = 24;  // factor
   const int16_t e = 172; // x2
   const int16_t f = 150; // y2
 
@@ -584,7 +637,7 @@ FLASHMEM void renderPatchNamingPage()
   {
     for (uint8_t i = 0; i < currentPatchName.length(); i++)
     {
-      if (i == patchNameCursor)
+      if (i == nameCursor)
       {
         tft.setTextColor(ILI9341_ORANGE);
         currentPatchName.charAt(i) == 32 ? tft.drawFontChar(95) : tft.drawFontChar(currentPatchName.charAt(i)); // Show selected space as underscore
@@ -633,9 +686,84 @@ FLASHMEM void renderBankNamingPage()
   tft.drawFastHLine(10, 42, tft.width() - 20, ILI9341_RED);
   tft.setTextColor(ILI9341_RED);
   tft.setTextDatum(TL_DATUM);
-  tft.drawString(bankNames[tempBankIndex], 19, 70);
-  tft.drawFontChar(95); // Underscore caret
+  tft.setCursor(19, 70);
+
+  if (bankNames[tempBankIndex].length() > 0)
+  {
+    for (uint8_t i = 0; i < bankNames[tempBankIndex].length(); i++)
+    {
+      if (i == nameCursor)
+      {
+        tft.setTextColor(ILI9341_ORANGE);
+        bankNames[tempBankIndex].charAt(i) == 32 ? tft.drawFontChar(95) : tft.drawFontChar(bankNames[tempBankIndex].charAt(i)); // Show selected space as underscore
+      }
+      else
+      {
+        tft.setTextColor(ILI9341_RED);
+        tft.drawFontChar(bankNames[tempBankIndex].charAt(i));
+      }
+    }
+  }
+  else
+  {
+    tft.drawFontChar(95); // Underscore to show start of empty bank name
+  }
+
   tft.setFont(Arial_14);
+  tft.setTextColor(ILI9341_LIGHTGREY);
+  int row = 0;
+  int start = 0;
+  for (int i = 0; i < TOTALCHARS; i++)
+  {
+    i % 20 != 0 ? row : row++;
+    i % 20 != 0 ? start++ : start = 0;
+    charCursor == i ? tft.setTextColor(ILI9341_WHITE) : tft.setTextColor(ILI9341_MIDGREY);
+    if (i == 26 || i == 53)
+    {
+      tft.drawString('_', 19 + start * 15, 90 + row * 22);
+    }
+    else
+    {
+      tft.drawString(CHARACTERS[i], 19 + start * 15, 90 + row * 22);
+    }
+  }
+  renderCorners();
+}
+
+FLASHMEM void renderPerformanceNamingPage()
+{
+  tft.fillScreen(ILI9341_BLACK);
+  tft.setFont(Arial_16);
+  tft.setTextColor(ILI9341_YELLOW);
+  tft.setTextDatum(TC_DATUM);
+  tft.drawString(F("Performance Name"), 160, 26);
+  tft.drawFastHLine(10, 49, tft.width() - 20, ILI9341_RED);
+  tft.setTextColor(ILI9341_RED);
+  tft.setTextDatum(TL_DATUM);
+  tft.setCursor(19, 70);
+  if (currentPerformance.performanceName.length() > 0)
+  {
+    for (uint8_t i = 0; i < currentPerformance.performanceName.length(); i++)
+    {
+      if (i == nameCursor)
+      {
+        tft.setTextColor(ILI9341_ORANGE);
+        currentPerformance.performanceName.charAt(i) == 32 ? tft.drawFontChar(95) : tft.drawFontChar(currentPerformance.performanceName.charAt(i)); // Show selected space as underscore
+      }
+      else
+      {
+        tft.setTextColor(ILI9341_RED);
+        tft.drawFontChar(currentPerformance.performanceName.charAt(i));
+      }
+    }
+  }
+  else
+  {
+    tft.drawFontChar(95); // Underscore to show start of empty performance name
+  }
+
+  tft.setTextSize(2);
+  tft.setFont(&FreeMono9pt7b);
   tft.setTextColor(ILI9341_LIGHTGREY);
   int row = 0;
   int start = 0;
@@ -728,12 +856,15 @@ FLASHMEM void renderOscModPage(size_t no)
   {
   case 1:
     tft.drawString("Osc 1 PWM", 160, 150);
+    renderWaveformSymbol(groupvec[activeGroupIndex]->getWaveformA());
     break;
   case 2:
     tft.drawString("Osc 2 PWM", 160, 150);
+    renderWaveformSymbol(groupvec[activeGroupIndex]->getWaveformB());
     break;
   case 3:
     tft.drawString("Osc Pitch", 160, 150);
+    renderWaveformSymbol(groupvec[activeGroupIndex]->getPitchLfoWaveform());
     break;
   case 4:
     tft.drawString("Osc Effects", 160, 150);
@@ -910,7 +1041,9 @@ FLASHMEM void renderPerformanceName()
 
   tft.setTextDatum(TL_DATUM);
   tft.setTextColor(ILI9341_DARKYELLOW);
-  tft.drawString(bankNames[currentPerformance.patches[0].bankIndex] + " : " + currentPerformance.patches[0].patchName, 80, 130); // THIS ASSUMES JUST ONE PATCH - MULTITIMBRALITY NOT YET SUPPORTED
+  tft.drawString(bankNames[currentPerformance.patches[0].bankIndex] +
+                     " : " + currentPerformance.patches[0].patchName,
+                 80, 130); // THIS ASSUMES JUST ONE PATCH - MULTITIMBRALITY NOT YET SUPPORTED
 }
 
 FLASHMEM void renderPerformancePage()
@@ -918,7 +1051,6 @@ FLASHMEM void renderPerformancePage()
   tft.fillScreen(ILI9341_BLACK);
   renderMidiClk();
   renderPeak();
-  renderCorners();
   renderMIDI();
   renderVoiceGrid();
   tft.setFont(Arial_16);
@@ -939,6 +1071,7 @@ FLASHMEM void renderPerformancePage()
   currentPerformance.performanceName.length() > 12 ? tft.setFont(Arial_12) : tft.setFont(Arial_16);
   tft.setTextColor(ILI9341_YELLOW);
   tft.drawString(currentPerformance.performanceName, 45, 120);
+  renderCorners();
 }
 
 FLASHMEM void renderPerformanceMidiEditPage()
@@ -950,7 +1083,6 @@ FLASHMEM void renderPerformanceMidiEditPage()
   tft.drawString("Edit Performance", 160, 59);
   tft.drawString("MIDI", 160, 79);
   tft.drawFastHLine(10, 102, tft.width() - 20, ILI9341_RED);
-
   renderPerformanceName();
   renderCorners();
 }
@@ -1003,9 +1135,43 @@ FLASHMEM void renderPerformancePatchEditPage()
   tft.setFont(Arial_16);
   tft.setTextColor(ILI9341_YELLOW);
   tft.setTextDatum(TC_DATUM);
-  tft.drawString("Edit Performance", 160, 59);
-  tft.drawString("Patch", 160, 79);
-  tft.drawFastHLine(10, 102, tft.width() - 20, ILI9341_RED);
+  tft.drawString("Edit Performance", 160, 0);
+  tft.drawString("Patch", 160, 26);
+  tft.drawFastHLine(10, 49, tft.width() - 20, ILI9341_RED);
+
+  // Bank list - 8 banks
+  tft.setFont(Arial_12_Bold);
+  tft.setTextColor(ILI9341_RED);
+  for (size_t i = 0; i < BANKS_LIMIT; i++)
+  {
+    currentBankIndex == i ? tft.setTextColor(ILI9341_ORANGE)
+                          : tft.setTextColor(ILI9341_RED);
+
+    if (bankNames[i].length() > 9)
+    {
+      tft.drawString(bankNames[i].substring(0, 8) + String(".."), 0, 57 + (20 * i));
+    }
+    else
+    {
+      tft.drawString(bankNames[i], 0, 57 + (20 * i));
+    }
+  }
+
+  // Patches -  up to 128 in each bank
+  tft.setFont(Arial_12_Bold);
+  tft.setTextDatum(TL_DATUM);
+  tft.setTextColor(ILI9341_YELLOW);
+  size_t offset = ceil(currentPatchIndex / 8);
+  for (size_t i = 0; i < min(patches.size(), 8); i++)
+  {
+    currentPatchIndex == i + (8 * offset) ? tft.setTextColor(ILI9341_YELLOW)
+                                          : tft.setTextColor(ILI9341_DARKYELLOW);
+    if (i + 1 + (8 * offset) <= patches.size())
+    {
+      tft.drawString(String(i + 1 + (8 * offset)) + " " + patches[i + (8 * offset)].patchName, 110, 57 + (20 * i));
+    }
+  }
+  renderCorners();
 }
 
 FLASHMEM void renderPerformanceRecallPage()
@@ -1279,6 +1445,11 @@ void displayThread()
         break;
       case PERFORMANCEMIDIEDIT:
         renderPerformanceMidiEditPage();
+        break;
+      case RENAMEPERFORMANCE:
+      case State::CHOOSECHARPERFORMANCE:
+      case State::DELETECHARPERFORMANCE:
+        renderPerformanceNamingPage();
         break;
       case State::EDITBANK:
         renderEditBankPage();

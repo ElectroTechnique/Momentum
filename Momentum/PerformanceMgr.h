@@ -72,7 +72,6 @@ FLASHMEM void loadPerformanceNames()
 {
     if (!cardStatus)
         return;
-    Serial.println(F("loadPerformanceNames"));
     File performanceDir = SD.open(PERFORMANCE_FOLDER_NAME_SLASH);
     File performanceFile;
     for (uint8_t i = 0; i < PERFORMANCES_LIMIT; i++)
@@ -101,8 +100,14 @@ FLASHMEM void loadPerformanceNames()
 // Filename is UID
 FLASHMEM boolean loadPerformance(uint8_t filename)
 {
+    // Initial empty
+    PerformanceStruct ps;
+    currentPerformance = ps;
     if (!cardStatus)
+    {
         return false;
+    }
+
     // Open file for reading - UID is Filename
     char result[30];
     concatPerformanceFolderAndFilename(filename, result);
@@ -111,6 +116,7 @@ FLASHMEM boolean loadPerformance(uint8_t filename)
     if (!file)
     {
         Serial.println(F("Performance file not found:") + String(filename));
+        file.close();
         return false;
     }
 
@@ -130,10 +136,12 @@ FLASHMEM boolean loadPerformance(uint8_t filename)
     // Copy values from the JsonDocument to the PerformanceStruct
     currentPerformance.performanceName = doc["PerformanceName"].as<String>();
     currentPerformance.mode = doc["Mode"];
-    currentPerformance.TL = doc["TL"];
-    currentPerformance.TR = doc["TR"];
-    currentPerformance.BL = doc["BL"];
-    currentPerformance.BR = doc["BR"];
+    JsonObject Encoders = doc["Encoders"];
+    currentPerformance.TL = Encoders["TL"];
+    currentPerformance.TR = Encoders["TR"];
+    currentPerformance.BL = Encoders["BL"];
+    currentPerformance.BR = Encoders["BR"];
+
     uint8_t i = 0;
     for (JsonObject P : doc["Patches"].as<JsonArray>())
     {
@@ -160,17 +168,28 @@ FLASHMEM void savePerformance()
     doc["PerformanceName"] = currentPerformance.performanceName;
     doc["Mode"] = currentPerformance.mode;
 
-    JsonObject Patches = doc.createNestedObject("Patches");
-    for (uint8_t i = 0; i < currentPerformance.patches.size(); i++)
-    {
-        Patches["Bank"] = currentPerformance.patches[i].bankIndex;
-        Patches["UID"] = currentPerformance.patches[i].UID;
-        Patches["MidiChIn"] = currentPerformance.patches[i].midiCh;
-        Patches["MidiChOut"] = currentPerformance.patches[i].midiChOut;
-        Patches["MidiThru"] = currentPerformance.patches[i].midiThru;
-        Patches["Min"] = currentPerformance.patches[i].min;
-        Patches["Max"] = currentPerformance.patches[i].max;
-    }
+
+    JsonArray Patches = doc.createNestedArray("Patches");
+
+    JsonObject Patches_0 = Patches.createNestedObject();
+    Patches_0["Bank"] = currentPerformance.patches[0].bankIndex;
+    Patches_0["UID"] = currentPerformance.patches[0].UID;
+    Patches_0["MidiChIn"] = currentPerformance.patches[0].midiCh;
+    Patches_0["MidiChOut"] = currentPerformance.patches[0].midiChOut;
+    Patches_0["MidiThru"] = currentPerformance.patches[0].midiThru;
+    Patches_0["Min"] = currentPerformance.patches[0].min;
+    Patches_0["Max"] = currentPerformance.patches[0].max;
+
+    // NOT USED  Multimbrality isn't supported yet
+    JsonObject Patches_1 = Patches.createNestedObject();
+    Patches_1["Bank"] = currentPerformance.patches[1].bankIndex;
+    Patches_1["UID"] = currentPerformance.patches[1].UID;
+    Patches_1["MidiChIn"] = currentPerformance.patches[1].midiCh;
+    Patches_1["MidiChOut"] = currentPerformance.patches[1].midiChOut;
+    Patches_1["MidiThru"] = currentPerformance.patches[1].midiThru;
+    Patches_1["Min"] = currentPerformance.patches[1].min;
+    Patches_1["Max"] = currentPerformance.patches[1].max;
+
     JsonObject Encoders = doc.createNestedObject("Encoders");
     Encoders["TL"] = currentPerformance.TL;
     Encoders["TR"] = currentPerformance.TR;
@@ -183,6 +202,7 @@ FLASHMEM void savePerformance()
 
     char result[30];
     concatPerformanceFolderAndFilename(currentPerformanceIndex + 1, result);
+    SD.remove(result); // Delete Performance file
     File file = SD.open(result, FILE_WRITE);
     if (!file)
     {

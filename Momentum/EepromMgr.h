@@ -148,6 +148,7 @@ FLASHMEM void checkFirstRun()
 {
   if (!getFirstRun())
   {
+    Serial.println(F("First Run"));
     // Default the EEPROM contents
     storeMidiChannel(0);
     storeMidiOutCh(0);

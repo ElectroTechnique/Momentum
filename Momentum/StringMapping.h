@@ -82,7 +82,7 @@ FLASHMEM void assignStrings()
     ParameterStrMap[PerfEdit] = "Save/Edit";
     ParameterStrMap[deleteCharacterPerformance] = "Del. Char";
     ParameterStrMap[choosecharacterPerformance] = "Character";
-    ParameterStrMap[cancel] = "Cancel";
+    ParameterStrMap[cancel] = "Back";
     ParameterStrMap[settingoption] = "Setting";
     ParameterStrMap[settingvalue] = "Value";
     ParameterStrMap[editbank] = "Edit Banks";
@@ -95,6 +95,10 @@ FLASHMEM void assignStrings()
     ParameterStrMap[choosecharacterBank] = "Character";
     ParameterStrMap[deleteCharacterPatch] = "Del. Char";
     ParameterStrMap[deleteCharacterBank] = "Del. Char";
+    ParameterStrMap[SeqEdit] = "Save/Edit";
+    ParameterStrMap[SeqSelect] = "Sequence";
+    ParameterStrMap[SeqTempo] = "Tempo";
+    ParameterStrMap[SeqStartStop] = "Start/Stop";
     ParameterStrMap[noencoder] = "None";
 }
 

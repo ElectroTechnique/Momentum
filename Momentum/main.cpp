@@ -69,10 +69,10 @@ volatile boolean cardStatus = false;
 volatile boolean sdCardInterrupt = false;
 boolean usbHostPluggedIn = false;
 elapsedMillis usb_host_wait_timer;
+
 State state = State::MAIN;
 
 #include "PatchMgr.h"
-#include "SequenceMgr.h"
 #include "HWControls.h"
 #include "EepromMgr.h"
 #include "Detune.h"
@@ -90,7 +90,16 @@ uint8_t activeGroupIndex = 0;
 #include "PerformanceMgr.h"
 #include "EncoderMapping.h"
 
-#include "Display.h"
+// TCK : 5.00 seconds
+// TCK64 : 634.20 years
+// TCK_RTC : 634.20 years
+// GPT(@24MHz) 178.96 seconds
+// TMR(PSC_AUTO) 55.92 milliseconds
+// PIT(@24MHz) 178.96 seconds
+PeriodicTimer sequencer_timer(TCK); // TCK PIT GPT2
+#include "SequenceMgr.h"
+extern void sequencer();
+extern void noteOnRoutine();
 
 // USB HOST MIDI Class Compliant
 USBHost myusb;
@@ -117,6 +126,7 @@ FLASHMEM void recallPerformance(uint8_t filename);
 FLASHMEM void myControlChange(byte channel, byte control, byte value);
 FLASHMEM void usbHostControlChange(byte channel, byte control, byte value);
 FLASHMEM void myMIDIClock();
+FLASHMEM void myMIDIClockContinue();
 FLASHMEM void myMIDIClockStart();
 FLASHMEM void myMIDIClockStop();
 
@@ -125,30 +135,25 @@ void encoderCallback(unsigned enc_idx, int value, int delta);
 void encoderButtonCallback(unsigned button_idx, int state);
 void buttonCallback(unsigned button_idx, int state);
 
-#include "Sequencer.h"
+#include "Display.h"
 #include "Settings.h"
 
 boolean firstPatchLoaded = false;
 
 uint32_t previousMillis = millis(); // For MIDI Clk Sync
 
-uint32_t count = 0;     // For MIDI Clk Sync
-int voiceToReturn = -1; // Initialise
+uint32_t midiClkCount = 0; // For MIDI Clk Sync
+int voiceToReturn = -1;    // Initialise
 
-// Sequencer
-extern sequencer_t seq;
-extern void sequencer();
-PeriodicTimer sequencer_timer;
-
-uint8_t seq_UI_last_step = 0;
+uint8_t seq_last_step = 0;
 
 FLASHMEM void setup()
 {
-    // sequencer_timer.begin(sequencer, seq.tempo_ms / 2, false);
-    // while (!Serial)
-    // {
-    // }
-    Serial.print(CrashReport);
+    sequencer_timer.begin(sequencer, currentSequence.tempo_us / 2.0f, false);
+    //  while (!Serial)
+    //  {
+    //  }
+    //  Serial.print(CrashReport);
     AudioMemory(60);
     checkFirstRun();
     // Initialize the voice groups.
@@ -203,6 +208,7 @@ FLASHMEM void setup()
     midi1.setHandlePitchChange(myPitchBend);
     midi1.setHandleProgramChange(myProgramChange);
     midi1.setHandleClock(myMIDIClock);
+    midi1.setHandleContinue(myMIDIClockContinue);
     midi1.setHandleStart(myMIDIClockStart);
     midi1.setHandleStop(myMIDIClockStop);
     Serial.println(F("USB HOST MIDI Class Compliant Listening"));
@@ -214,6 +220,7 @@ FLASHMEM void setup()
     usbMIDI.setHandlePitchChange(myPitchBend);
     usbMIDI.setHandleProgramChange(myProgramChange);
     usbMIDI.setHandleClock(myMIDIClock);
+    usbMIDI.setHandleContinue(myMIDIClockContinue);
     usbMIDI.setHandleStart(myMIDIClockStart);
     usbMIDI.setHandleStop(myMIDIClockStop);
     Serial.println(F("USB Client MIDI Listening"));
@@ -226,6 +233,7 @@ FLASHMEM void setup()
     MIDI.setHandleControlChange(myControlChange);
     MIDI.setHandleProgramChange(myProgramChange);
     MIDI.setHandleClock(myMIDIClock);
+    MIDI.setHandleContinue(myMIDIClockContinue);
     MIDI.setHandleStart(myMIDIClockStart);
     MIDI.setHandleStop(myMIDIClockStop);
     Serial.println(F("MIDI In DIN Listening"));
@@ -252,12 +260,23 @@ FLASHMEM void setup()
     setEncodersState(state);
 }
 
+// Specifically for Sequencer, bypassing recording note in
+void myNoteOnSeq(byte channel, byte note, byte velocity)
+{
+    groupvec[activeGroupIndex]->noteOn(note, velocity);
+}
+
 void myNoteOn(byte channel, byte note, byte velocity)
 {
+    if (currentSequence.recording)
+    {
+        currentSequence.note_in = note;
+        currentSequence.note_in_velocity = velocity;
+    }
+
     // Check for out of range notes
     if (note + groupvec[activeGroupIndex]->params().oscPitchA < 0 || note + groupvec[activeGroupIndex]->params().oscPitchA > 127 || note + groupvec[activeGroupIndex]->params().oscPitchB < 0 || note + groupvec[activeGroupIndex]->params().oscPitchB > 127)
         return;
-
     groupvec[activeGroupIndex]->noteOn(note, velocity);
 }
 
@@ -1035,28 +1054,59 @@ FLASHMEM void myProgramChange(byte channel, byte program)
     }
 }
 
-FLASHMEM void sequencerStart()
+FLASHMEM void setSeqTimerPeriod(float bpm)
 {
-    seq.step = 0;
-    seq.chain_active_step = 0;
-    seq.running = true;
-    sequencer_timer.start();
+    currentSequence.bpm = bpm;
+    currentSequence.tempo_us = 15'000'000 / bpm; // beats per bar microseconds
+    sequencer_timer.setNextPeriod(currentSequence.tempo_us / 2);
+}
+
+FLASHMEM void sequencerStart(boolean cont = false)
+{
+    // midi_bpm_timer = 0;
+    // midi_bpm_counter = 0;
+    // _midi_bpm = -1;
+    if (!cont)
+    {
+        currentSequence.step = 0;
+        currentSequence.chain_active_step = 0;
+    }
+
+    currentSequence.running = true;
+
+    if (!seqMidiSync)
+    {
+        // noteOnRoutine(); // First note sounds immediately
+        sequencer_timer.start();
+    }
 }
 
 FLASHMEM void sequencerStop()
 {
     sequencer_timer.stop();
-    seq.running = false;
-    seq.recording = false;
-    seq.note_in = 0;
-    seq.step = 0;
-    seq.chain_active_step = 0;
+    groupvec[activeGroupIndex]->allNotesOff();
+    currentSequence.running = false;
+    currentSequence.recording = false;
+    currentSequence.note_in = 0;
+    // currentSequence.step = 0;
+    // currentSequence.chain_active_step = 0;
+}
+
+FLASHMEM void myMIDIClockContinue()
+{
+    if (!currentSequence.running)
+    {
+        myMIDIClockStart();
+    }
 }
 
 FLASHMEM void myMIDIClockStart()
 {
-    sequencerStart();
-    setMIDIClkSignal(true);
+    if (!currentSequence.running && !seqMidiSync)
+        seqMidiSync = true;
+    midiClkCount = 0;
+    if (state == State::SEQUENCEPAGE && seqMidiSync)
+        sequencerStart();
     // Resync LFOs when MIDI Clock starts.
     // When there's a jump to a different
     // part of a track, such as in a DAW, the DAW must have same
@@ -1064,18 +1114,26 @@ FLASHMEM void myMIDIClockStart()
 
     // TODO: Apply to all groupvec[activeGroupIndex]-> Maybe check channel?
     groupvec[activeGroupIndex]->midiClockStart();
+    setMIDIClkSignal(true);
 }
 
 FLASHMEM void myMIDIClockStop()
 {
+    if (seqMidiSync)
+        sequencerStop();
+    seqMidiSync = false;
     setMIDIClkSignal(false);
-    sequencerStop();
 }
 
 FLASHMEM void myMIDIClock()
 {
+    // 24ppq
+    if (seqMidiSync && currentSequence.running && (midiClkCount + 1) % 3 == 0)
+    {
+        sequencer();
+    }
     // This recalculates the LFO frequencies if the tempo changes (MIDI cLock is 24ppq)
-    if (count > 23)
+    if (++midiClkCount > 23)
     {
         // TODO: Most of this needs to move into the VoiceGroup
 
@@ -1085,10 +1143,8 @@ FLASHMEM void myMIDIClock()
         currentPatch.LFOSyncFreq = 1000.0f / midiClkTimeInterval;
         previousMillis = timeNow;
         groupvec[activeGroupIndex]->midiClock(currentPatch.LFOSyncFreq * currentPatch.LFOTempoValue);
-        count = 0;
+        midiClkCount = 0;
     }
-
-    count++;
 }
 
 FLASHMEM void silence()
@@ -1099,7 +1155,6 @@ FLASHMEM void silence()
 
 FLASHMEM void recallPatch(uint8_t bank, long patchUID)
 {
-    Serial.println("recallPatch");
     if (patchUID == 0)
         return;
     silence();
@@ -1147,6 +1202,17 @@ FLASHMEM void recallPerformance(uint8_t filename)
     {
         // Performance missing
         Serial.print(F("Performance Missing:"));
+        Serial.println(filename);
+    }
+}
+
+FLASHMEM void recallSequence(uint8_t filename)
+{
+    silence();
+    if (!loadSequence(filename))
+    {
+        // Sequence missing
+        Serial.print(F("Sequence Missing:"));
         Serial.println(filename);
     }
 }
@@ -1344,6 +1410,7 @@ FLASHMEM void encoderCallback(unsigned enc_idx, int value, int delta)
         case choosecharacterPatch:
         case choosecharacterBank:
         case choosecharacterPerformance:
+        case choosecharacterSequence:
             charCursor += newDelta;
             if (charCursor >= TOTALCHARS)
                 charCursor = 0;
@@ -1380,6 +1447,16 @@ FLASHMEM void encoderCallback(unsigned enc_idx, int value, int delta)
                 nameCursor = 0;
             }
             break;
+        case deleteCharacterSequence:
+            if (newDelta > 0 && ++nameCursor > currentSequence.SequenceName.length() - 1)
+            {
+                nameCursor = currentSequence.SequenceName.length() - 1;
+            }
+            else if (newDelta < 0 && --nameCursor < 0)
+            {
+                nameCursor = 0;
+            }
+            break;
         case PerfSelect:
         case PerfEdit:
             if (!cardStatus)
@@ -1387,6 +1464,14 @@ FLASHMEM void encoderCallback(unsigned enc_idx, int value, int delta)
             if (newDelta == 0)
                 break;
             newDelta > 0 ? incPerformanceIndex() : decPerformanceIndex();
+            break;
+        case SeqSelect:
+        case SeqEdit:
+            if (!cardStatus)
+                return;
+            if (newDelta == 0)
+                break;
+            newDelta > 0 ? incSequenceIndex() : decSequenceIndex();
             break;
         case chooseEncoderTL:
         case chooseEncoderTR:
@@ -1463,6 +1548,12 @@ FLASHMEM void encoderCallback(unsigned enc_idx, int value, int delta)
             setEncValue(settingvalue, value, settings::current_setting_value());
             settings::save_current_value();
             break;
+        case SeqTempo:
+            if (newDelta == 0 || currentSequence.bpm < 20.1 || currentSequence.bpm > 299.9)
+                break;
+            currentSequence.bpm += (newDelta / 10.0f);
+            setSeqTimerPeriod(currentSequence.bpm);
+            break;
         default:
             // Serial.printf("enc[%u]: v=%d, d=%d\n", enc_idx, encMap[enc_idx].Value, newDelta);
             myControlChange(midiChannel, encMap[enc_idx].Parameter, encMap[enc_idx].Value);
@@ -1512,6 +1603,7 @@ FLASHMEM void encoderButtonCallback(unsigned enc_idx, int buttonState)
             loadBankNames(); // If in the middle of bank renaming
             loadPatchNamesFromBank(currentBankIndex);
             recallPatch(currentBankIndex, patches[currentPatchIndex].patchUID);
+        case goback:
             lightRGLEDs(0, 0);
             break;
         case choosecharacterPatch:
@@ -1626,6 +1718,26 @@ FLASHMEM void encoderButtonCallback(unsigned enc_idx, int buttonState)
         case chooseEncoderTL:
         case chooseEncoderTR:
             savePerformance();
+            break;
+        case SeqSelect:
+        case SeqEdit:
+            recallSequence(currentSequenceIndex + 1);
+            singleLED(ledColour::GREEN, 3); // Led 3 stays green
+            break;
+        case SeqStartStop:
+            if (currentSequence.running)
+            {
+                sequencerStop();
+            }
+            else
+            {
+                sequencerStart();
+            }
+            singleLED(ledColour::GREEN, 3); // Led 3 stays green
+            break;
+        case SeqTempo:
+            currentSequence.bpm = 120.0f;
+            setSeqTimerPeriod(currentSequence.bpm);
             break;
         default:
             setDefaultValue(&encMap[enc_idx]);
@@ -1806,13 +1918,17 @@ FLASHMEM void buttonCallback(unsigned button_idx, int button)
                 state = State::FILTERPAGE1;
                 singleLED(RED, 3);
                 break;
-            case State::SEQPAGE:
+            case State::SEQUENCEPAGE:
                 state = State::MAIN;
                 singleLED(ledColour::OFF, 3);
                 break;
-            case State::PERFORMANCEPAGE:
-                state = State::MAIN;
-                singleLED(ledColour::OFF, 1);
+            case State::RENAMESEQUENCE:
+            case State::CHOOSECHARSEQUENCE:
+            case State::DELETECHARSEQUENCE:
+                saveSequence();
+                loadSequenceNames();
+                state = State::SEQUENCERECALL;
+                singleLED(ledColour::GREEN, 3);
                 break;
             default:
                 state = State::FILTERPAGE1; // show filter parameters
@@ -1822,9 +1938,15 @@ FLASHMEM void buttonCallback(unsigned button_idx, int button)
         }
         if (button == HELD)
         {
-            if (state != State::SEQPAGE && state != State::FILTERPAGE1 && state != State::FILTERPAGE2)
+            if (state != State::SEQUENCERECALL && state != State::FILTERPAGE1 && state != State::FILTERPAGE2 && !currentSequence.running)
             {
-                state = State::SEQPAGE;
+                state = State::SEQUENCERECALL;
+                loadSequenceNames();
+                singleLED(GREEN, 3);
+            }
+            else if (currentSequence.running)
+            {
+                state = State::SEQUENCEPAGE;
                 singleLED(GREEN, 3);
             }
             else
@@ -2094,12 +2216,6 @@ FLASHMEM void buttonCallback(unsigned button_idx, int button)
     setEncodersState(state);
 }
 
-// None-285mA R-45mA  G-25mA  RG-70mA
-void lightLEDs()
-{
-    // lightRGLEDs(0, 0);
-}
-
 void midiCCOut(byte cc, byte value)
 {
     if (midiOutCh > 0 && cc < 129) // Misusing CC for other parameters above 127/128
@@ -2122,7 +2238,7 @@ FLASHMEM void sdCardDetect()
     if (sdCardInterrupt)
     {
         silence();
-        delayMicroseconds(100000);
+        delayMicroseconds(100'000);
         cardStatus = !digitalReadFast(pinCD);
         if (cardStatus)
         {
@@ -2159,6 +2275,22 @@ FLASHMEM void checkUSBHostStatus()
     }
 }
 
+FLASHMEM void sequencerLEDs()
+{
+    if (currentSequence.running && currentSequence.step != seq_last_step)
+    {
+        seq_last_step = currentSequence.step;
+        if (currentSequence.step < 8)
+        {
+            singleLED(RED, currentSequence.step + 1);
+        }
+        else
+        {
+            singleLED(GREEN, currentSequence.step - 7);
+        }
+    }
+}
+
 FLASHMEM void CPUMonitor()
 {
     Serial.print(F(" CPU:"));
@@ -2185,35 +2317,7 @@ void loop()
     MIDI.read(midiChannel);
     encoders.read();
     buttons.read();
-    lightLEDs();
     sdCardDetect();
-
+    sequencerLEDs();
     // CPUMonitor();
-
-    if (seq.running)
-    {
-        // Serial.println("seq.running");
-        if (seq.step != seq_UI_last_step)
-        {
-            seq_UI_last_step = seq.step;
-            if (1 == 1) // Sequencer
-            {
-                if (seq.step == 0)
-                {
-
-                }
-                else
-                {
-
-                }
-            }
-            else if (1 == 0) // Arpeggiator
-            {
-                Serial.println(seq.chord_names[seq.arp_chord][0]);
-                Serial.println(seq.chord_names[seq.arp_chord][1]);
-                Serial.println(seq.chord_names[seq.arp_chord][2]);
-                Serial.println(seq.chord_names[seq.arp_chord][3]);
-            }
-        }
-    }
 }

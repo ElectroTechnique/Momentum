@@ -1,5 +1,4 @@
 // Janelia Array available in libraries manager
-
 #include <Array.h>
 #include "Constants.h"
 #include "Utils.h"

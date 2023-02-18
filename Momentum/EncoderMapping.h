@@ -33,7 +33,6 @@ FLASHMEM boolean setEncValue(boolean act, uint8_t parameter, uint8_t value, Stri
                 encMap[i].Value = value;
             encMap[i].ValueStr = str;
             return true; // True if this was set
-            break;
         }
     }
     return false;
@@ -749,7 +748,7 @@ FLASHMEM void configureCCfilterlforetrig(EncoderMappingStruct *enc, State st = S
     enc->ShowValue = true;
     enc->Value = currentPatch.FilterLFORetrig;
     enc->DefaultValue = 0;
-    enc->ValueStr = groupvec[activeGroupIndex]->getFilterLfoRetrig() > 0 ? "On" : "off";
+    enc->ValueStr = groupvec[activeGroupIndex]->getFilterLfoRetrig() > 0 ? "On" : "Off";
     enc->Range = 1;
     enc->ParameterStr = ParameterStrMap[CCfilterlforetrig];
     enc->Push = true;
@@ -1493,13 +1492,72 @@ FLASHMEM void setEncodersState(State s)
         encMap[ENC_BR].active = false;
         break;
 
-    case State::SEQPAGE:
-        encMap[ENC_TL].active = false;
-        encMap[ENC_TR].active = false;
-        encMap[ENC_BL].active = false;
+    case State::SEQUENCERECALL:
+        encMap[ENC_TL].active = true;
+        encMap[ENC_TL].Parameter = SeqEdit;
+        encMap[ENC_TL].ShowValue = false;
+        encMap[ENC_TL].ValueStr = "";
+        encMap[ENC_TL].Value = 0;
+        encMap[ENC_TL].ParameterStr = ParameterStrMap[SeqEdit];
+        encMap[ENC_TL].Push = true;
+        encMap[ENC_TL].PushAction = State::SEQUENCEEDIT;
+
+        encMap[ENC_TR].active = true;
+        encMap[ENC_TR].Parameter = goback;
+        encMap[ENC_TR].ShowValue = false;
+        encMap[ENC_TR].Value = 0;
+        encMap[ENC_TR].Range = 0;
+        encMap[ENC_TR].ValueStr = "";
+        encMap[ENC_TR].ParameterStr = ParameterStrMap[cancel];
+        encMap[ENC_TR].Push = true;
+        encMap[ENC_TR].PushAction = State::MAIN;
+
+        encMap[ENC_BL].active = true;
+        encMap[ENC_BL].Parameter = SeqSelect;
+        encMap[ENC_BL].ShowValue = false;
+        encMap[ENC_BL].ValueStr = "";
+        encMap[ENC_BL].Value = 0;
+        encMap[ENC_BL].Range = SEQUENCES_LIMIT - 1;
+        encMap[ENC_BL].ParameterStr = ParameterStrMap[SeqSelect];
+        encMap[ENC_BL].Push = true;
+        encMap[ENC_BL].PushAction = State::SEQUENCEPAGE;
+
         encMap[ENC_BR].active = false;
         break;
+    case State::SEQUENCEPAGE:
+        encMap[ENC_TL].active = true;
+        encMap[ENC_TL].Parameter = SeqTempo;
+        encMap[ENC_TL].ShowValue = false;
+        encMap[ENC_TL].ValueStr = "";
+        encMap[ENC_TL].Value = 0;
+        encMap[ENC_TL].Range = 255;
+        encMap[ENC_TL].DefaultValue = 120;
+        encMap[ENC_TL].ParameterStr = ParameterStrMap[SeqTempo];
+        encMap[ENC_TL].Push = true;
+        encMap[ENC_TL].PushAction = State::SEQUENCEPAGE;
 
+        encMap[ENC_TR].active = true;
+        encMap[ENC_TR].Parameter = goback;
+        encMap[ENC_TR].ShowValue = false;
+        encMap[ENC_TR].Value = 0;
+        encMap[ENC_TR].Range = 127;
+        encMap[ENC_TR].ValueStr = "";
+        encMap[ENC_TR].ParameterStr = ParameterStrMap[cancel];
+        encMap[ENC_TR].Push = true;
+        encMap[ENC_TR].PushAction = State::SEQUENCERECALL;
+
+        encMap[ENC_BL].active = true;
+        encMap[ENC_BL].Parameter = SeqStartStop;
+        encMap[ENC_BL].ShowValue = false;
+        encMap[ENC_BL].ValueStr = "";
+        encMap[ENC_BL].Value = 0;
+        encMap[ENC_BL].Range = 0;
+        encMap[ENC_BL].ParameterStr = ParameterStrMap[SeqStartStop];
+        encMap[ENC_BL].Push = true;
+        encMap[ENC_BL].PushAction = State::SEQUENCEPAGE;
+
+        encMap[ENC_BR].active = false;
+        break;
     case State::EDITBANK:
         encMap[ENC_TL].active = false;
         encMap[ENC_TL].active = true;

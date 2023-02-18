@@ -54,6 +54,13 @@
 #define choosePerfMIDIThruMode 169
 #define choosePerfMIDIChIn 170
 #define choosePerfMIDIChOut 171
+#define SeqSelect 172
+#define SeqEdit 173
+#define deleteCharacterSequence 174
+#define choosecharacterSequence 175
+#define SeqTempo 176
+#define SeqStartStop 177
+#define goback 178
 #define noencoder 255
 
 const static char *SEQUENCE_FOLDER_NAME = "Sequences";
@@ -170,7 +177,12 @@ typedef enum State
   FXPAGE,                // FX parameters
   MIDIPAGE,              // MIDI parameters
   ARPPAGE,               // Arpeggiator parameters
-  SEQPAGE,               // Sequencer parameters
+  SEQUENCEPAGE,          // Sequencer parameters
+  SEQUENCEEDIT,          // Sequencer parameters
+  SEQUENCERECALL,        // Sequencer recall
+  RENAMESEQUENCE,        // Performance naming
+  CHOOSECHARSEQUENCE,    // Choose character
+  DELETECHARSEQUENCE,    // Delete character
   PERFORMANCERECALL,     // Performance parameters
   PERFORMANCEPAGE,       // Performance
   RENAMEPERFORMANCE,     // Performance naming

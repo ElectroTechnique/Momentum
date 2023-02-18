@@ -97,9 +97,3 @@ typedef struct PatchStruct
     uint8_t PitchModWheelDepth = 1;
     uint8_t FilterModWheelDepth = 0;
 } PatchStruct;
-
-typedef struct SequenceStruct
-{
-    uint32_t UID = 0;
-    char SequenceName[64] = "Sequence 1";
-} SequenceStruct;

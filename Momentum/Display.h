@@ -157,8 +157,8 @@ FLASHMEM void renderMidiClk()
   tft.setFont(Arial_10_Bold);
   if (MIDIClkSignal)
   {
-    tft.fillRect(94, 45, 30, 15, ILI9341_LIGHTGREY);
-    tft.drawString(F("CLK"), 109, 47);
+    tft.fillRect(94, 75, 30, 15, ILI9341_LIGHTGREY);
+    tft.drawString(F("CLK"), 109, 77);
   }
 }
 
@@ -468,6 +468,37 @@ FLASHMEM void renderCurrentParameterOverlay()
     tft.setOrigin(-40, -30);
     renderEnv(groupvec[activeGroupIndex]->getAmpAttack() * 0.0001f, groupvec[activeGroupIndex]->getAmpDecay() * 0.0001f, groupvec[activeGroupIndex]->getAmpSustain(), groupvec[activeGroupIndex]->getAmpRelease() * 0.0001f);
     break;
+  }
+}
+
+FLASHMEM void renderPatchName()
+{
+  tft.setTextDatum(TL_DATUM);
+  switch (currentPatchIndex)
+  {
+  case 0 ... 8:
+    tft.drawString("00" + String(currentPatchIndex + 1), 45, 94);
+    break;
+  case 9 ... 98:
+    tft.drawString("0" + String(currentPatchIndex + 1), 45, 94);
+    break;
+  default:
+    tft.drawString(String(currentPatchIndex + 1), 45, 94);
+  }
+  currentPatchName.length() > 12
+      ? tft.setFont(Arial_12)
+      : tft.setFont(Arial_16);
+  tft.setTextColor(ILI9341_YELLOW);
+  tft.drawString(currentPatchName, 45, 120);
+  tft.setTextColor(ILI9341_ORANGE);
+  tft.setTextDatum(TC_DATUM);
+  if (cardStatus)
+  {
+    tft.drawString(bankNames[currentBankIndex], 160, 94);
+  }
+  else
+  {
+    tft.drawString(F("NO SD CARD"), 160, 94);
   }
 }
 
@@ -966,8 +997,56 @@ FLASHMEM void renderSequencerPage()
   tft.setFont(Arial_16);
   tft.setTextColor(ILI9341_YELLOW);
   tft.setTextDatum(TC_DATUM);
-  tft.drawString("Sequencer", 160, 19);
+  tft.drawString(currentSequence.SequenceName, 160, 19);
   tft.drawFastHLine(10, 42, tft.width() - 20, ILI9341_RED);
+  renderPatchName();
+  renderMidiClk();
+  renderPeak();
+  renderCorners();
+  renderMIDI();
+  renderVoiceGrid();
+  tft.setFont(Arial_13);
+  tft.setTextColor(ILI9341_WHITE);
+  tft.setTextDatum(TL_DATUM);
+  tft.drawString(currentSequence.bpm, 25, 50);
+  tft.drawString(F("bpm"), 80, 50);
+}
+
+FLASHMEM void renderSequenceRecallPage()
+{
+  tft.fillScreen(ILI9341_BLACK);
+  tft.setFont(Arial_16);
+  tft.setTextColor(ILI9341_YELLOW);
+  tft.setTextDatum(TC_DATUM);
+  tft.drawString("Recall Sequence", 160, 26);
+  tft.drawFastHLine(10, 48, tft.width() - 20, ILI9341_RED);
+
+  tft.setFont(Arial_12);
+  tft.setTextDatum(TL_DATUM);
+  tft.setTextColor(ILI9341_RED);
+
+  size_t offset = ceil(currentSequenceIndex / 8);
+  for (size_t i = 0; i < min(SEQUENCES_LIMIT, 8); i++)
+  {
+    currentSequenceIndex == i + (8 * offset) ? tft.setTextColor(ILI9341_ORANGE)
+                                             : tft.setTextColor(ILI9341_RED);
+    if (i + 1 + (8 * offset) <= SEQUENCES_LIMIT)
+    {
+
+      switch (i + 1 + (8 * offset))
+      {
+      case 0 ... 9:
+        tft.drawString("00" + String(i + 1 + (8 * offset)), 0, 56 + (20 * i));
+        break;
+      case 10 ... 99:
+        tft.drawString("0" + String(i + 1 + (8 * offset)), 0, 56 + (20 * i));
+        break;
+      default:
+        tft.drawString(String(i + 1 + (8 * offset)), 0, 56 + (20 * i));
+      }
+      tft.drawString(sequences[i + (8 * offset)], 36, 56 + (20 * i));
+    }
+  }
   renderCorners();
 }
 
@@ -997,39 +1076,12 @@ FLASHMEM void renderMainPage()
   tft.fillScreen(ILI9341_BLACK);
   tft.setFont(Arial_16);
   tft.setTextColor(ILI9341_YELLOW);
-  switch (currentPatchIndex)
-  {
-  case 0 ... 8:
-    tft.drawString("00" + String(currentPatchIndex + 1), 45, 94);
-    break;
-  case 9 ... 98:
-    tft.drawString("0" + String(currentPatchIndex + 1), 45, 94);
-    break;
-  default:
-    tft.drawString(String(currentPatchIndex + 1), 45, 94);
-  }
-  tft.setTextColor(ILI9341_ORANGE);
-  tft.setTextDatum(TC_DATUM);
-  if (cardStatus)
-  {
-    tft.drawString(bankNames[currentBankIndex], 160, 94);
-  }
-  else
-  {
-    tft.drawString(F("NO SD CARD"), 160, 94);
-  }
-
+  renderPatchName();
   renderMidiClk();
   renderPeak();
   renderCorners();
   renderMIDI();
   renderVoiceGrid();
-
-  currentPatchName.length() > 12
-      ? tft.setFont(Arial_12)
-      : tft.setFont(Arial_16);
-  tft.setTextColor(ILI9341_YELLOW);
-  tft.drawString(currentPatchName, 45, 120);
 }
 
 FLASHMEM void renderPerformanceName()
@@ -1197,10 +1249,10 @@ FLASHMEM void renderPerformanceRecallPage()
 
       switch (i + 1 + (8 * offset))
       {
-      case 0 ... 8:
+      case 0 ... 9:
         tft.drawString("00" + String(i + 1 + (8 * offset)), 0, 56 + (20 * i));
         break;
-      case 9 ... 98:
+      case 10 ... 99:
         tft.drawString("0" + String(i + 1 + (8 * offset)), 0, 56 + (20 * i));
         break;
       default:
@@ -1209,7 +1261,6 @@ FLASHMEM void renderPerformanceRecallPage()
       tft.drawString(performances[i + (8 * offset)], 36, 56 + (20 * i));
     }
   }
-
   renderCorners();
 }
 
@@ -1422,8 +1473,11 @@ void displayThread()
       case State::FXPAGE:
         renderFXPage();
         break;
-      case State::SEQPAGE:
+      case State::SEQUENCEPAGE:
         renderSequencerPage();
+        break;
+      case SEQUENCERECALL:
+        renderSequenceRecallPage();
         break;
       case State::ARPPAGE:
         renderArpPage();

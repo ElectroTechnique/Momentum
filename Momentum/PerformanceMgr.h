@@ -38,9 +38,7 @@ typedef struct PerformanceStruct
 
 PerformanceStruct currentPerformance;
 
-String performances[128];
-
-// Performances performances;
+String performances[PERFORMANCES_LIMIT];
 
 FLASHMEM void concatPerformanceFolderAndFilename(uint32_t filename, char *result)
 {
@@ -62,7 +60,7 @@ FLASHMEM char *getPerformanceName(File file)
     if (error)
     {
         Serial.println(F("getPerformanceName() - Failed to read file"));
-        return 0;
+        return "Failed to read file";
     }
     // Copy values from the JsonDocument to the PerformanceStruct
     return doc["PerformanceName"];
@@ -76,7 +74,7 @@ FLASHMEM void loadPerformanceNames()
     File performanceFile;
     for (uint8_t i = 0; i < PERFORMANCES_LIMIT; i++)
     {
-        performances[i] = {"-Empty-"};
+        performances[i] = {F("-Empty-")};
     }
 
     while (performanceFile = performanceDir.openNextFile())
@@ -167,7 +165,6 @@ FLASHMEM void savePerformance()
 
     doc["PerformanceName"] = currentPerformance.performanceName;
     doc["Mode"] = currentPerformance.mode;
-
 
     JsonArray Patches = doc.createNestedArray("Patches");
 

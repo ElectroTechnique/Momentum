@@ -61,6 +61,14 @@
 #define SeqTempo 176
 #define SeqStartStop 177
 #define goback 178
+#define SeqNote 179
+#define SeqPitch 180
+#define SeqPosition 181
+#define SeqLength 182
+#define ArpPattern 183
+#define ArpDivision 184
+#define ArpRange 185
+#define ArpHold 186
 #define noencoder 255
 
 const static char *SEQUENCE_FOLDER_NAME = "Sequences";
@@ -148,6 +156,8 @@ extern const uint8_t BANKNAMEMAXLEN;
 extern const uint32_t HOLD_DURATION;
 extern const uint32_t CLICK_DURATION;
 extern const float ENSEMBLE_LFO[128];
+extern const String NOTENAME[128];
+extern const String SEQPOSSTR[128];
 
 typedef enum State
 {
@@ -176,7 +186,8 @@ typedef enum State
   AMPPAGE3,              // Amplifier parameters 3
   FXPAGE,                // FX parameters
   MIDIPAGE,              // MIDI parameters
-  ARPPAGE,               // Arpeggiator parameters
+  ARPPAGE1,              // Arpeggiator parameters
+  ARPPAGE2,              // Arpeggiator parameters
   SEQUENCEPAGE,          // Sequencer parameters
   SEQUENCEEDIT,          // Sequencer parameters
   SEQUENCERECALL,        // Sequencer recall

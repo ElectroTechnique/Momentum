@@ -88,16 +88,11 @@ uint8_t activeGroupIndex = 0;
 
 #include "StringMapping.h"
 #include "PerformanceMgr.h"
-#include "EncoderMapping.h"
 
-// TCK : 5.00 seconds
-// TCK64 : 634.20 years
-// TCK_RTC : 634.20 years
-// GPT(@24MHz) 178.96 seconds
-// TMR(PSC_AUTO) 55.92 milliseconds
-// PIT(@24MHz) 178.96 seconds
 PeriodicTimer sequencer_timer(TCK); // TCK PIT GPT2
 #include "SequenceMgr.h"
+#include "EncoderMapping.h"
+
 extern void sequencer();
 extern void noteOnRoutine();
 
@@ -260,7 +255,7 @@ FLASHMEM void setup()
     setEncodersState(state);
 }
 
-// Specifically for Sequencer, bypassing recording note in
+// Specifically for Sequencer, bypassing recording note in and arp
 void myNoteOnSeq(byte channel, byte note, byte velocity)
 {
     groupvec[activeGroupIndex]->noteOn(note, velocity);
@@ -268,20 +263,84 @@ void myNoteOnSeq(byte channel, byte note, byte velocity)
 
 void myNoteOn(byte channel, byte note, byte velocity)
 {
-    if (currentSequence.recording)
+    if (currentSequence.track_type == TrackType::ARP && currentSequence.running)
     {
-        currentSequence.note_in = note;
-        currentSequence.note_in_velocity = velocity;
-    }
+        // If it's in hold mode and you are not holding any notes down,
+        // it continues to play the previous arpeggio. Once you press
+        // a new note, it resets the arpeggio and starts a new one.
+        if (arpNotesHeld == 0 && arp_hold)
+            resetNotes();
 
-    // Check for out of range notes
-    if (note + groupvec[activeGroupIndex]->params().oscPitchA < 0 || note + groupvec[activeGroupIndex]->params().oscPitchA > 127 || note + groupvec[activeGroupIndex]->params().oscPitchB < 0 || note + groupvec[activeGroupIndex]->params().oscPitchB > 127)
-        return;
-    groupvec[activeGroupIndex]->noteOn(note, velocity);
+        arpNotesHeld++;
+
+        // find the right place to insert the note in the notes array
+        for (int i = 0; i < sizeof(arpNotes); i++)
+        {
+            if (arpNotes[i] == note)
+                return; // already in arpeggio
+            else if (arpNotes[i] != '\0' && arpNotes[i] < note)
+                continue; // ignore the notes below it
+            else
+            {
+                // once we reach the first note in the arpeggio that's higher
+                // than the new one, scoot the rest of the arpeggio array over
+                // to the right
+                for (int j = sizeof(arpNotes) - 1; j > i; j--)
+                {
+                    arpNotes[j] = arpNotes[j - 1];
+                    arpVels[j] = arpVels[j - 1];
+                }
+
+                // and insert the note
+                arpNotes[i] = note;
+                arpVels[i] = velocity;
+                return;
+            }
+        }
+    }
+    else
+    {
+        if (currentSequence.recording)
+        {
+            currentSequence.note_in = note;
+            currentSequence.note_in_velocity = velocity;
+        }
+
+        // Check for out of range notes. Less than 20Hz isn't really audible
+        if (note + groupvec[activeGroupIndex]->params().oscPitchA < 10 || note + groupvec[activeGroupIndex]->params().oscPitchA > 127 || note + groupvec[activeGroupIndex]->params().oscPitchB < 10 || note + groupvec[activeGroupIndex]->params().oscPitchB > 127)
+            return;
+        groupvec[activeGroupIndex]->noteOn(note, velocity);
+    }
+}
+
+void myNoteOffSeq(byte channel, byte note, byte velocity)
+{
+    groupvec[activeGroupIndex]->noteOff(note);
 }
 
 void myNoteOff(byte channel, byte note, byte velocity)
 {
+    if (currentSequence.track_type == TrackType::ARP && currentSequence.running)
+    {
+        arpNotesHeld--;
+        for (uint8_t i = 0; i < sizeof(arpNotes); i++)
+        {
+            // note released
+            if (!arp_hold && arpNotes[i] >= note)
+            {
+                // shift all notes in the array beyond or equal to the
+                // note in question, thereby removing it and keeping
+                // the array compact.
+                if (i < sizeof(arpNotes))
+                {
+                    arpNotes[i] = arpNotes[i + 1];
+                    arpVels[i] = arpVels[i + 1];
+                    arpNotes[i + 1] = '\0';
+                    //Serial.printf("%d - %d:%d\n", arpNotesHeld, arpNotes[i], arpNotes[i + 1]);
+                }
+            }
+        }
+    }
     groupvec[activeGroupIndex]->noteOff(note);
 }
 
@@ -1028,9 +1087,6 @@ void myControlChange(byte channel, byte control, byte value)
 
 FLASHMEM void myProgramChange(byte channel, byte program)
 {
-    // TODO This should check the MIDI channel?
-    // if(channel!=midiChannel)return;
-
     if (state == State::PERFORMANCEPAGE)
     {
         if (program < PERFORMANCES_LIMIT)
@@ -1054,29 +1110,33 @@ FLASHMEM void myProgramChange(byte channel, byte program)
     }
 }
 
+FLASHMEM void playNote(uint8_t note)
+{
+    myNoteOn(midiChannel, note, 90);
+    delay(300);
+    myNoteOff(midiChannel, note, 0);
+}
+
 FLASHMEM void setSeqTimerPeriod(float bpm)
 {
     currentSequence.bpm = bpm;
     currentSequence.tempo_us = 15'000'000 / bpm; // beats per bar microseconds
+    if (currentSequence.track_type == TrackType::ARP)
+        currentSequence.tempo_us = currentSequence.tempo_us * ARP_DIVISION[arp_division];
     sequencer_timer.setNextPeriod(currentSequence.tempo_us / 2);
 }
 
 FLASHMEM void sequencerStart(boolean cont = false)
 {
-    // midi_bpm_timer = 0;
-    // midi_bpm_counter = 0;
-    // _midi_bpm = -1;
     if (!cont)
     {
         currentSequence.step = 0;
-        currentSequence.chain_active_step = 0;
     }
 
     currentSequence.running = true;
 
     if (!seqMidiSync)
     {
-        // noteOnRoutine(); // First note sounds immediately
         sequencer_timer.start();
     }
 }
@@ -1089,7 +1149,6 @@ FLASHMEM void sequencerStop()
     currentSequence.recording = false;
     currentSequence.note_in = 0;
     // currentSequence.step = 0;
-    // currentSequence.chain_active_step = 0;
 }
 
 FLASHMEM void myMIDIClockContinue()
@@ -1549,10 +1608,54 @@ FLASHMEM void encoderCallback(unsigned enc_idx, int value, int delta)
             settings::save_current_value();
             break;
         case SeqTempo:
-            if (newDelta == 0 || currentSequence.bpm < 20.1 || currentSequence.bpm > 299.9)
+            if (newDelta == 0 || currentSequence.bpm + (newDelta / 10.0f) < 20.0f || currentSequence.bpm + (newDelta / 10.0f) > 300.0)
                 break;
             currentSequence.bpm += (newDelta / 10.0f);
             setSeqTimerPeriod(currentSequence.bpm);
+            setEncValue(SeqTempo, currentSequence.bpm, String(currentSequence.bpm));
+            break;
+        case SeqLength:
+            if (newDelta == 0 || currentSequence.length + newDelta < 1 || currentSequence.length + newDelta > 64)
+                break;
+            currentSequence.length += newDelta;
+            if (currentSeqPosition > currentSequence.length - 1)
+                currentSeqPosition = currentSequence.length - 1;
+            break;
+        case SeqPosition:
+            if (newDelta == 0 || currentSeqPosition + newDelta < 0 || currentSeqPosition + newDelta > currentSequence.length - 1)
+                break;
+            currentSeqPosition += newDelta;
+            break;
+        case SeqNote:
+            if (newDelta == 0 || currentSeqNote + newDelta < 0 || currentSeqNote + newDelta > 127)
+                break;
+            currentSeqNote += newDelta;
+            seqCurrentOctPos = nearbyint(currentSeqNote / 12) - 2;
+            break;
+        case ArpHold:
+            if (newDelta == 0 || arp_hold + newDelta < 0 || arp_hold + newDelta > 1)
+                break;
+            arp_hold += newDelta;
+            setEncValue(ArpHold, arp_hold, ONOFF[arp_hold]);
+            break;
+        case ArpPattern:
+            if (newDelta == 0 || arp_style + newDelta < 0 || arp_style + newDelta > 6)
+                break;
+            arp_style += newDelta;
+            setEncValue(ArpPattern, arp_style, ARP_STYLES[arp_style]);
+            break;
+        case ArpDivision:
+            if (newDelta == 0 || arp_division + newDelta < 0 || arp_division + newDelta > 3)
+                break;
+            arp_division += newDelta;
+            setSeqTimerPeriod(currentSequence.bpm);
+            setEncValue(ArpDivision, arp_division, ARP_DIVISION_STR[arp_division]);
+            break;
+        case ArpRange:
+            if (newDelta == 0 || arp_length + newDelta < 1 || arp_length + newDelta > 22)
+                break;
+            arp_length += newDelta;
+            setEncValue(ArpRange, arp_length, String(arp_length));
             break;
         default:
             // Serial.printf("enc[%u]: v=%d, d=%d\n", enc_idx, encMap[enc_idx].Value, newDelta);
@@ -1739,6 +1842,29 @@ FLASHMEM void encoderButtonCallback(unsigned enc_idx, int buttonState)
             currentSequence.bpm = 120.0f;
             setSeqTimerPeriod(currentSequence.bpm);
             break;
+        case SeqLength:
+            currentSequence.length = SEQ_PATTERN_LEN;
+            break;
+        case SeqPosition:
+            if (currentSeqPosition < currentSequence.length - 1)
+                currentSeqPosition++;
+            break;
+        case SeqNote:
+            if (currentSequence.Notes[currentSeqPosition] == 0 || currentSequence.Notes[currentSeqPosition] != currentSeqNote)
+            {
+                currentSequence.Notes[currentSeqPosition] = currentSeqNote;
+                playNote(currentSeqNote);
+            }
+            else
+            {
+                currentSequence.Notes[currentSeqPosition] = 0;
+            }
+            saveSequence();
+            break;
+        case ArpHold:
+            arp_hold = !arp_hold;
+            setEncValue(ArpHold, arp_hold, ONOFF[arp_hold]);
+            break;
         default:
             setDefaultValue(&encMap[enc_idx]);
             myControlChange(midiChannel, encMap[enc_idx].Parameter, encMap[enc_idx].Value);
@@ -1764,7 +1890,7 @@ FLASHMEM void buttonCallback(unsigned button_idx, int button)
       ButtonUp SR1 D7 1
       ButtonDown SR2 D7 0
     */
-
+    // Serial.println(button_idx);
     switch (button_idx)
     {
     case VOL_UP:
@@ -1875,9 +2001,13 @@ FLASHMEM void buttonCallback(unsigned button_idx, int button)
                 state = State::OSCMODPAGE1;
                 singleLED(RED, 2);
                 break;
-            case State::ARPPAGE:
-                state = State::MAIN;
-                singleLED(ledColour::OFF, 2);
+            case State::ARPPAGE1:
+                state = State::ARPPAGE2;
+                singleLED(ledColour::GREEN, 2);
+                break;
+            case State::ARPPAGE2:
+                state = State::ARPPAGE1;
+                singleLED(ledColour::GREEN, 2);
                 break;
             case State::PERFORMANCEPAGE:
                 state = State::MAIN;
@@ -1891,10 +2021,26 @@ FLASHMEM void buttonCallback(unsigned button_idx, int button)
         }
         if (button == HELD)
         {
-            if (state != State::ARPPAGE && state != State::OSCMODPAGE1 && state != State::OSCMODPAGE2 && state != State::OSCMODPAGE3 && state != State::OSCMODPAGE4)
+            if (state != State::ARPPAGE1 && state != State::ARPPAGE2 && state != State::OSCMODPAGE1 && state != State::OSCMODPAGE2 && state != State::OSCMODPAGE3 && state != State::OSCMODPAGE4)
             {
-                state = State::ARPPAGE;
+                if (!currentSequence.running)
+                {
+                    currentSequence.track_type = ARP;
+                    setSeqTimerPeriod(currentSequence.bpm);
+                    resetNotes();
+                    sequencerStart();
+                }
+                state = State::ARPPAGE1;
                 singleLED(GREEN, 2);
+            }
+            else if (state == State::ARPPAGE1 || state == State::ARPPAGE2)
+            {
+                if (currentSequence.running)
+                {
+                    sequencerStop();
+                    state = State::MAIN;
+                    singleLED(ledColour::OFF, 2);
+                }
             }
             else
             {
@@ -1919,8 +2065,14 @@ FLASHMEM void buttonCallback(unsigned button_idx, int button)
                 singleLED(RED, 3);
                 break;
             case State::SEQUENCEPAGE:
+            case State::SEQUENCERECALL:
                 state = State::MAIN;
                 singleLED(ledColour::OFF, 3);
+                break;
+            case State::SEQUENCEEDIT:
+                saveSequence();
+                state = State::SEQUENCERECALL;
+                singleLED(ledColour::GREEN, 3);
                 break;
             case State::RENAMESEQUENCE:
             case State::CHOOSECHARSEQUENCE:
@@ -1938,8 +2090,9 @@ FLASHMEM void buttonCallback(unsigned button_idx, int button)
         }
         if (button == HELD)
         {
-            if (state != State::SEQUENCERECALL && state != State::FILTERPAGE1 && state != State::FILTERPAGE2 && !currentSequence.running)
+            if (state != State::SEQUENCERECALL && state != State::SEQUENCEEDIT && state != State::FILTERPAGE1 && state != State::FILTERPAGE2 && !currentSequence.running)
             {
+                currentSequence.track_type = INSTRUMENT;
                 state = State::SEQUENCERECALL;
                 loadSequenceNames();
                 singleLED(GREEN, 3);
@@ -1948,6 +2101,12 @@ FLASHMEM void buttonCallback(unsigned button_idx, int button)
             {
                 state = State::SEQUENCEPAGE;
                 singleLED(GREEN, 3);
+            }
+            else if (state == State::SEQUENCEEDIT)
+            {
+                saveSequence();
+                state = State::SEQUENCERECALL;
+                singleLED(ledColour::GREEN, 3);
             }
             else
             {
@@ -2071,7 +2230,7 @@ FLASHMEM void buttonCallback(unsigned button_idx, int button)
                 // If Back button held, Panic - all notes off
                 silence();
                 flashLED(GREEN, 6, 250);
-                state = State::MAIN;
+                // state = State::MAIN;
             }
             else
             {
@@ -2279,15 +2438,17 @@ FLASHMEM void sequencerLEDs()
 {
     if (currentSequence.running && currentSequence.step != seq_last_step)
     {
+        // Serial.println(currentSequence.step);
         seq_last_step = currentSequence.step;
-        if (currentSequence.step < 8)
+        if (currentSequence.step % 16 < 8)
         {
-            singleLED(RED, currentSequence.step + 1);
+            seqLED(RED, currentSequence.step % 8 + 1);
         }
         else
         {
-            singleLED(GREEN, currentSequence.step - 7);
+            seqLED(GREEN, currentSequence.step % 8 + 1);
         }
+        // Ensure any stored LEDs are lit
     }
 }
 

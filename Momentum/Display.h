@@ -33,10 +33,15 @@
 #define FILTER_ENV 3
 #define AMP_ENV 4
 
+const uint8_t patternSpacerArray[64] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6};
+const uint8_t barSpacerArray[64] = {0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 6, 7, 7, 7, 7, 8, 8, 8, 8, 9, 9, 9, 9, 10, 10, 10, 10, 11, 11, 11, 11, 12, 12, 12, 12, 13, 13, 13, 13, 14, 14, 14, 14, 15, 15, 15, 15};
+const uint8_t noteArray[12 * 4] = {0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0};
+
 // https://trolsoft.ru/en/articles/rgb565-color-picker
 #define ILI9341_LIGHTBLUE 0x853E
 #define ILI9341_DARKRED 0x6000
 #define ILI9341_MIDGREY 0xB576
+#define ILI9341_DARKERGREY 0x31A6
 #define ILI9341_DARKYELLOW 0xB5C0
 
 ILI9341_t3n tft = ILI9341_t3n(cs, dc, rst, mosi, sclk, miso);
@@ -73,6 +78,84 @@ FLASHMEM void setMIDIClkSignal(bool val)
 FLASHMEM bool getMIDIClkSignal()
 {
   return MIDIClkSignal;
+}
+
+void renderKeyboard(int ypos, uint8_t octave)
+{
+  uint8_t offset[5] = {9, 8, 11, 9, 8}; //+ is up
+  int offcount = 0;
+  uint8_t oct_count = 0;
+  // uint8_t patternspacer = 0;
+  // uint8_t barspacer = 0;
+  uint8_t CHAR_height = 12;
+  tft.setTextColor(ILI9341_DARKYELLOW);
+  tft.setFont(Arial_11_Bold);
+  // draw piano keys
+  for (uint8_t y = 0; y < 14; y++)
+  {
+    tft.fillRect(0, ypos - CHAR_height - (y * 14), 30, 13, ILI9341_WHITE); // pianoroll white key
+    if (y == 0 || y == 7 || y == 14)
+    {
+      tft.setCursor(10, ypos - 11 - (y * 14));
+      tft.print("C");
+      tft.print(octave - 1 + oct_count);
+      oct_count++;
+    }
+  }
+  for (uint8_t y = 0; y < 23; y++)
+  {
+    if (noteArray[y] == 1)
+    {
+      tft.fillRect(0, ypos - (y * 8) - offset[offcount], 12, 8, ILI9341_BLACK); // BLACK key
+      offcount++;
+      if (offcount == 5)
+        offcount = 0;
+    }
+  }
+  // draw grid
+  for (uint8_t y = 0; y < 24; y++)
+  {
+    // patternspacer = 0;
+    // barspacer = 0;
+    for (uint8_t x = 0; x < 64; x++)
+    {
+      if (x < currentSequence.length)
+      {
+        uint16_t colour = ILI9341_DARKGREY;
+        if (noteArray[y] == 0)
+        {
+          colour = ILI9341_MIDGREY;
+        }
+        if (currentSequence.Notes[x] == (octave - 1 + oct_count) * 12 + y)
+        {
+          colour = ILI9341_WHITE;
+        }
+        if (currentSeqNote == (octave - 1 + oct_count) * 12 + y && currentSeqPosition == x)
+        {
+          colour = ILI9341_YELLOW;
+        }
+        tft.fillRect(40 + patternSpacerArray[x] + barSpacerArray[x] + x * 4, ypos + 6 - CHAR_height - (y * 8), 3, 6, colour); // GRID white key
+        // if ((x + 1) % 16 == 0)
+        //   patternspacer = patternspacer + 2;
+        // if ((x + 1) % 4 == 0)
+        //   barspacer = barspacer + 1;
+      }
+      else
+      {
+        tft.fillRect(40 + patternSpacerArray[x] + barSpacerArray[x] + x * 4, ypos + 6 - CHAR_height - (y * 8), 3, 6, ILI9341_DARKERGREY); // Unused keys
+        // if ((x + 1) % 16 == 0)
+        //   patternspacer = patternspacer + 2;
+        // if ((x + 1) % 4 == 0)
+        //   barspacer = barspacer + 1;
+      }
+    }
+  }
+  if (currentSequence.running)
+  {
+    tft.drawFastVLine(40 + patternSpacerArray[currentSequence.step] + barSpacerArray[currentSequence.step] +
+                          (currentSequence.step * 4),
+                      24, 200, ILI9341_ORANGE);
+  }
 }
 
 FLASHMEM void renderBootUpPage()
@@ -157,8 +240,19 @@ FLASHMEM void renderMidiClk()
   tft.setFont(Arial_10_Bold);
   if (MIDIClkSignal)
   {
-    tft.fillRect(94, 75, 30, 15, ILI9341_LIGHTGREY);
-    tft.drawString(F("CLK"), 109, 77);
+    tft.fillRect(94, 57, 30, 15, ILI9341_LIGHTGREY);
+    tft.drawString(F("CLK"), 109, 59);
+  }
+}
+
+FLASHMEM void renderArpIndicator()
+{
+  tft.setTextColor(ILI9341_BLACK);
+  tft.setFont(Arial_10_Bold);
+  if (currentSequence.running && currentSequence.track_type == ARP)
+  {
+    tft.fillRect(94, 73, 30, 15, ILI9341_DARKGREEN);
+    tft.drawString(F("ARP"), 109, 76);
   }
 }
 
@@ -177,6 +271,7 @@ FLASHMEM void renderPageIndicator(uint8_t pages, uint8_t current)
   }
 }
 
+// Prints sysmbols for waveforms from custom font
 FLASHMEM void renderWaveformSymbol(uint8_t waveform)
 {
 
@@ -234,7 +329,7 @@ FLASHMEM void renderCorners()
     tft.setTextColor(encTriColour[ENC_TL]);
     tft.setTextDatum(TL_DATUM);
     tft.setFont(Arial_13);
-    tft.drawString(encMap[ENC_TL].ParameterStr, 14, 7);
+    tft.drawString(encMap[ENC_TL].ParameterStr, 14, 4);
     if (encMap[ENC_TL].ShowValue)
     {
       tft.setFont(Arial_16);
@@ -252,7 +347,7 @@ FLASHMEM void renderCorners()
     tft.setTextColor(encTriColour[ENC_TR]);
     tft.setTextDatum(TR_DATUM);
     tft.setFont(Arial_13);
-    tft.drawString(encMap[ENC_TR].ParameterStr, 303, 7);
+    tft.drawString(encMap[ENC_TR].ParameterStr, 303, 4);
     if (encMap[ENC_TR].ShowValue)
     {
       tft.setFont(Arial_16);
@@ -270,7 +365,7 @@ FLASHMEM void renderCorners()
     tft.setTextDatum(TR_DATUM);
     tft.setTextColor(encTriColour[ENC_BR]);
     tft.setFont(Arial_13);
-    tft.drawString(encMap[ENC_BR].ParameterStr, 303, 220);
+    tft.drawString(encMap[ENC_BR].ParameterStr, 303, 224);
     if (encMap[ENC_BR].ShowValue)
     {
       tft.setFont(Arial_16);
@@ -289,7 +384,7 @@ FLASHMEM void renderCorners()
     tft.setTextDatum(TL_DATUM);
     tft.setTextColor(encTriColour[ENC_BL]);
     tft.setFont(Arial_13);
-    tft.drawString(encMap[ENC_BL].ParameterStr, 14, 220);
+    tft.drawString(encMap[ENC_BL].ParameterStr, 15, 224);
     if (encMap[ENC_BL].ShowValue)
     {
       tft.setFont(Arial_16);
@@ -473,6 +568,8 @@ FLASHMEM void renderCurrentParameterOverlay()
 
 FLASHMEM void renderPatchName()
 {
+  tft.setFont(Arial_16);
+  tft.setTextColor(ILI9341_YELLOW);
   tft.setTextDatum(TL_DATUM);
   switch (currentPatchIndex)
   {
@@ -500,6 +597,38 @@ FLASHMEM void renderPatchName()
   {
     tft.drawString(F("NO SD CARD"), 160, 94);
   }
+}
+
+FLASHMEM void renderSeqTempo()
+{
+  tft.setFont(Arial_13);
+  tft.setTextColor(ILI9341_WHITE);
+  tft.setTextDatum(TL_DATUM);
+  tft.drawString(currentSequence.bpm, 80, 5);
+}
+
+FLASHMEM void renderSeqLength()
+{
+  tft.setFont(Arial_13);
+  tft.setTextColor(ILI9341_LIGHTBLUE);
+  tft.setTextDatum(TR_DATUM);
+  tft.drawString(SEQPOSSTR[currentSequence.length - 1] + " " + String(currentSequence.length), 242, 5);
+}
+
+FLASHMEM void renderSeqNote()
+{
+  tft.setFont(Arial_13);
+  tft.setTextColor(ILI9341_YELLOW);
+  tft.setTextDatum(BR_DATUM);
+  tft.drawString(NOTENAME[currentSeqNote], 250, 230);
+}
+
+FLASHMEM void renderSeqPosition()
+{
+  tft.setFont(Arial_13);
+  tft.setTextColor(ILI9341_ORANGE);
+  tft.setTextDatum(BL_DATUM);
+  tft.drawString(SEQPOSSTR[currentSeqPosition] + " " + String(currentSeqPosition + 1), 85, 230);
 }
 
 FLASHMEM void renderDeletePatchPage()
@@ -991,6 +1120,17 @@ FLASHMEM void renderFXPage()
   renderCorners();
 }
 
+FLASHMEM void renderSequencerEditPage()
+{
+  tft.fillScreen(ILI9341_BLACK);
+  renderCorners();
+  renderKeyboard(217, seqCurrentOctPos);
+  renderSeqTempo();
+  renderSeqLength();
+  renderSeqNote();
+  renderSeqPosition();
+}
+
 FLASHMEM void renderSequencerPage()
 {
   tft.fillScreen(ILI9341_BLACK);
@@ -998,18 +1138,12 @@ FLASHMEM void renderSequencerPage()
   tft.setTextColor(ILI9341_YELLOW);
   tft.setTextDatum(TC_DATUM);
   tft.drawString(currentSequence.SequenceName, 160, 19);
-  tft.drawFastHLine(10, 42, tft.width() - 20, ILI9341_RED);
   renderPatchName();
   renderMidiClk();
   renderPeak();
   renderCorners();
   renderMIDI();
   renderVoiceGrid();
-  tft.setFont(Arial_13);
-  tft.setTextColor(ILI9341_WHITE);
-  tft.setTextDatum(TL_DATUM);
-  tft.drawString(currentSequence.bpm, 25, 50);
-  tft.drawString(F("bpm"), 80, 50);
 }
 
 FLASHMEM void renderSequenceRecallPage()
@@ -1060,24 +1194,25 @@ FLASHMEM void renderMIDIPage()
   renderCorners();
 }
 
-FLASHMEM void renderArpPage()
+FLASHMEM void renderArpPage(uint8_t no)
 {
   tft.fillScreen(ILI9341_BLACK);
-  tft.setFont(Arial_16);
-  tft.setTextColor(ILI9341_YELLOW);
-  tft.setTextDatum(TC_DATUM);
-  tft.drawString("Arpeggiator", 160, 19);
-  tft.drawFastHLine(10, 42, tft.width() - 20, ILI9341_RED);
+  renderPatchName();
+  renderMidiClk();
+  renderArpIndicator();
+  renderPeak();
   renderCorners();
+  renderMIDI();
+  renderVoiceGrid();
+  renderPageIndicator(2, no);
 }
 
 FLASHMEM void renderMainPage()
 {
   tft.fillScreen(ILI9341_BLACK);
-  tft.setFont(Arial_16);
-  tft.setTextColor(ILI9341_YELLOW);
   renderPatchName();
   renderMidiClk();
+  renderArpIndicator();
   renderPeak();
   renderCorners();
   renderMIDI();
@@ -1479,8 +1614,14 @@ void displayThread()
       case SEQUENCERECALL:
         renderSequenceRecallPage();
         break;
-      case State::ARPPAGE:
-        renderArpPage();
+      case SEQUENCEEDIT:
+        renderSequencerEditPage();
+        break;
+      case State::ARPPAGE1:
+        renderArpPage(1);
+        break;
+      case State::ARPPAGE2:
+        renderArpPage(2);
         break;
       case State::MIDIPAGE:
         renderMIDIPage();

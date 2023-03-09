@@ -99,6 +99,13 @@ FLASHMEM void assignStrings()
     ParameterStrMap[SeqSelect] = "Sequence";
     ParameterStrMap[SeqTempo] = "Tempo";
     ParameterStrMap[SeqStartStop] = "Start/Stop";
+    ParameterStrMap[SeqNote] = "Note";
+    ParameterStrMap[SeqPosition] = "Position";
+    ParameterStrMap[SeqLength] = "Length";
+    ParameterStrMap[ArpDivision] = "Division";
+    ParameterStrMap[ArpPattern] = "Style";
+    ParameterStrMap[ArpRange] = "Range";
+    ParameterStrMap[ArpHold] = "Hold";
     ParameterStrMap[noencoder] = "None";
 }
 

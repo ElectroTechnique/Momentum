@@ -789,7 +789,7 @@ FLASHMEM void configureCCkeytracking(EncoderMappingStruct *enc, State st = State
     enc->Parameter = CCkeytracking;
     enc->ShowValue = true;
     enc->Value = currentPatch.KeyTracking;
-    enc->Value = 63;
+    enc->DefaultValue = 63;
     enc->ValueStr = String(LINEAR[currentPatch.KeyTracking]);
     enc->Range = 127;
     enc->ParameterStr = ParameterStrMap[CCkeytracking];
@@ -1485,13 +1485,96 @@ FLASHMEM void setEncodersState(State s)
         encMap[ENC_BR].Push = false;
         break;
 
-    case State::ARPPAGE:
-        encMap[ENC_TL].active = false;
-        encMap[ENC_TR].active = false;
-        encMap[ENC_BL].active = false;
-        encMap[ENC_BR].active = false;
-        break;
+    case State::ARPPAGE1:
+        encMap[ENC_TL].active = true;
+        encMap[ENC_TL].Parameter = SeqTempo;
+        encMap[ENC_TL].ShowValue = true;
+        encMap[ENC_TL].ValueStr = String(currentSequence.bpm);
+        encMap[ENC_TL].Value = currentSequence.bpm;
+        encMap[ENC_TL].Range = 255;
+        encMap[ENC_TL].DefaultValue = 120;
+        encMap[ENC_TL].ParameterStr = ParameterStrMap[SeqTempo];
+        encMap[ENC_TL].Push = true;
+        encMap[ENC_TL].PushAction = State::ARPPAGE1;
 
+        encMap[ENC_TR].active = true;
+        encMap[ENC_TR].Parameter = ArpPattern; // Style
+        encMap[ENC_TR].ShowValue = true;
+        encMap[ENC_TR].Value = arp_style;
+        encMap[ENC_TR].ValueStr = ARP_STYLES[arp_style];
+        encMap[ENC_TR].Range = 6;
+        encMap[ENC_TR].DefaultValue = 0;
+        encMap[ENC_TR].ParameterStr = ParameterStrMap[ArpPattern];
+        encMap[ENC_TR].Push = true;
+        encMap[ENC_TR].PushAction = State::ARPPAGE1;
+
+        encMap[ENC_BL].active = true;
+        encMap[ENC_BL].Parameter = ArpDivision; // Sixteenth, Eighth...
+        encMap[ENC_BL].ShowValue = true;
+        encMap[ENC_BL].ValueStr = ARP_DIVISION_STR[arp_division];
+        encMap[ENC_BL].Value = arp_division;
+        encMap[ENC_BL].Range = 3;
+        encMap[ENC_BL].DefaultValue = 1;
+        encMap[ENC_BL].ParameterStr = ParameterStrMap[ArpDivision];
+        encMap[ENC_BL].Push = true;
+        encMap[ENC_BL].PushAction = State::ARPPAGE1;
+
+        encMap[ENC_BR].active = true;
+        encMap[ENC_BR].Parameter = ArpHold;
+        encMap[ENC_BR].ShowValue = true;
+        encMap[ENC_BR].ValueStr = ONOFF[arp_hold];
+        encMap[ENC_BR].Value = arp_hold;
+        encMap[ENC_BR].Range = 1;
+        encMap[ENC_BR].DefaultValue = 0;
+        encMap[ENC_BR].ParameterStr = ParameterStrMap[ArpHold];
+        encMap[ENC_BR].Push = true;
+        encMap[ENC_BR].PushAction = State::ARPPAGE1;
+        break;
+    case State::ARPPAGE2:
+        encMap[ENC_TL].active = true;
+        encMap[ENC_TL].Parameter = SeqTempo;
+        encMap[ENC_TL].ShowValue = true;
+        encMap[ENC_TL].ValueStr = String(currentSequence.bpm);
+        encMap[ENC_TL].Value = currentSequence.bpm;
+        encMap[ENC_TL].Range = 255;
+        encMap[ENC_TL].DefaultValue = 120;
+        encMap[ENC_TL].ParameterStr = ParameterStrMap[SeqTempo];
+        encMap[ENC_TL].Push = true;
+        encMap[ENC_TL].PushAction = State::ARPPAGE2;
+
+        encMap[ENC_TR].active = true;
+        encMap[ENC_TR].Parameter = ArpPattern; // Style
+        encMap[ENC_TR].ShowValue = true;
+        encMap[ENC_TR].Value = arp_style;
+        encMap[ENC_TR].ValueStr = ARP_STYLES[arp_style];
+        encMap[ENC_TR].Range = 3;
+        encMap[ENC_TR].DefaultValue = 0;
+        encMap[ENC_TR].ParameterStr = ParameterStrMap[ArpPattern];
+        encMap[ENC_TR].Push = true;
+        encMap[ENC_TR].PushAction = State::ARPPAGE2;
+
+        encMap[ENC_BL].active = true;
+        encMap[ENC_BL].Parameter = ArpDivision; // Sixteenth, Eighth...
+        encMap[ENC_BL].ShowValue = true;
+        encMap[ENC_BL].ValueStr = ARP_DIVISION_STR[arp_division];
+        encMap[ENC_BL].Value = arp_division;
+        encMap[ENC_BL].Range = 2;
+        encMap[ENC_BL].DefaultValue = 0;
+        encMap[ENC_BL].ParameterStr = ParameterStrMap[ArpDivision];
+        encMap[ENC_BL].Push = true;
+        encMap[ENC_BL].PushAction = State::ARPPAGE2;
+
+        encMap[ENC_BR].active = true;
+        encMap[ENC_BR].Parameter = ArpRange;
+        encMap[ENC_BR].ShowValue = true;
+        encMap[ENC_BR].ValueStr = String(arp_length);
+        encMap[ENC_BR].Value = arp_length;
+        encMap[ENC_BR].Range = 22;
+        encMap[ENC_BR].DefaultValue = 8;
+        encMap[ENC_BR].ParameterStr = ParameterStrMap[ArpRange];
+        encMap[ENC_BR].Push = true;
+        encMap[ENC_BR].PushAction = State::ARPPAGE2;
+        break;
     case State::SEQUENCERECALL:
         encMap[ENC_TL].active = true;
         encMap[ENC_TL].Parameter = SeqEdit;
@@ -1527,9 +1610,9 @@ FLASHMEM void setEncodersState(State s)
     case State::SEQUENCEPAGE:
         encMap[ENC_TL].active = true;
         encMap[ENC_TL].Parameter = SeqTempo;
-        encMap[ENC_TL].ShowValue = false;
-        encMap[ENC_TL].ValueStr = "";
-        encMap[ENC_TL].Value = 0;
+        encMap[ENC_TL].ShowValue = true;
+        encMap[ENC_TL].ValueStr = String(currentSequence.bpm);
+        encMap[ENC_TL].Value = currentSequence.bpm;
         encMap[ENC_TL].Range = 255;
         encMap[ENC_TL].DefaultValue = 120;
         encMap[ENC_TL].ParameterStr = ParameterStrMap[SeqTempo];
@@ -1557,6 +1640,49 @@ FLASHMEM void setEncodersState(State s)
         encMap[ENC_BL].PushAction = State::SEQUENCEPAGE;
 
         encMap[ENC_BR].active = false;
+        break;
+
+    case State::SEQUENCEEDIT:
+        encMap[ENC_TL].active = true;
+        encMap[ENC_TL].Parameter = SeqTempo;
+        encMap[ENC_TL].ShowValue = false; // value is shown in a different position
+        encMap[ENC_TL].ValueStr = String(currentSequence.bpm);
+        encMap[ENC_TL].Value = currentSequence.bpm;
+        encMap[ENC_TL].Range = 255;
+        encMap[ENC_TL].DefaultValue = 120;
+        encMap[ENC_TL].ParameterStr = ParameterStrMap[SeqTempo];
+        encMap[ENC_TL].Push = true;
+        encMap[ENC_TL].PushAction = State::SEQUENCEEDIT;
+
+        encMap[ENC_TR].active = true;
+        encMap[ENC_TR].Parameter = SeqLength;
+        encMap[ENC_TR].ShowValue = false; // value is shown in a different position
+        encMap[ENC_TR].Value = currentSequence.length - 1;
+        encMap[ENC_TR].Range = 63;
+        encMap[ENC_TR].ValueStr = SEQPOSSTR[currentSequence.length - 1];
+        encMap[ENC_TR].ParameterStr = ParameterStrMap[SeqLength];
+        encMap[ENC_TR].Push = true;
+        encMap[ENC_TR].PushAction = State::SEQUENCEEDIT;
+
+        encMap[ENC_BL].active = true;
+        encMap[ENC_BL].Parameter = SeqPosition;
+        encMap[ENC_BL].ShowValue = false; // value is shown in a different position
+        encMap[ENC_BL].ValueStr = "";
+        encMap[ENC_BL].Value = 0;
+        encMap[ENC_BL].Range = 0;
+        encMap[ENC_BL].ParameterStr = ParameterStrMap[SeqPosition];
+        encMap[ENC_BL].Push = true;
+        encMap[ENC_BL].PushAction = State::SEQUENCEEDIT;
+
+        encMap[ENC_BR].active = true;
+        encMap[ENC_BR].Parameter = SeqNote;
+        encMap[ENC_BR].ShowValue = false; // value is shown in a different position
+        encMap[ENC_BR].ValueStr = "";
+        encMap[ENC_BR].Value = 0;
+        encMap[ENC_BR].Range = 0;
+        encMap[ENC_BR].ParameterStr = ParameterStrMap[SeqNote];
+        encMap[ENC_BR].Push = true;
+        encMap[ENC_BR].PushAction = State::SEQUENCEEDIT;
         break;
     case State::EDITBANK:
         encMap[ENC_TL].active = false;

@@ -132,6 +132,15 @@ void shiftOutX(uint8_t dataPinR, uint8_t dataPinG, uint8_t clockPin, uint8_t bit
 // ledNo starts at 1
 void singleLED(ledColour color, int8_t ledNo)
 {
+  if (color == ledColour::RED)
+  {
+    currentRLEDs = ledNo;
+  }
+  else
+  {
+    currentGLEDs = ledNo;
+  }
+
   digitalWrite(latchPin, LOW);
   switch (color)
   {
@@ -150,6 +159,12 @@ void singleLED(ledColour color, int8_t ledNo)
     break;
   }
   digitalWrite(latchPin, HIGH);
+}
+
+// ledNo starts at 1
+void seqLED(ledColour color, int8_t ledNo)
+{
+  singleLED(color, ledNo);
 }
 
 void flashLED(ledColour color, int8_t ledNo, int duration)

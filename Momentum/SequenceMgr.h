@@ -69,8 +69,8 @@ typedef enum ArpStyle
 } ArpStyle;
 
 extern void myNoteOff(byte channel, byte note, byte velocity);
-extern void myNoteOffSeq(byte channel, byte note, byte velocity);
-extern void myNoteOnSeq(byte channel, byte note, byte velocity);
+extern void noteOff(byte channel, byte note, byte velocity);
+extern void noteOn(byte channel, byte note, byte velocity);
 
 uint8_t currentSeqPosition = 0; // 1.1.1
 uint8_t currentSeqNote = 60;    // C3
@@ -78,6 +78,7 @@ uint8_t seqCurrentOctPos = 3;   // C3
 
 boolean arpUp = false;
 uint8_t playBeat = 0;
+uint8_t previousArpNote = 0;
 uint8_t arp_style = UP;
 boolean arp_hold = false;
 byte arpNotes[12] = {'\0'};
@@ -95,7 +96,7 @@ const static char *ONOFF[2] = {"Off", "On"};
 // a new arpeggio is started, or when the reset button is pushed.
 FLASHMEM void resetNotes()
 {
-    for (int i = 0; i < sizeof(arpNotes); i++)
+    for (uint8_t i = 0; i < sizeof(arpNotes); i++)
         arpNotes[i] = '\0';
 }
 
@@ -434,21 +435,17 @@ FLASHMEM void noteOnRoutine()
 {
     if (currentSequence.track_type == ARP)
     {
-        if ((arp_hold || arpNotesHeld > 0) && arpNotes[0] != '\0')
+        if (arp_hold || arpNotesHeld > 0)
         {
-            // fixes a bug where a random note would sometimes get played when switching chords
-            if (arpNotes[playBeat] == '\0')
-                playBeat = 0;
+            if (arpNotes[playBeat] != '\0')
+                // play the current note
+                noteOn(midiChannel, arpNotes[playBeat], arpVels[playBeat]);
 
-            // play the current note
-            myNoteOnSeq(midiChannel, arpNotes[playBeat], arpVels[playBeat]);
+            previousArpNote = arpNotes[playBeat];
 
             // decide what the next note is based on the mode.
             switch (arp_style)
             {
-            case UP:
-                up();
-                break;
             case DOWN:
                 down();
                 break;
@@ -467,7 +464,9 @@ FLASHMEM void noteOnRoutine()
             case RANDOMPLAY:
                 randomPlay();
                 break;
+            case UP:
             default:
+                up();
                 break;
             }
         }
@@ -495,7 +494,7 @@ FLASHMEM void noteOnRoutine()
                 // 130 signifies latched note
                 if (currentSequence.Notes[currentSequence.step] != 130)
                 {
-                    myNoteOnSeq(midiChannel, currentSequence.Notes[currentSequence.step], currentSequence.Velocities[currentSequence.step]);
+                    noteOn(midiChannel, currentSequence.Notes[currentSequence.step], currentSequence.Velocities[currentSequence.step]);
                     currentSequence.prev_note = currentSequence.Notes[currentSequence.step];
                     currentSequence.prev_vel = currentSequence.Velocities[currentSequence.step];
                 }
@@ -509,7 +508,7 @@ FLASHMEM void noteOnRoutine()
 
                     for (uint8_t x = currentSequence.element_shift; x < currentSequence.element_shift + currentSequence.chord_key_amount; x++) // play chord notes
                     {
-                        myNoteOnSeq(midiChannel, currentSequence.Notes[currentSequence.step] + (currentSequence.oct_shift * 12) + chords[currentSequence.Velocities[currentSequence.step] - 200][x], currentSequence.chord_velocity);
+                        noteOn(midiChannel, currentSequence.Notes[currentSequence.step] + (currentSequence.oct_shift * 12) + chords[currentSequence.Velocities[currentSequence.step] - 200][x], currentSequence.chord_velocity);
                     }
                     currentSequence.prev_note = currentSequence.Notes[currentSequence.step] + (currentSequence.oct_shift * 12);
                     currentSequence.prev_vel = currentSequence.Velocities[currentSequence.step];
@@ -527,9 +526,10 @@ FLASHMEM void noteOnRoutine()
 
 FLASHMEM void noteOffRoutine()
 {
-    if (currentSequence.track_type == TrackType::ARP && arpNotesHeld != 0)
+    if (currentSequence.track_type == TrackType::ARP && currentSequence.running)
     {
-        myNoteOffSeq(midiChannel, arpNotes[playBeat], 0);
+        // Turn off previous note
+        noteOff(midiChannel, previousArpNote, 0);
     }
     else
     {

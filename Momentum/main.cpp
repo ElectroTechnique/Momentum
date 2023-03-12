@@ -256,12 +256,15 @@ FLASHMEM void setup()
 }
 
 // Specifically for Sequencer, bypassing recording note in and arp
-void myNoteOnSeq(byte channel, byte note, byte velocity)
+FLASHMEM void noteOn(byte channel, byte note, byte velocity)
 {
+    // Check for out of range notes. Less than 20Hz isn't really audible
+    if (note + groupvec[activeGroupIndex]->params().oscPitchA < 10 || note + groupvec[activeGroupIndex]->params().oscPitchA > 127 || note + groupvec[activeGroupIndex]->params().oscPitchB < 10 || note + groupvec[activeGroupIndex]->params().oscPitchB > 127)
+        return;
     groupvec[activeGroupIndex]->noteOn(note, velocity);
 }
 
-void myNoteOn(byte channel, byte note, byte velocity)
+FLASHMEM void myNoteOn(byte channel, byte note, byte velocity)
 {
     if (currentSequence.track_type == TrackType::ARP && currentSequence.running)
     {
@@ -271,10 +274,11 @@ void myNoteOn(byte channel, byte note, byte velocity)
         if (arpNotesHeld == 0 && arp_hold)
             resetNotes();
 
-        arpNotesHeld++;
+        if (arpNotesHeld < sizeof(arpNotes))
+            arpNotesHeld++;
 
         // find the right place to insert the note in the notes array
-        for (int i = 0; i < sizeof(arpNotes); i++)
+        for (uint8_t i = 0; i < sizeof(arpNotes); i++)
         {
             if (arpNotes[i] == note)
                 return; // already in arpeggio
@@ -283,9 +287,9 @@ void myNoteOn(byte channel, byte note, byte velocity)
             else
             {
                 // once we reach the first note in the arpeggio that's higher
-                // than the new one, scoot the rest of the arpeggio array over
+                // than the new one, move the rest of the arpeggio array over
                 // to the right
-                for (int j = sizeof(arpNotes) - 1; j > i; j--)
+                for (uint8_t j = sizeof(arpNotes) - 1; j > i; j--)
                 {
                     arpNotes[j] = arpNotes[j - 1];
                     arpVels[j] = arpVels[j - 1];
@@ -306,24 +310,24 @@ void myNoteOn(byte channel, byte note, byte velocity)
             currentSequence.note_in_velocity = velocity;
         }
 
-        // Check for out of range notes. Less than 20Hz isn't really audible
-        if (note + groupvec[activeGroupIndex]->params().oscPitchA < 10 || note + groupvec[activeGroupIndex]->params().oscPitchA > 127 || note + groupvec[activeGroupIndex]->params().oscPitchB < 10 || note + groupvec[activeGroupIndex]->params().oscPitchB > 127)
-            return;
-        groupvec[activeGroupIndex]->noteOn(note, velocity);
+        noteOn(midiChannel, note, velocity);
     }
 }
 
-void myNoteOffSeq(byte channel, byte note, byte velocity)
+FLASHMEM void noteOff(byte channel, byte note, byte velocity)
 {
     groupvec[activeGroupIndex]->noteOff(note);
 }
 
-void myNoteOff(byte channel, byte note, byte velocity)
+FLASHMEM void myNoteOff(byte channel, byte note, byte velocity)
 {
     if (currentSequence.track_type == TrackType::ARP && currentSequence.running)
     {
-        arpNotesHeld--;
-        for (uint8_t i = 0; i < sizeof(arpNotes); i++)
+        if (arpNotesHeld > 0)
+            arpNotesHeld--;
+
+        arpNotes[sizeof(arpNotes) - 1] = '\0';
+        for (uint8_t i = 0; i < sizeof(arpNotes) - 1; i++)
         {
             // note released
             if (!arp_hold && arpNotes[i] >= note)
@@ -331,17 +335,12 @@ void myNoteOff(byte channel, byte note, byte velocity)
                 // shift all notes in the array beyond or equal to the
                 // note in question, thereby removing it and keeping
                 // the array compact.
-                if (i < sizeof(arpNotes))
-                {
-                    arpNotes[i] = arpNotes[i + 1];
-                    arpVels[i] = arpVels[i + 1];
-                    arpNotes[i + 1] = '\0';
-                    //Serial.printf("%d - %d:%d\n", arpNotesHeld, arpNotes[i], arpNotes[i + 1]);
-                }
+                arpNotes[i] = arpNotes[i + 1];
+                arpVels[i] = arpVels[i + 1];
             }
         }
     }
-    groupvec[activeGroupIndex]->noteOff(note);
+    noteOff(channel, note, velocity);
 }
 
 FLASHMEM void updatePatchnameAndIndex(String name, uint32_t index, uint32_t UID)
@@ -352,13 +351,13 @@ FLASHMEM void updatePatchnameAndIndex(String name, uint32_t index, uint32_t UID)
     setPatchNoAndNameForDisp(String(index), name);
 }
 
-void myPitchBend(byte channel, int bend)
+FLASHMEM void myPitchBend(byte channel, int bend)
 {
     groupvec[activeGroupIndex]->pitchBend(bend * currentPatch.PitchBend * DIV12xDIV8192);
 }
 
 // MIDI CC
-void myControlChange(byte channel, byte control, byte value)
+FLASHMEM void myControlChange(byte channel, byte control, byte value)
 {
     // Serial.printf("Ch:%u: cc=%d, v=%d\n", channel, control, value);
     switch (control)

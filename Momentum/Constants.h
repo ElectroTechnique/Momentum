@@ -65,7 +65,7 @@
 #define SeqPitch 180
 #define SeqPosition 181
 #define SeqLength 182
-#define ArpPattern 183
+#define ArpStyle 183
 #define ArpDivision 184
 #define ArpRange 185
 #define ArpHold 186

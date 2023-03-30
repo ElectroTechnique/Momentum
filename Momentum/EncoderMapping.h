@@ -875,7 +875,7 @@ FLASHMEM void configurepitchbendrange(EncoderMappingStruct *enc, State st = Stat
     enc->Value = currentPatch.PitchBend;
     enc->DefaultValue = 12;
     enc->ValueStr = String(currentPatch.PitchBend);
-    enc->Range = 11;
+    enc->Range = 12;
     enc->ParameterStr = ParameterStrMap[pitchbendrange];
     enc->Push = true;
     enc->PushAction = st;
@@ -1498,13 +1498,13 @@ FLASHMEM void setEncodersState(State s)
         encMap[ENC_TL].PushAction = State::ARPPAGE1;
 
         encMap[ENC_TR].active = true;
-        encMap[ENC_TR].Parameter = ArpPattern; // Style
+        encMap[ENC_TR].Parameter = ArpStyle; // Style
         encMap[ENC_TR].ShowValue = true;
-        encMap[ENC_TR].Value = arp_style;
-        encMap[ENC_TR].ValueStr = ARP_STYLES[arp_style];
+        encMap[ENC_TR].Value = arpStyle;
+        encMap[ENC_TR].ValueStr = ARP_STYLES[arpStyle];
         encMap[ENC_TR].Range = 6;
         encMap[ENC_TR].DefaultValue = 0;
-        encMap[ENC_TR].ParameterStr = ParameterStrMap[ArpPattern];
+        encMap[ENC_TR].ParameterStr = ParameterStrMap[ArpStyle];
         encMap[ENC_TR].Push = true;
         encMap[ENC_TR].PushAction = State::ARPPAGE1;
 
@@ -1513,7 +1513,7 @@ FLASHMEM void setEncodersState(State s)
         encMap[ENC_BL].ShowValue = true;
         encMap[ENC_BL].ValueStr = ARP_DIVISION_STR[arp_division];
         encMap[ENC_BL].Value = arp_division;
-        encMap[ENC_BL].Range = 3;
+        encMap[ENC_BL].Range = 9;
         encMap[ENC_BL].DefaultValue = 1;
         encMap[ENC_BL].ParameterStr = ParameterStrMap[ArpDivision];
         encMap[ENC_BL].Push = true;
@@ -1532,24 +1532,24 @@ FLASHMEM void setEncodersState(State s)
         break;
     case State::ARPPAGE2:
         encMap[ENC_TL].active = true;
-        encMap[ENC_TL].Parameter = SeqTempo;
+        encMap[ENC_TL].Parameter = ArpRange;
         encMap[ENC_TL].ShowValue = true;
-        encMap[ENC_TL].ValueStr = String(currentSequence.bpm);
-        encMap[ENC_TL].Value = currentSequence.bpm;
-        encMap[ENC_TL].Range = 255;
-        encMap[ENC_TL].DefaultValue = 120;
-        encMap[ENC_TL].ParameterStr = ParameterStrMap[SeqTempo];
+        encMap[ENC_TL].ValueStr = ARP_RANGE_STR[arpRange];
+        encMap[ENC_TL].Value = arpRange;
+        encMap[ENC_TL].Range = 6;
+        encMap[ENC_TL].DefaultValue = 3;
+        encMap[ENC_TL].ParameterStr = ParameterStrMap[ArpRange];
         encMap[ENC_TL].Push = true;
         encMap[ENC_TL].PushAction = State::ARPPAGE2;
 
         encMap[ENC_TR].active = true;
-        encMap[ENC_TR].Parameter = ArpPattern; // Style
+        encMap[ENC_TR].Parameter = ArpStyle; // Style
         encMap[ENC_TR].ShowValue = true;
-        encMap[ENC_TR].Value = arp_style;
-        encMap[ENC_TR].ValueStr = ARP_STYLES[arp_style];
-        encMap[ENC_TR].Range = 3;
+        encMap[ENC_TR].Value = arpStyle;
+        encMap[ENC_TR].ValueStr = ARP_STYLES[arpStyle];
+        encMap[ENC_TR].Range = 4;
         encMap[ENC_TR].DefaultValue = 0;
-        encMap[ENC_TR].ParameterStr = ParameterStrMap[ArpPattern];
+        encMap[ENC_TR].ParameterStr = ParameterStrMap[ArpStyle];
         encMap[ENC_TR].Push = true;
         encMap[ENC_TR].PushAction = State::ARPPAGE2;
 
@@ -1558,20 +1558,20 @@ FLASHMEM void setEncodersState(State s)
         encMap[ENC_BL].ShowValue = true;
         encMap[ENC_BL].ValueStr = ARP_DIVISION_STR[arp_division];
         encMap[ENC_BL].Value = arp_division;
-        encMap[ENC_BL].Range = 2;
+        encMap[ENC_BL].Range = 3;
         encMap[ENC_BL].DefaultValue = 0;
         encMap[ENC_BL].ParameterStr = ParameterStrMap[ArpDivision];
         encMap[ENC_BL].Push = true;
         encMap[ENC_BL].PushAction = State::ARPPAGE2;
 
         encMap[ENC_BR].active = true;
-        encMap[ENC_BR].Parameter = ArpRange;
+        encMap[ENC_BR].Parameter = ArpHold;
         encMap[ENC_BR].ShowValue = true;
-        encMap[ENC_BR].ValueStr = String(arp_length);
-        encMap[ENC_BR].Value = arp_length;
-        encMap[ENC_BR].Range = 22;
-        encMap[ENC_BR].DefaultValue = 8;
-        encMap[ENC_BR].ParameterStr = ParameterStrMap[ArpRange];
+        encMap[ENC_BR].ValueStr = ONOFF[arp_hold];
+        encMap[ENC_BR].Value = arp_hold;
+        encMap[ENC_BR].Range = 1;
+        encMap[ENC_BR].DefaultValue = 0;
+        encMap[ENC_BR].ParameterStr = ParameterStrMap[ArpHold];
         encMap[ENC_BR].Push = true;
         encMap[ENC_BR].PushAction = State::ARPPAGE2;
         break;
@@ -1757,6 +1757,46 @@ FLASHMEM void setEncodersState(State s)
         encMap[ENC_BR].ParameterStr = ParameterStrMap[savebank];
         encMap[ENC_BR].Push = true;
         encMap[ENC_BR].PushAction = State::MAIN;
+        break;
+
+    case State::RENAMESEQUENCE:
+        encMap[ENC_TL].active = true;
+        encMap[ENC_TL].Parameter = deleteCharacterSequence;
+        encMap[ENC_TL].ShowValue = false;
+        encMap[ENC_TL].Value = 0;
+        encMap[ENC_TL].Range = 0;
+        encMap[ENC_TL].ValueStr = "";
+        encMap[ENC_TL].ParameterStr = ParameterStrMap[deleteCharacterSequence];
+        encMap[ENC_TL].Push = true;
+        encMap[ENC_TL].PushAction = State::DELETECHARSEQUENCE;
+
+        encMap[ENC_TR].active = true;
+        encMap[ENC_TR].Parameter = cancel;
+        encMap[ENC_TR].ShowValue = false;
+        encMap[ENC_TR].Value = 0;
+        encMap[ENC_TR].Range = 0;
+        encMap[ENC_TR].ValueStr = "";
+        encMap[ENC_TR].ParameterStr = ParameterStrMap[cancel];
+        encMap[ENC_TR].Push = true;
+        encMap[ENC_TR].PushAction = State::MAIN;
+
+        encMap[ENC_BL].active = true;
+        encMap[ENC_BL].Parameter = choosecharacterSequence;
+        encMap[ENC_BL].ShowValue = false;
+        encMap[ENC_BL].Value = 0;
+        encMap[ENC_BL].Range = TOTALCHARS;
+        encMap[ENC_BL].ValueStr = "";
+        encMap[ENC_BL].ParameterStr = ParameterStrMap[choosecharacterSequence];
+        encMap[ENC_BL].Push = true;
+        encMap[ENC_BL].PushAction = State::CHOOSECHARSEQUENCE;
+
+        encMap[ENC_BR].active = false;
+        // encMap[ENC_BR].Parameter = savebank;
+        // encMap[ENC_BR].ShowValue = false;
+        // encMap[ENC_BR].ValueStr = "";
+        // encMap[ENC_BR].ParameterStr = ParameterStrMap[savebank];
+        // encMap[ENC_BR].Push = true;
+        // encMap[ENC_BR].PushAction = State::MAIN;
         break;
     default:
         break;

@@ -154,7 +154,7 @@ void renderKeyboard(int ypos, uint8_t octave)
   {
     tft.drawFastVLine(40 + patternSpacerArray[currentSequence.step] + barSpacerArray[currentSequence.step] +
                           (currentSequence.step * 4),
-                      24, 200, ILI9341_ORANGE);
+                      24, 197, ILI9341_ORANGE);
   }
 }
 
@@ -249,7 +249,7 @@ FLASHMEM void renderArpIndicator()
 {
   tft.setTextColor(ILI9341_BLACK);
   tft.setFont(Arial_10_Bold);
-  if (currentSequence.running && currentSequence.track_type == ARP)
+  if (arpRunning)
   {
     tft.fillRect(94, 73, 30, 15, ILI9341_DARKGREEN);
     tft.drawString(F("ARP"), 109, 76);
@@ -870,6 +870,60 @@ FLASHMEM void renderBankNamingPage()
   }
 
   tft.setFont(Arial_14);
+  tft.setTextColor(ILI9341_LIGHTGREY);
+  int row = 0;
+  int start = 0;
+  for (int i = 0; i < TOTALCHARS; i++)
+  {
+    i % 20 != 0 ? row : row++;
+    i % 20 != 0 ? start++ : start = 0;
+    charCursor == i ? tft.setTextColor(ILI9341_WHITE) : tft.setTextColor(ILI9341_MIDGREY);
+    if (i == 26 || i == 53)
+    {
+      tft.drawString('_', 19 + start * 15, 90 + row * 22);
+    }
+    else
+    {
+      tft.drawString(CHARACTERS[i], 19 + start * 15, 90 + row * 22);
+    }
+  }
+  renderCorners();
+}
+
+FLASHMEM void renderSequencerNamingPage()
+{
+  tft.fillScreen(ILI9341_BLACK);
+  tft.setFont(Arial_16);
+  tft.setTextColor(ILI9341_YELLOW);
+  tft.setTextDatum(TC_DATUM);
+  tft.drawString(F("Sequence Name"), 160, 26);
+  tft.drawFastHLine(10, 49, tft.width() - 20, ILI9341_RED);
+  tft.setTextColor(ILI9341_RED);
+  tft.setTextDatum(TL_DATUM);
+  tft.setCursor(19, 70);
+  if (currentSequence.SequenceName.length() > 0)
+  {
+    for (uint8_t i = 0; i < currentSequence.SequenceName.length(); i++)
+    {
+      if (i == nameCursor)
+      {
+        tft.setTextColor(ILI9341_ORANGE);
+        currentSequence.SequenceName.charAt(i) == 32 ? tft.drawFontChar(95) : tft.drawFontChar(currentSequence.SequenceName.charAt(i)); // Show selected space as underscore
+      }
+      else
+      {
+        tft.setTextColor(ILI9341_RED);
+        tft.drawFontChar(currentSequence.SequenceName.charAt(i));
+      }
+    }
+  }
+  else
+  {
+    tft.drawFontChar(95); // Underscore to show start of empty performance name
+  }
+
+  tft.setTextSize(2);
+  tft.setFont(&FreeMono9pt7b);
   tft.setTextColor(ILI9341_LIGHTGREY);
   int row = 0;
   int start = 0;
@@ -1616,6 +1670,9 @@ void displayThread()
         break;
       case SEQUENCEEDIT:
         renderSequencerEditPage();
+        break;
+      case RENAMESEQUENCE:
+        renderSequencerNamingPage();
         break;
       case State::ARPPAGE1:
         renderArpPage(1);

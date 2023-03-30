@@ -124,6 +124,7 @@ FLASHMEM void myMIDIClock();
 FLASHMEM void myMIDIClockContinue();
 FLASHMEM void myMIDIClockStart();
 FLASHMEM void myMIDIClockStop();
+FLASHMEM void sequencerStart(boolean cont = false);
 
 void midiCCOut(byte cc, byte value);
 void encoderCallback(unsigned enc_idx, int value, int delta);
@@ -137,8 +138,9 @@ boolean firstPatchLoaded = false;
 
 uint32_t previousMillis = millis(); // For MIDI Clk Sync
 
-uint32_t midiClkCount = 0; // For MIDI Clk Sync
-int voiceToReturn = -1;    // Initialise
+uint32_t midiClkCount = 0;    // For MIDI Clk Sync
+uint32_t midiClkArpCount = 0; // For MIDI Clk Sync with Arp
+int voiceToReturn = -1;       // Initialise
 
 uint8_t seq_last_step = 0;
 
@@ -247,6 +249,10 @@ FLASHMEM void setup()
     // Read global tuning from EEPROM
     tuningCents = getTuningCents();
     tuningCentsFrac = 1.0f + (tuningCents * CENTSFRAC);
+    // Read arpeggiator settings from EEPROM
+    arp_division = getArpDivision();
+    arpRange = getArpRange();
+    arpStyle = getArpStyle();
 
     assignStrings();
     assignParametersForPerformanceEncoders();
@@ -266,16 +272,24 @@ FLASHMEM void noteOn(byte channel, byte note, byte velocity)
 
 FLASHMEM void myNoteOn(byte channel, byte note, byte velocity)
 {
-    if (currentSequence.track_type == TrackType::ARP && currentSequence.running)
+    if (arpRunning)
     {
         // If it's in hold mode and you are not holding any notes down,
         // it continues to play the previous arpeggio. Once you press
         // a new note, it resets the arpeggio and starts a new one.
-        if (arpNotesHeld == 0 && arp_hold)
+        // Also resets arpeggio from starting note.
+        if (arpNotesHeld == 0)
+        {
             resetNotes();
+        }
 
-        if (arpNotesHeld < sizeof(arpNotes))
+        if (arpNotesHeld < sizeof(arpNotes) - 1)
             arpNotesHeld++;
+        else
+            return;
+
+        if (seqMidiSync && arpNotesHeld == 0)
+            midiClkArpCount = 0;
 
         // find the right place to insert the note in the notes array
         for (uint8_t i = 0; i < sizeof(arpNotes); i++)
@@ -321,7 +335,7 @@ FLASHMEM void noteOff(byte channel, byte note, byte velocity)
 
 FLASHMEM void myNoteOff(byte channel, byte note, byte velocity)
 {
-    if (currentSequence.track_type == TrackType::ARP && currentSequence.running)
+    if (arpRunning)
     {
         if (arpNotesHeld > 0)
             arpNotesHeld--;
@@ -1120,8 +1134,8 @@ FLASHMEM void setSeqTimerPeriod(float bpm)
 {
     currentSequence.bpm = bpm;
     currentSequence.tempo_us = 15'000'000 / bpm; // beats per bar microseconds
-    if (currentSequence.track_type == TrackType::ARP)
-        currentSequence.tempo_us = currentSequence.tempo_us * ARP_DIVISION[arp_division];
+    if (arpRunning)
+        currentSequence.tempo_us = currentSequence.tempo_us * (ARP_DIVISION_24PPQ[arp_division] / 6.0f);
     sequencer_timer.setNextPeriod(currentSequence.tempo_us / 2);
 }
 
@@ -1160,11 +1174,17 @@ FLASHMEM void myMIDIClockContinue()
 
 FLASHMEM void myMIDIClockStart()
 {
-    if (!currentSequence.running && !seqMidiSync)
+    if ((!currentSequence.running && !seqMidiSync) || arpRunning)
         seqMidiSync = true;
     midiClkCount = 0;
     if (state == State::SEQUENCEPAGE && seqMidiSync)
         sequencerStart();
+    else if (arpRunning)
+    {
+        sequencer_timer.stop();
+        midiClkArpCount = 0;
+        seqSwapper = true;
+    }
     // Resync LFOs when MIDI Clock starts.
     // When there's a jump to a different
     // part of a track, such as in a DAW, the DAW must have same
@@ -1177,8 +1197,11 @@ FLASHMEM void myMIDIClockStart()
 
 FLASHMEM void myMIDIClockStop()
 {
-    if (seqMidiSync)
-        sequencerStop();
+    if (seqMidiSync && arp_hold)
+    {
+        groupvec[activeGroupIndex]->allNotesOff();
+        resetNotes();
+    }
     seqMidiSync = false;
     setMIDIClkSignal(false);
 }
@@ -1186,10 +1209,29 @@ FLASHMEM void myMIDIClockStop()
 FLASHMEM void myMIDIClock()
 {
     // 24ppq
-    if (seqMidiSync && currentSequence.running && (midiClkCount + 1) % 3 == 0)
+    if ((seqMidiSync && currentSequence.running && (midiClkCount + 11) % 3 == 0))
     {
         sequencer();
     }
+
+    if (seqMidiSync && arpRunning)
+    {
+        if (midiClkArpCount == 0 && seqSwapper)
+        {
+            noteOnRoutine();
+        }
+        else if (midiClkArpCount == (ARP_DIVISION_24PPQ[arp_division] - 2) && !seqSwapper)
+        {
+            noteOffRoutine();
+            Serial.printf("%d: %d", midiClkArpCount, ARP_DIVISION_24PPQ[arp_division]);
+        }
+
+        if ((midiClkArpCount + 1) == ARP_DIVISION_24PPQ[arp_division])
+            midiClkArpCount = 0;
+        else
+            midiClkArpCount++;
+    }
+
     // This recalculates the LFO frequencies if the tempo changes (MIDI cLock is 24ppq)
     if (++midiClkCount > 23)
     {
@@ -1635,26 +1677,31 @@ FLASHMEM void encoderCallback(unsigned enc_idx, int value, int delta)
             if (newDelta == 0 || arp_hold + newDelta < 0 || arp_hold + newDelta > 1)
                 break;
             arp_hold += newDelta;
+            if (!arp_hold)
+                resetNotes();
             setEncValue(ArpHold, arp_hold, ONOFF[arp_hold]);
             break;
-        case ArpPattern:
-            if (newDelta == 0 || arp_style + newDelta < 0 || arp_style + newDelta > 6)
+        case ArpStyle:
+            if (newDelta == 0 || arpStyle + newDelta < 0 || arpStyle + newDelta > 4)
                 break;
-            arp_style += newDelta;
-            setEncValue(ArpPattern, arp_style, ARP_STYLES[arp_style]);
+            arpStyle += newDelta;
+            storeArpStyleToEEPROM(arpStyle);
+            setEncValue(ArpStyle, arpStyle, ARP_STYLES[arpStyle]);
             break;
         case ArpDivision:
-            if (newDelta == 0 || arp_division + newDelta < 0 || arp_division + newDelta > 3)
+            if (newDelta == 0 || arp_division + newDelta < 0 || arp_division + newDelta > 9)
                 break;
             arp_division += newDelta;
             setSeqTimerPeriod(currentSequence.bpm);
+            storeArpDivisionToEEPROM(arp_division);
             setEncValue(ArpDivision, arp_division, ARP_DIVISION_STR[arp_division]);
             break;
         case ArpRange:
-            if (newDelta == 0 || arp_length + newDelta < 1 || arp_length + newDelta > 22)
+            if (newDelta == 0 || arpRange + newDelta < 0 || arpRange + newDelta > 6)
                 break;
-            arp_length += newDelta;
-            setEncValue(ArpRange, arp_length, String(arp_length));
+            arpRange += newDelta;
+            storeArpRangeToEEPROM(arpRange);
+            setEncValue(ArpRange, arpRange, ARP_RANGE_STR[arpRange]);
             break;
         default:
             // Serial.printf("enc[%u]: v=%d, d=%d\n", enc_idx, encMap[enc_idx].Value, newDelta);
@@ -1862,6 +1909,8 @@ FLASHMEM void encoderButtonCallback(unsigned enc_idx, int buttonState)
             break;
         case ArpHold:
             arp_hold = !arp_hold;
+            if (!arp_hold)
+                resetNotes();
             setEncValue(ArpHold, arp_hold, ONOFF[arp_hold]);
             break;
         default:
@@ -2020,11 +2069,13 @@ FLASHMEM void buttonCallback(unsigned button_idx, int button)
         }
         if (button == HELD)
         {
-            if (state != State::ARPPAGE1 && state != State::ARPPAGE2 && state != State::OSCMODPAGE1 && state != State::OSCMODPAGE2 && state != State::OSCMODPAGE3 && state != State::OSCMODPAGE4)
+            if (state != State::ARPPAGE1 && state != State::ARPPAGE2 &&
+                state != State::OSCMODPAGE1 && state != State::OSCMODPAGE2 &&
+                state != State::OSCMODPAGE3 && state != State::OSCMODPAGE4)
             {
-                if (!currentSequence.running)
+                if (!arpRunning)
                 {
-                    currentSequence.track_type = ARP;
+                    arpRunning = true;
                     setSeqTimerPeriod(currentSequence.bpm);
                     resetNotes();
                     sequencerStart();
@@ -2034,8 +2085,9 @@ FLASHMEM void buttonCallback(unsigned button_idx, int button)
             }
             else if (state == State::ARPPAGE1 || state == State::ARPPAGE2)
             {
-                if (currentSequence.running)
+                if (arpRunning)
                 {
+                    arpRunning = false;
                     sequencerStop();
                     state = State::MAIN;
                     singleLED(ledColour::OFF, 2);
@@ -2070,7 +2122,7 @@ FLASHMEM void buttonCallback(unsigned button_idx, int button)
                 break;
             case State::SEQUENCEEDIT:
                 saveSequence();
-                state = State::SEQUENCERECALL;
+                state = State::RENAMESEQUENCE;
                 singleLED(ledColour::GREEN, 3);
                 break;
             case State::RENAMESEQUENCE:
@@ -2091,7 +2143,6 @@ FLASHMEM void buttonCallback(unsigned button_idx, int button)
         {
             if (state != State::SEQUENCERECALL && state != State::SEQUENCEEDIT && state != State::FILTERPAGE1 && state != State::FILTERPAGE2 && !currentSequence.running)
             {
-                currentSequence.track_type = INSTRUMENT;
                 state = State::SEQUENCERECALL;
                 loadSequenceNames();
                 singleLED(GREEN, 3);

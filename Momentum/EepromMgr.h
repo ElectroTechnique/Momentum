@@ -10,6 +10,10 @@
 #define EEPROM_LAST_PATCH 7
 #define EEPROM_TUNING 8
 #define EEPROM_FIRST_RUN 9
+#define EEPROM_ARP_TEMPO 10
+#define EEPROM_ARP_STYLE 11
+#define EEPROM_ARP_RANGE 12
+#define EEPROM_ARP_DIVISION 13
 
 FLASHMEM int8_t getFirstRun()
 {
@@ -144,6 +148,45 @@ FLASHMEM void storeTuning(byte tuning)
   EEPROM.update(EEPROM_TUNING, tuning + 50); // zero is stored as 50, +/-50cents
 }
 
+FLASHMEM int8_t getArpStyle()
+{
+  byte p = EEPROM.read(EEPROM_ARP_STYLE);
+  if (p < 0 || p > 127)
+    return 0;
+  return p;
+}
+
+FLASHMEM void storeArpRangeToEEPROM(byte range)
+{
+  EEPROM.update(EEPROM_ARP_RANGE, range);
+}
+
+FLASHMEM int8_t getArpRange()
+{
+  byte p = EEPROM.read(EEPROM_ARP_RANGE);
+  if (p < 0 || p > 127)
+    return 0;
+  return p;
+}
+
+FLASHMEM void storeArpDivisionToEEPROM(byte div)
+{
+  EEPROM.update(EEPROM_ARP_DIVISION, div);
+}
+
+FLASHMEM int8_t getArpDivision()
+{
+  byte p = EEPROM.read(EEPROM_ARP_DIVISION);
+  if (p < 0 || p > 127)
+    return 0;
+  return p;
+}
+
+FLASHMEM void storeArpStyleToEEPROM(byte style)
+{
+  EEPROM.update(EEPROM_ARP_STYLE, style);
+}
+
 FLASHMEM void checkFirstRun()
 {
   if (!getFirstRun())
@@ -159,6 +202,9 @@ FLASHMEM void checkFirstRun()
     storeVUEnable(0);
     storeVolumeToEEPROM(currentVolume);
     storeScopeEnable(0);
+    storeArpDivisionToEEPROM(1);
+    storeArpRangeToEEPROM(3);
+    storeArpStyleToEEPROM(0);
     storeFirstRun();
   }
 }

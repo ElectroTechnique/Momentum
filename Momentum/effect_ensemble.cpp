@@ -264,7 +264,7 @@ int16_t AudioEffectEnsemble::interpBuffer(float findex)
   // check if next sample index needs to be wrapped.
   index2=index1+1;
   if(index2>(ENSEMBLE_BUFFER_SIZE-1)) index2-=ENSEMBLE_BUFFER_SIZE;
-  else if(index<0) index2+=ENSEMBLE_BUFFER_SIZE;
+  else if(index < (unsigned char*) 0) index2+=ENSEMBLE_BUFFER_SIZE;
   
   // calculate interpolated value from delay buffer.
   y0=(float)delayBuffer[index1];

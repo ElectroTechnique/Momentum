@@ -69,6 +69,7 @@ volatile boolean cardStatus = false;
 volatile boolean sdCardInterrupt = false;
 boolean usbHostPluggedIn = false;
 elapsedMillis usb_host_wait_timer;
+boolean MIDIClkSignal = false;
 
 State state = State::MAIN;
 
@@ -250,9 +251,13 @@ FLASHMEM void setup()
     tuningCents = getTuningCents();
     tuningCentsFrac = 1.0f + (tuningCents * CENTSFRAC);
     // Read arpeggiator settings from EEPROM
-    arp_division = getArpDivision();
+    arpDivision = getArpDivision();
     arpRange = getArpRange();
     arpStyle = getArpStyle();
+    arpCycles = getArpCycles();
+    if (arpCycles == ARP_HOLD)
+        arpHold = true;
+    arpBasis = getArpBasis();
 
     assignStrings();
     assignParametersForPerformanceEncoders();
@@ -279,9 +284,7 @@ FLASHMEM void myNoteOn(byte channel, byte note, byte velocity)
         // a new note, it resets the arpeggio and starts a new one.
         // Also resets arpeggio from starting note.
         if (arpNotesHeld == 0)
-        {
             resetNotes();
-        }
 
         if (arpNotesHeld < sizeof(arpNotes) - 1)
             arpNotesHeld++;
@@ -344,7 +347,7 @@ FLASHMEM void myNoteOff(byte channel, byte note, byte velocity)
         for (uint8_t i = 0; i < sizeof(arpNotes) - 1; i++)
         {
             // note released
-            if (!arp_hold && arpNotes[i] >= note)
+            if (!arpHold && arpNotes[i] >= note)
             {
                 // shift all notes in the array beyond or equal to the
                 // note in question, thereby removing it and keeping
@@ -1135,7 +1138,7 @@ FLASHMEM void setSeqTimerPeriod(float bpm)
     currentSequence.bpm = bpm;
     currentSequence.tempo_us = 15'000'000 / bpm; // beats per bar microseconds
     if (arpRunning)
-        currentSequence.tempo_us = currentSequence.tempo_us * (ARP_DIVISION_24PPQ[arp_division] / 6.0f);
+        currentSequence.tempo_us = currentSequence.tempo_us * (ARP_DIVISION_24PPQ[arpDivision] / 6.0f);
     sequencer_timer.setNextPeriod(currentSequence.tempo_us / 2);
 }
 
@@ -1192,22 +1195,23 @@ FLASHMEM void myMIDIClockStart()
 
     // TODO: Apply to all groupvec[activeGroupIndex]-> Maybe check channel?
     groupvec[activeGroupIndex]->midiClockStart();
-    setMIDIClkSignal(true);
+    MIDIClkSignal = true;
 }
 
 FLASHMEM void myMIDIClockStop()
 {
-    if (seqMidiSync && arp_hold)
+    if (seqMidiSync && arpHold)
     {
         groupvec[activeGroupIndex]->allNotesOff();
         resetNotes();
     }
     seqMidiSync = false;
-    setMIDIClkSignal(false);
+    MIDIClkSignal = false;
 }
 
 FLASHMEM void myMIDIClock()
 {
+    MIDIClkSignal = true;
     // 24ppq
     if ((seqMidiSync && currentSequence.running && (midiClkCount + 11) % 3 == 0))
     {
@@ -1220,13 +1224,13 @@ FLASHMEM void myMIDIClock()
         {
             noteOnRoutine();
         }
-        else if (midiClkArpCount == (ARP_DIVISION_24PPQ[arp_division] - 2) && !seqSwapper)
+        else if (midiClkArpCount == (ARP_DIVISION_24PPQ[arpDivision] - 2) && !seqSwapper)
         {
             noteOffRoutine();
-            Serial.printf("%d: %d", midiClkArpCount, ARP_DIVISION_24PPQ[arp_division]);
+            Serial.printf("%d: %d", midiClkArpCount, ARP_DIVISION_24PPQ[arpDivision]);
         }
 
-        if ((midiClkArpCount + 1) == ARP_DIVISION_24PPQ[arp_division])
+        if ((midiClkArpCount + 1) == ARP_DIVISION_24PPQ[arpDivision])
             midiClkArpCount = 0;
         else
             midiClkArpCount++;
@@ -1673,13 +1677,19 @@ FLASHMEM void encoderCallback(unsigned enc_idx, int value, int delta)
             currentSeqNote += newDelta;
             seqCurrentOctPos = nearbyint(currentSeqNote / 12) - 2;
             break;
-        case ArpHold:
-            if (newDelta == 0 || arp_hold + newDelta < 0 || arp_hold + newDelta > 1)
+        case ArpCycle:
+            if (newDelta == 0 || arpCycles + newDelta < ARP_INF || arpCycles + newDelta > ARP_HOLD)
                 break;
-            arp_hold += newDelta;
-            if (!arp_hold)
+            arpCycles += newDelta;
+            if (arpCycles != ARP_HOLD)
+            {
                 resetNotes();
-            setEncValue(ArpHold, arp_hold, ONOFF[arp_hold]);
+                arpHold = false;
+            }
+            else
+                arpHold = true;
+            storeArpCyclesToEEPROM(arpCycles);
+            setEncValue(ArpCycle, arpCycles, ARP_CYCLES[arpCycles]);
             break;
         case ArpStyle:
             if (newDelta == 0 || arpStyle + newDelta < 0 || arpStyle + newDelta > 4)
@@ -1689,12 +1699,12 @@ FLASHMEM void encoderCallback(unsigned enc_idx, int value, int delta)
             setEncValue(ArpStyle, arpStyle, ARP_STYLES[arpStyle]);
             break;
         case ArpDivision:
-            if (newDelta == 0 || arp_division + newDelta < 0 || arp_division + newDelta > 9)
+            if (newDelta == 0 || arpDivision + newDelta < 0 || arpDivision + newDelta > 9)
                 break;
-            arp_division += newDelta;
+            arpDivision += newDelta;
             setSeqTimerPeriod(currentSequence.bpm);
-            storeArpDivisionToEEPROM(arp_division);
-            setEncValue(ArpDivision, arp_division, ARP_DIVISION_STR[arp_division]);
+            storeArpDivisionToEEPROM(arpDivision);
+            setEncValue(ArpDivision, arpDivision, ARP_DIVISION_STR[arpDivision]);
             break;
         case ArpRange:
             if (newDelta == 0 || arpRange + newDelta < 0 || arpRange + newDelta > 6)
@@ -1702,6 +1712,13 @@ FLASHMEM void encoderCallback(unsigned enc_idx, int value, int delta)
             arpRange += newDelta;
             storeArpRangeToEEPROM(arpRange);
             setEncValue(ArpRange, arpRange, ARP_RANGE_STR[arpRange]);
+            break;
+        case ArpBasis:
+            if (newDelta == 0 || arpBasis + newDelta < 0 || arpBasis + newDelta > 4)
+                break;
+            arpBasis += newDelta;
+            storeArpRangeToEEPROM(arpBasis);
+            setEncValue(ArpBasis, arpBasis, ARP_BASIS_STR[arpBasis]);
             break;
         default:
             // Serial.printf("enc[%u]: v=%d, d=%d\n", enc_idx, encMap[enc_idx].Value, newDelta);
@@ -1907,11 +1924,15 @@ FLASHMEM void encoderButtonCallback(unsigned enc_idx, int buttonState)
             }
             saveSequence();
             break;
-        case ArpHold:
-            arp_hold = !arp_hold;
-            if (!arp_hold)
+        case ArpCycle:
+            arpHold = !arpHold;
+            if (!arpHold)
+            {
                 resetNotes();
-            setEncValue(ArpHold, arp_hold, ONOFF[arp_hold]);
+                arpCycles = ARP_INF;
+            }
+            else
+                arpCycles = ARP_HOLD;
             break;
         default:
             setDefaultValue(&encMap[enc_idx]);

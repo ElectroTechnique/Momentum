@@ -14,6 +14,8 @@
 #define EEPROM_ARP_STYLE 11
 #define EEPROM_ARP_RANGE 12
 #define EEPROM_ARP_DIVISION 13
+#define EEPROM_ARP_CYCLES 14
+#define EEPROM_ARP_BASIS 15
 
 FLASHMEM int8_t getFirstRun()
 {
@@ -182,6 +184,32 @@ FLASHMEM int8_t getArpDivision()
   return p;
 }
 
+FLASHMEM void storeArpCyclesToEEPROM(byte c)
+{
+  EEPROM.update(EEPROM_ARP_CYCLES, c);
+}
+
+FLASHMEM int8_t getArpCycles()
+{
+  byte p = EEPROM.read(EEPROM_ARP_CYCLES);
+  if (p < 0 || p > 127)
+    return 0;
+  return p;
+}
+
+FLASHMEM void storeArpBasisToEEPROM(byte c)
+{
+  EEPROM.update(EEPROM_ARP_BASIS, c);
+}
+
+FLASHMEM int8_t getArpBasis()
+{
+  byte p = EEPROM.read(EEPROM_ARP_BASIS);
+  if (p < 0 || p > 127)
+    return 0;
+  return p;
+}
+
 FLASHMEM void storeArpStyleToEEPROM(byte style)
 {
   EEPROM.update(EEPROM_ARP_STYLE, style);
@@ -203,8 +231,10 @@ FLASHMEM void checkFirstRun()
     storeVolumeToEEPROM(currentVolume);
     storeScopeEnable(0);
     storeArpDivisionToEEPROM(1);
+    storeArpCyclesToEEPROM(0);
     storeArpRangeToEEPROM(3);
     storeArpStyleToEEPROM(0);
+    storeArpBasisToEEPROM(2);
     storeFirstRun();
   }
 }

@@ -1,7 +1,11 @@
 /*
 This code is taken from:
 
-   MicroDexed - https://codeberg.org/positionhigh/MicroDexed-touch
+    MicroDexed - https://codeberg.org/positionhigh/MicroDexed-touch
+   and
+    https://github.com/wbajzek/arduino-arpeggiator/blob/master/arpeggiator.ino
+
+        *** Heavily modified by Electrotechnique 2023 ***
 
    MicroDexed is a port of the Dexed sound engine
    (https://github.com/asb2m10/dexed) for the Teensy-3.5/3.6/4.x with audio shield.
@@ -21,13 +25,6 @@ This code is taken from:
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software Foundation,
    Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301  USA
-
-   Modified by Electrotechnique 2023
-
-Note value  Significance
-130         Held
-
-https://github.com/wbajzek/arduino-arpeggiator/blob/master/arpeggiator.ino
 */
 
 // Janelia Array available in libraries manager
@@ -38,6 +35,8 @@ https://github.com/wbajzek/arduino-arpeggiator/blob/master/arpeggiator.ino
 #include "Parameters.h"
 
 #define SEQ_PATTERN_LEN 64
+#define ARP_INF 0
+#define ARP_HOLD 4
 
 typedef enum ArpStyles
 {
@@ -62,22 +61,29 @@ boolean arpUp = true;
 uint8_t playBeat = 0;
 uint8_t previousArpNote = 0;
 uint8_t arpStyle = UP;
-boolean arp_hold = false;
+boolean arpHold = false;
+boolean arpStarted = false;
+uint8_t arpCycles = 0;
+uint8_t arpCycleCount = 0;
 byte arpNotes[12] = {'\0'};
 byte arpVels[12];
 uint8_t arpNotesHeld = 0;
-uint8_t arp_division = 1;
+uint8_t arpDivision = 1;
 uint8_t arpRange = 3;
+uint8_t arpBasis = 2;
 uint8_t bounceArpRange = 3;
 int8_t currentArpOct = 0;
+int8_t arpPlayCount = 0;
 boolean upDownExtraNote = false;
 
-const static char *ARP_STYLES[5] = {"Up", "Down", "Bounce", "Up Down", "Random"};
+const static char *ARP_STYLES[5] = {"Up", "Down", "Bounce", "Up & Down", "Random"};
+const static char *ARP_CYCLES[5] = {"Inf", "1", "2", "3", "Hold"};
 const static char *ARP_DIVISION_STR[10] = {"1/32", "1/24", "1/16", "1/12", "1/8", "1/6", "1/4", "1/3", "1/2", "1"};
 const static uint8_t ARP_DIVISION_24PPQ[10] = {3, 4, 6, 8, 12, 16, 24, 32, 48, 96};
-const static char *ONOFF[2] = {"Off", "On"};
-const static char *ARP_RANGE_STR[7] = {"4 Down", "3 Down", "2 Down", "Base", "2 Up", "3 Up", "4 Up"};
+const static char *ARP_RANGE_STR[7] = {"4 Oct Down", "3 Oct Down", "2 Oct Down", "Base Oct", "2 Oct Up", "3 Oct Up", "4 Oct Up"};
 const static int8_t ARP_RANGE[7] = {-3, -2, -1, 0, 1, 2, 3};
+const static char *ARP_BASIS_STR[5] = {"-2 Oct", "-1 Oct", "Base Oct", "1 Oct", "2 Oct"};
+const static int8_t ARP_BASIS[5] = {-2, -1, 0, 1, 2};
 
 // empties out the arpeggio. used when switching modes, when in hold mode and
 // a new arpeggio is started, or when the reset button is pushed.
@@ -85,15 +91,23 @@ FLASHMEM void resetNotes()
 {
     playBeat = 0;
     currentArpOct = 0;
+    arpCycleCount = 0;
     bounceArpRange = arpRange;
     upDownExtraNote = false;
-    if ((arpStyle == BOUNCE || arpStyle == UPDOWN) && ARP_RANGE[arpRange] < 0)
-        arpUp = false;
-    else
-        arpUp = true;
+    arpPlayCount = 0;
+    arpStarted = false;
 
     for (uint8_t i = 0; i < sizeof(arpNotes); i++)
         arpNotes[i] = '\0';
+
+    if ((arpStyle == BOUNCE || arpStyle == UPDOWN) && ARP_RANGE[arpRange] < 0)
+    {
+        arpUp = false;
+    }
+    else
+    {
+        arpUp = true;
+    }
 }
 
 FLASHMEM uint8_t getNotesInArp()
@@ -119,7 +133,9 @@ FLASHMEM void up()
         else if (ARP_RANGE[arpRange] < 0 && currentArpOct > ARP_RANGE[arpRange])
             currentArpOct--;
         else
+        {
             currentArpOct = 0;
+        }
     }
 }
 
@@ -138,7 +154,9 @@ FLASHMEM void down()
         else if (ARP_RANGE[arpRange] < 0 && currentArpOct > ARP_RANGE[arpRange])
             currentArpOct--;
         else
+        {
             currentArpOct = 0;
+        }
     }
     else
         playBeat--;
@@ -258,7 +276,6 @@ FLASHMEM void upDown()
 
 FLASHMEM void bounce()
 {
-
     if (ARP_RANGE[bounceArpRange] == 0 && getNotesInArp() == 1)
     {
         // Special case - one note, base range
@@ -553,38 +570,82 @@ FLASHMEM void noteOnRoutine()
 {
     if (arpRunning)
     {
-        if ((arp_hold && getNotesInArp() > 0) || arpNotesHeld > 0)
+        if ((arpHold && getNotesInArp() > 0) || arpNotesHeld > 0)
         {
+            // Serial.printf("arpCycleCount:%d  arpPlayCount:%d Target:%d\n", arpCycleCount, arpPlayCount, 2 * (abs(ARP_RANGE[bounceArpRange]) + 1 * getNotesInArp()));
+            if (arpCycles != ARP_HOLD && arpCycles != ARP_INF && arpCycleCount == arpCycles)
+            {
+                return;
+            }
             if (arpNotes[playBeat] != '\0')
             {
-                noteOn(midiChannel, arpNotes[playBeat] + (currentArpOct * 12), arpVels[playBeat]);
-                previousArpNote = arpNotes[playBeat] + (currentArpOct * 12);
+                if (!arpStarted)
+                {
+                    arpStarted = true;
+
+                    if (((arpStyle == BOUNCE || arpStyle == UPDOWN) && ARP_RANGE[bounceArpRange] < 0) ||
+                        arpStyle == DOWN)
+                        playBeat = getNotesInArp() - 1;
+                }
+
+                arpPlayCount++;
+
+                // Calling here to ensure first note played is random
+                if (arpStyle == RANDOMPLAY)
+                    randomPlay();
+                noteOn(midiChannel, arpNotes[playBeat] + (currentArpOct * 12) + (ARP_BASIS[arpBasis] * 12), arpVels[playBeat]);
+                previousArpNote = arpNotes[playBeat] + (currentArpOct * 12) + (ARP_BASIS[arpBasis] * 12);
             }
             // Serial.printf("%d:%d %d  held:%d\n", currentArpOct, playBeat, arpUp, arpNotesHeld);
             //    decide what the next note is based on the mode.
             switch (arpStyle)
             {
+            case UP:
+                up();
+                if ((abs(ARP_RANGE[arpRange]) + 1) * getNotesInArp() == arpPlayCount)
+                {
+                    arpCycleCount++;
+                    arpPlayCount = 0;
+                }
+                break;
             case DOWN:
                 down();
+                if ((abs(ARP_RANGE[arpRange]) + 1) * getNotesInArp() == arpPlayCount)
+                {
+                    arpCycleCount++;
+                    arpPlayCount = 0;
+                }
                 break;
             case BOUNCE:
                 // Avoid problems when changing range
                 if (bounceArpRange != arpRange && currentArpOct == 0 && playBeat == 0)
                     bounceArpRange = arpRange;
+                // base,2up,3up: [1note]1,3,5  [2notes]3,7,11 [3notes]5,11,17
+                if ((2 * (abs(ARP_RANGE[bounceArpRange]) + 1) * getNotesInArp() - 1) == arpPlayCount)
+                {
+                    arpCycleCount++;
+                    arpPlayCount = 0;
+                }
                 bounce();
                 break;
             case UPDOWN:
                 // Avoid problems when changing range
                 if (bounceArpRange != arpRange && currentArpOct == 0 && playBeat == 0)
                     bounceArpRange = arpRange;
+                // base,2up,3up: [1note]1,4,6  [2notes]4,8,12 [3notes]6,12,18
+                if ((getNotesInArp() == 1 && ARP_RANGE[bounceArpRange] == 0) || (2 * (abs(ARP_RANGE[bounceArpRange]) + 1) * getNotesInArp() == arpPlayCount))
+                {
+                    arpCycleCount++;
+                    arpPlayCount = 0;
+                }
                 upDown();
                 break;
             case RANDOMPLAY:
-                randomPlay();
-                break;
-            case UP:
-            default:
-                up();
+                if (arpPlayCount == getNotesInArp())
+                {
+                    arpCycleCount++;
+                    arpPlayCount = 0;
+                }
                 break;
             }
         }

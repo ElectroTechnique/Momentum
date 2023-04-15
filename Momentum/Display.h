@@ -54,7 +54,6 @@ String currentPatchName = ""; // TODO move to parameters
 String newPatchName = "";
 uint32_t paramType = 0;
 
-boolean MIDIClkSignal = false;
 uint32_t peakCount = 0;
 uint16_t prevLen = 0;
 
@@ -68,16 +67,6 @@ boolean updateDisplay = true;
 void startTimer()
 {
   timer = millis();
-}
-
-FLASHMEM void setMIDIClkSignal(bool val)
-{
-  MIDIClkSignal = val;
-}
-
-FLASHMEM bool getMIDIClkSignal()
-{
-  return MIDIClkSignal;
 }
 
 void renderKeyboard(int ypos, uint8_t octave)
@@ -237,6 +226,7 @@ FLASHMEM void renderMIDI()
 FLASHMEM void renderMidiClk()
 {
   tft.setTextColor(ILI9341_BLACK);
+  tft.setTextDatum(TC_DATUM);
   tft.setFont(Arial_10_Bold);
   if (MIDIClkSignal)
   {
@@ -248,6 +238,7 @@ FLASHMEM void renderMidiClk()
 FLASHMEM void renderArpIndicator()
 {
   tft.setTextColor(ILI9341_BLACK);
+  tft.setTextDatum(TC_DATUM);
   tft.setFont(Arial_10_Bold);
   if (arpRunning)
   {
@@ -1291,6 +1282,7 @@ FLASHMEM void renderPerformancePage()
 {
   tft.fillScreen(ILI9341_BLACK);
   renderMidiClk();
+  renderArpIndicator();
   renderPeak();
   renderMIDI();
   renderVoiceGrid();

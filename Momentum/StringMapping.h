@@ -107,7 +107,8 @@ FLASHMEM void assignStrings()
     ParameterStrMap[ArpDivision] = "Division";
     ParameterStrMap[ArpStyle] = "Style";
     ParameterStrMap[ArpRange] = "Range";
-    ParameterStrMap[ArpHold] = "Hold";
+    ParameterStrMap[ArpBasis] = "Basis";
+    ParameterStrMap[ArpCycle] = "Cycles";
     ParameterStrMap[noencoder] = "None";
 }
 

@@ -1511,8 +1511,8 @@ FLASHMEM void setEncodersState(State s)
         encMap[ENC_BL].active = true;
         encMap[ENC_BL].Parameter = ArpDivision; // Sixteenth, Eighth...
         encMap[ENC_BL].ShowValue = true;
-        encMap[ENC_BL].ValueStr = ARP_DIVISION_STR[arp_division];
-        encMap[ENC_BL].Value = arp_division;
+        encMap[ENC_BL].ValueStr = ARP_DIVISION_STR[arpDivision];
+        encMap[ENC_BL].Value = arpDivision;
         encMap[ENC_BL].Range = 9;
         encMap[ENC_BL].DefaultValue = 1;
         encMap[ENC_BL].ParameterStr = ParameterStrMap[ArpDivision];
@@ -1520,13 +1520,12 @@ FLASHMEM void setEncodersState(State s)
         encMap[ENC_BL].PushAction = State::ARPPAGE1;
 
         encMap[ENC_BR].active = true;
-        encMap[ENC_BR].Parameter = ArpHold;
+        encMap[ENC_BR].Parameter = ArpCycle;
         encMap[ENC_BR].ShowValue = true;
-        encMap[ENC_BR].ValueStr = ONOFF[arp_hold];
-        encMap[ENC_BR].Value = arp_hold;
-        encMap[ENC_BR].Range = 1;
-        encMap[ENC_BR].DefaultValue = 0;
-        encMap[ENC_BR].ParameterStr = ParameterStrMap[ArpHold];
+        encMap[ENC_BR].ValueStr = ARP_CYCLES[arpCycles];
+        encMap[ENC_BR].Value = arpCycles;
+        encMap[ENC_BR].Range = 4;
+        encMap[ENC_BR].ParameterStr = ParameterStrMap[ArpCycle];
         encMap[ENC_BR].Push = true;
         encMap[ENC_BR].PushAction = State::ARPPAGE1;
         break;
@@ -1543,21 +1542,21 @@ FLASHMEM void setEncodersState(State s)
         encMap[ENC_TL].PushAction = State::ARPPAGE2;
 
         encMap[ENC_TR].active = true;
-        encMap[ENC_TR].Parameter = ArpStyle; // Style
+        encMap[ENC_TR].Parameter = ArpBasis; // Style
         encMap[ENC_TR].ShowValue = true;
-        encMap[ENC_TR].Value = arpStyle;
-        encMap[ENC_TR].ValueStr = ARP_STYLES[arpStyle];
+        encMap[ENC_TR].Value = arpBasis;
+        encMap[ENC_TR].ValueStr = ARP_BASIS_STR[arpBasis];
         encMap[ENC_TR].Range = 4;
         encMap[ENC_TR].DefaultValue = 0;
-        encMap[ENC_TR].ParameterStr = ParameterStrMap[ArpStyle];
+        encMap[ENC_TR].ParameterStr = ParameterStrMap[ArpBasis];
         encMap[ENC_TR].Push = true;
         encMap[ENC_TR].PushAction = State::ARPPAGE2;
 
         encMap[ENC_BL].active = true;
         encMap[ENC_BL].Parameter = ArpDivision; // Sixteenth, Eighth...
         encMap[ENC_BL].ShowValue = true;
-        encMap[ENC_BL].ValueStr = ARP_DIVISION_STR[arp_division];
-        encMap[ENC_BL].Value = arp_division;
+        encMap[ENC_BL].ValueStr = ARP_DIVISION_STR[arpDivision];
+        encMap[ENC_BL].Value = arpDivision;
         encMap[ENC_BL].Range = 3;
         encMap[ENC_BL].DefaultValue = 0;
         encMap[ENC_BL].ParameterStr = ParameterStrMap[ArpDivision];
@@ -1565,13 +1564,12 @@ FLASHMEM void setEncodersState(State s)
         encMap[ENC_BL].PushAction = State::ARPPAGE2;
 
         encMap[ENC_BR].active = true;
-        encMap[ENC_BR].Parameter = ArpHold;
+        encMap[ENC_BR].Parameter = ArpCycle;
         encMap[ENC_BR].ShowValue = true;
-        encMap[ENC_BR].ValueStr = ONOFF[arp_hold];
-        encMap[ENC_BR].Value = arp_hold;
-        encMap[ENC_BR].Range = 1;
-        encMap[ENC_BR].DefaultValue = 0;
-        encMap[ENC_BR].ParameterStr = ParameterStrMap[ArpHold];
+        encMap[ENC_BR].ValueStr = ARP_CYCLES[arpCycles];
+        encMap[ENC_BR].Value = arpCycles;
+        encMap[ENC_BR].Range = 4;
+        encMap[ENC_BR].ParameterStr = ParameterStrMap[ArpCycle];
         encMap[ENC_BR].Push = true;
         encMap[ENC_BR].PushAction = State::ARPPAGE2;
         break;

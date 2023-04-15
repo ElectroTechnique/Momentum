@@ -68,7 +68,8 @@
 #define ArpStyle 183
 #define ArpDivision 184
 #define ArpRange 185
-#define ArpHold 186
+#define ArpCycle 186
+#define ArpBasis 187
 #define noencoder 255
 
 const static char *SEQUENCE_FOLDER_NAME = "Sequences";

@@ -43,11 +43,15 @@
     Mark Tillotson - Special thanks for band-limiting the waveforms in the Audio Library
 
   Additional libraries:
-    Janila Array, Adafruit_GFX (available in Arduino libraries manager)
+    Janila Array, Adafruit_GFX (available in Arduino libraries manager), T4_PowerButton
+
+    Power control:
+    https://forum.pjrc.com/threads/65797-Teensy-4-1-ON-OFF-Pin-Access-Use?highlight=Power+Control
 */
 
 #include <Adafruit_GFX.h>
 #include <ILI9341_t3n.h>
+#include <T4_PowerButton.h>
 #include <vector>
 #include "Audio.h" //Using local version to override Teensyduino version
 #include <Wire.h>
@@ -83,7 +87,6 @@ State state = State::MAIN;
 
 // Initialize the audio configuration.
 Global global{VOICEMIXERLEVEL};
-// VoiceGroup voices1{global.SharedAudio[0]};
 std::vector<VoiceGroup *> groupvec;
 uint8_t activeGroupIndex = 0;
 
@@ -145,14 +148,19 @@ int voiceToReturn = -1;       // Initialise
 
 uint8_t seq_last_step = 0;
 
+void NullCB() {}
+
 FLASHMEM void setup()
 {
+    set_arm_power_button_press_on_time(arm_power_button_press_on_time_50ms); // 50 ms to hold power button for startup
+    set_arm_power_button_callback(&NullCB);                                  // Immediate shut off from on/off button press
+
     sequencer_timer.begin(sequencer, currentSequence.tempo_us / 2.0f, false);
     //  while (!Serial)
     //  {
     //  }
     //  Serial.print(CrashReport);
-    AudioMemory(60);
+    AudioMemory(61);
     checkFirstRun();
     // Initialize the voice groups.
     uint8_t total = 0;
@@ -295,27 +303,46 @@ FLASHMEM void myNoteOn(byte channel, byte note, byte velocity)
             midiClkArpCount = 0;
 
         // find the right place to insert the note in the notes array
-        for (uint8_t i = 0; i < sizeof(arpNotes); i++)
+        if (arpStyle == PLAYORDER)
         {
-            if (arpNotes[i] == note)
-                return; // already in arpeggio
-            else if (arpNotes[i] != '\0' && arpNotes[i] < note)
-                continue; // ignore the notes below it
-            else
+            for (uint8_t i = 0; i < sizeof(arpNotes); i++)
             {
-                // once we reach the first note in the arpeggio that's higher
-                // than the new one, move the rest of the arpeggio array over
-                // to the right
-                for (uint8_t j = sizeof(arpNotes) - 1; j > i; j--)
+                if (arpNotes[i] == note)
+                    return; // already in arpeggio
+                else if (arpNotes[i] != '\0')
+                    continue;
+                else
                 {
-                    arpNotes[j] = arpNotes[j - 1];
-                    arpVels[j] = arpVels[j - 1];
+                    arpNotes[i] = note;
+                    arpVels[i] = velocity;
+                    return;
                 }
+            }
+        }
+        else
+        {
+            for (uint8_t i = 0; i < sizeof(arpNotes); i++)
+            {
+                if (arpNotes[i] == note)
+                    return; // already in arpeggio
+                else if (arpNotes[i] != '\0' && arpNotes[i] < note)
+                    continue; // ignore the notes below it
+                else
+                {
+                    // once we reach the first note in the arpeggio that's higher
+                    // than the new one, move the rest of the arpeggio array over
+                    // to the right
+                    for (uint8_t j = sizeof(arpNotes) - 1; j > i; j--)
+                    {
+                        arpNotes[j] = arpNotes[j - 1];
+                        arpVels[j] = arpVels[j - 1];
+                    }
 
-                // and insert the note
-                arpNotes[i] = note;
-                arpVels[i] = velocity;
-                return;
+                    // and insert the note
+                    arpNotes[i] = note;
+                    arpVels[i] = velocity;
+                    return;
+                }
             }
         }
     }
@@ -807,18 +834,19 @@ FLASHMEM void myControlChange(byte channel, byte control, byte value)
         if (groupvec[activeGroupIndex]->getPitchLfoMidiClockSync())
         {
             // TODO: MIDI Tempo stuff remains global?
-            currentPatch.LFOTempoValue = LFOTEMPO[value];
-            oscLFOTimeDivStr = LFOTEMPOSTR[value];
-            rate = currentPatch.LFOSyncFreq * LFOTEMPO[value];
+            lfoPitchTempoValue = LFOTEMPO[value];
+            rate = lfoSyncFreq * LFOTEMPO[value];
+            if (!setEncValue(CCoscLfoRate, value, LFOTEMPOSTR[value]))
+                showCurrentParameterOverlay(ParameterStrMap[CCoscLfoRate], LFOTEMPOSTR[value]);
         }
         else
         {
             rate = LFOMAXRATE * POWER[value];
+            if (!setEncValue(CCoscLfoRate, value, String(rate) + F(" Hz")))
+                showCurrentParameterOverlay(ParameterStrMap[CCoscLfoRate], String(rate) + F(" Hz"));
         }
-
         groupvec[activeGroupIndex]->setPitchLfoRate(rate);
-        if (!setEncValue(CCoscLfoRate, value, String(rate) + F(" Hz")))
-            showCurrentParameterOverlay(ParameterStrMap[CCoscLfoRate], String(rate) + F(" Hz"));
+
         break;
     }
 
@@ -839,8 +867,13 @@ FLASHMEM void myControlChange(byte channel, byte control, byte value)
     case CCfilterLFOMidiClkSync:
         currentPatch.FilterLFOMidiClkSync = value;
         groupvec[activeGroupIndex]->setFilterLfoMidiClockSync(value > 0);
-        if (!setEncValue(temposync, value, value > 0 ? F("On") : F("Off")))
-            showCurrentParameterOverlay(ParameterStrMap[temposync], value > 0 ? F("On") : F("Off"));
+        if (!setEncValue(CCfilterLFOMidiClkSync, value, value > 0 ? F("On") : F("Off")))
+            showCurrentParameterOverlay(ParameterStrMap[CCfilterLFOMidiClkSync], value > 0 ? F("On") : F("Off"));
+
+        if (value > 0)
+            setEncValue(CCfilterlforate, LFOTEMPO[currentPatch.FilterLFORate], LFOTEMPOSTR[currentPatch.FilterLFORate]);
+        else
+            setEncValue(CCfilterlforate, currentPatch.FilterLFORate, String(groupvec[activeGroupIndex]->getFilterLfoRate()) + " Hz");
         break;
 
     case CCfilterlforate:
@@ -850,27 +883,20 @@ FLASHMEM void myControlChange(byte channel, byte control, byte value)
         String timeDivStr = "";
         if (groupvec[activeGroupIndex]->getFilterLfoMidiClockSync())
         {
-            currentPatch.LFOTempoValue = LFOTEMPO[value];
-            rate = currentPatch.LFOSyncFreq * LFOTEMPO[value];
+            lfoFilterTempoValue = LFOTEMPO[value];
+            rate = lfoSyncFreq * LFOTEMPO[value];
             timeDivStr = LFOTEMPOSTR[value];
-        }
-        else
-        {
-            rate = LFOMAXRATE * POWER[value];
-        }
-
-        groupvec[activeGroupIndex]->setFilterLfoRate(rate);
-
-        if (timeDivStr.length() > 0)
-        {
             if (!setEncValue(CCfilterlforate, value, timeDivStr))
                 showCurrentParameterOverlay(F("LFO Time Division"), timeDivStr);
         }
         else
         {
+            rate = LFOMAXRATE * POWER[value];
             if (!setEncValue(CCfilterlforate, value, String(rate) + F(" Hz")))
                 showCurrentParameterOverlay(ParameterStrMap[CCfilterlforate], String(rate) + F(" Hz"));
         }
+
+        groupvec[activeGroupIndex]->setFilterLfoRate(rate);
         break;
     }
 
@@ -902,6 +928,11 @@ FLASHMEM void myControlChange(byte channel, byte control, byte value)
         groupvec[activeGroupIndex]->setPitchLfoMidiClockSync(value > 0);
         if (!setEncValue(CCoscLFOMidiClkSync, value, value > 0 ? F("On") : F("Off")))
             showCurrentParameterOverlay(ParameterStrMap[CCoscLFOMidiClkSync], value > 0 ? F("On") : F("Off"));
+
+        if (value > 0)
+            setEncValue(CCoscLfoRate, LFOTEMPO[currentPatch.PitchLFORate], LFOTEMPOSTR[currentPatch.PitchLFORate]);
+        else
+            setEncValue(CCoscLfoRate, currentPatch.PitchLFORate, String(groupvec[activeGroupIndex]->getPitchLfoRate()) + " Hz");
         break;
 
     case CCfilterattack:
@@ -1227,7 +1258,7 @@ FLASHMEM void myMIDIClock()
         else if (midiClkArpCount == (ARP_DIVISION_24PPQ[arpDivision] - 2) && !seqSwapper)
         {
             noteOffRoutine();
-            Serial.printf("%d: %d", midiClkArpCount, ARP_DIVISION_24PPQ[arpDivision]);
+            Serial.printf("MIDIClk %d: %d", midiClkArpCount, ARP_DIVISION_24PPQ[arpDivision]);
         }
 
         if ((midiClkArpCount + 1) == ARP_DIVISION_24PPQ[arpDivision])
@@ -1244,9 +1275,10 @@ FLASHMEM void myMIDIClock()
         // setMIDIClkSignal(!getMIDIClkSignal()); //Flash with tempo
         float timeNow = millis();
         midiClkTimeInterval = (timeNow - previousMillis);
-        currentPatch.LFOSyncFreq = 1000.0f / midiClkTimeInterval;
+        lfoSyncFreq = 1000.0f / midiClkTimeInterval;
         previousMillis = timeNow;
-        groupvec[activeGroupIndex]->midiClock(currentPatch.LFOSyncFreq * currentPatch.LFOTempoValue);
+        groupvec[activeGroupIndex]->filterMidiClock(lfoSyncFreq * lfoFilterTempoValue);
+        groupvec[activeGroupIndex]->pitchMidiClock(lfoSyncFreq * lfoPitchTempoValue);
         midiClkCount = 0;
     }
 }
@@ -1351,13 +1383,13 @@ FLASHMEM void setCurrentPatchData()
     myControlChange(midiChannel, CCfiltermixer, currentPatch.FilterMixer);
     myControlChange(midiChannel, CCfilterenv, currentPatch.FilterEnv);
     myControlChange(midiChannel, CCosclfoamt, currentPatch.PitchLFOAmt);
+    myControlChange(midiChannel, CCoscLFOMidiClkSync, currentPatch.PitchLFOMidiClkSync);
     myControlChange(midiChannel, CCoscLfoRate, currentPatch.PitchLFORate);
     myControlChange(midiChannel, CCoscLfoWaveform, currentPatch.PitchLFOWaveform);
     myControlChange(midiChannel, CCosclforetrig, currentPatch.PitchLFORetrig);
-    myControlChange(midiChannel, CCoscLFOMidiClkSync, currentPatch.PitchLFORetrig);
+    myControlChange(midiChannel, CCfilterLFOMidiClkSync, currentPatch.FilterLFOMidiClkSync);
     myControlChange(midiChannel, CCfilterlforate, currentPatch.FilterLFORate);
     myControlChange(midiChannel, CCfilterlforetrig, currentPatch.FilterLFORetrig);
-    myControlChange(midiChannel, CCfilterLFOMidiClkSync, currentPatch.FilterLFOMidiClkSync);
     myControlChange(midiChannel, CCfilterlfoamt, currentPatch.FilterLfoAmt);
     myControlChange(midiChannel, CCfilterlfowaveform, currentPatch.FilterLFOWaveform);
     myControlChange(midiChannel, CCfilterattack, currentPatch.FilterAttack);
@@ -1375,6 +1407,10 @@ FLASHMEM void setCurrentPatchData()
     myControlChange(midiChannel, pitchmodwheeldepth, currentPatch.PitchModWheelDepth);
     myControlChange(midiChannel, filtermodwheeldepth, currentPatch.FilterModWheelDepth);
     myControlChange(midiChannel, pitchbendrange, currentPatch.PitchBend);
+    myControlChange(midiChannel, ampenvshape, currentPatch.AmpEnvShape);
+    myControlChange(midiChannel, filterenvshape, currentPatch.FilterEnvShape);
+    myControlChange(midiChannel, glideshape, currentPatch.GlideShape);
+
     groupvec[activeGroupIndex]->params().chordDetune = currentPatch.ChordDetune;
     groupvec[activeGroupIndex]->setMonophonic(currentPatch.MonophonicMode);
     updateDisplay = true;
@@ -1653,7 +1689,7 @@ FLASHMEM void encoderCallback(unsigned enc_idx, int value, int delta)
             settings::save_current_value();
             break;
         case SeqTempo:
-            if (newDelta == 0 || currentSequence.bpm + (newDelta / 10.0f) < 20.0f || currentSequence.bpm + (newDelta / 10.0f) > 300.0)
+            if (seqMidiSync || newDelta == 0 || currentSequence.bpm + (newDelta / 10.0f) < 20.0f || currentSequence.bpm + (newDelta / 10.0f) > 300.0)
                 break;
             currentSequence.bpm += (newDelta / 10.0f);
             setSeqTimerPeriod(currentSequence.bpm);
@@ -1663,8 +1699,10 @@ FLASHMEM void encoderCallback(unsigned enc_idx, int value, int delta)
             if (newDelta == 0 || currentSequence.length + newDelta < 1 || currentSequence.length + newDelta > 64)
                 break;
             currentSequence.length += newDelta;
-            if (currentSeqPosition > currentSequence.length - 1)
-                currentSeqPosition = currentSequence.length - 1;
+            if (currentSeqPosition > currentSequence.length - 1){
+                sequencerStop();
+            }
+
             break;
         case SeqPosition:
             if (newDelta == 0 || currentSeqPosition + newDelta < 0 || currentSeqPosition + newDelta > currentSequence.length - 1)
@@ -1672,10 +1710,11 @@ FLASHMEM void encoderCallback(unsigned enc_idx, int value, int delta)
             currentSeqPosition += newDelta;
             break;
         case SeqNote:
-            if (newDelta == 0 || currentSeqNote + newDelta < 0 || currentSeqNote + newDelta > 127)
+            if (newDelta == 0 || currentSeqNote + newDelta < 12 || currentSeqNote + newDelta > 119)
                 break;
             currentSeqNote += newDelta;
-            seqCurrentOctPos = nearbyint(currentSeqNote / 12) - 2;
+            if (currentSeqNote < 108)
+                seqCurrentOctPos = nearbyint((currentSeqNote + 4) / 12) - 2;
             break;
         case ArpCycle:
             if (newDelta == 0 || arpCycles + newDelta < ARP_INF || arpCycles + newDelta > ARP_HOLD)
@@ -1692,7 +1731,7 @@ FLASHMEM void encoderCallback(unsigned enc_idx, int value, int delta)
             setEncValue(ArpCycle, arpCycles, ARP_CYCLES[arpCycles]);
             break;
         case ArpStyle:
-            if (newDelta == 0 || arpStyle + newDelta < 0 || arpStyle + newDelta > 4)
+            if (newDelta == 0 || arpStyle + newDelta < 0 || arpStyle + newDelta > 5)
                 break;
             arpStyle += newDelta;
             storeArpStyleToEEPROM(arpStyle);
@@ -1717,7 +1756,7 @@ FLASHMEM void encoderCallback(unsigned enc_idx, int value, int delta)
             if (newDelta == 0 || arpBasis + newDelta < 0 || arpBasis + newDelta > 4)
                 break;
             arpBasis += newDelta;
-            storeArpRangeToEEPROM(arpBasis);
+            storeArpBasisToEEPROM(arpBasis);
             setEncValue(ArpBasis, arpBasis, ARP_BASIS_STR[arpBasis]);
             break;
         default:
@@ -2033,7 +2072,7 @@ FLASHMEM void buttonCallback(unsigned button_idx, int button)
         }
         if (button == HELD)
         {
-            if (state != State::PERFORMANCERECALL && state != State::OSCPAGE1 && state != State::OSCPAGE2 && state != State::OSCPAGE3)
+            if (state != State::PERFORMANCERECALL && state != State::PERFORMANCEPAGE && state != State::OSCPAGE1 && state != State::OSCPAGE2 && state != State::OSCPAGE3)
             {
                 state = State::PERFORMANCERECALL;
                 // Get performances from SD card
@@ -2067,6 +2106,10 @@ FLASHMEM void buttonCallback(unsigned button_idx, int button)
                 singleLED(RED, 2);
                 break;
             case State::OSCMODPAGE4:
+                state = State::OSCMODPAGE5;
+                singleLED(RED, 2);
+                break;
+            case State::OSCMODPAGE5:
                 state = State::OSCMODPAGE1;
                 singleLED(RED, 2);
                 break;
@@ -2092,7 +2135,7 @@ FLASHMEM void buttonCallback(unsigned button_idx, int button)
         {
             if (state != State::ARPPAGE1 && state != State::ARPPAGE2 &&
                 state != State::OSCMODPAGE1 && state != State::OSCMODPAGE2 &&
-                state != State::OSCMODPAGE3 && state != State::OSCMODPAGE4)
+                state != State::OSCMODPAGE3 && state != State::OSCMODPAGE4 && state != State::OSCMODPAGE5)
             {
                 if (!arpRunning)
                 {
@@ -2162,6 +2205,12 @@ FLASHMEM void buttonCallback(unsigned button_idx, int button)
         }
         if (button == HELD)
         {
+            if (arpRunning)
+            {
+                sequencerStop();
+                arpRunning = false;
+            }
+
             if (state != State::SEQUENCERECALL && state != State::SEQUENCEEDIT && state != State::FILTERPAGE1 && state != State::FILTERPAGE2 && !currentSequence.running)
             {
                 state = State::SEQUENCERECALL;
@@ -2198,6 +2247,10 @@ FLASHMEM void buttonCallback(unsigned button_idx, int button)
                 singleLED(RED, 4);
                 break;
             case State::FILTERMODPAGE2:
+                state = State::FILTERMODPAGE3;
+                singleLED(RED, 4);
+                break;
+            case State::FILTERMODPAGE3:
                 state = State::FILTERMODPAGE1;
                 singleLED(RED, 4);
                 break;
@@ -2217,7 +2270,7 @@ FLASHMEM void buttonCallback(unsigned button_idx, int button)
         }
         if (button == HELD)
         {
-            if (state != State::MIDIPAGE && state != State::FILTERMODPAGE1 && state != State::FILTERMODPAGE2)
+            if (state != State::MIDIPAGE && state != State::FILTERMODPAGE1 && state != State::FILTERMODPAGE2 && state != State::FILTERMODPAGE3)
             {
                 state = State::MIDIPAGE;
                 singleLED(GREEN, 4);
@@ -2468,7 +2521,7 @@ FLASHMEM void sdCardDetect()
     if (sdCardInterrupt)
     {
         silence();
-        delayMicroseconds(100'000);
+        delayMicroseconds(200'000);
         cardStatus = !digitalReadFast(pinCD);
         if (cardStatus)
         {
@@ -2477,6 +2530,8 @@ FLASHMEM void sdCardDetect()
         else
         {
             state = State::MAIN;
+            // arpRunning = false;
+            // sequencerStop();
             setEncodersState(state);
             lightRGLEDs(0, 0);
         }
@@ -2531,7 +2586,7 @@ FLASHMEM void CPUMonitor()
     Serial.print(AudioProcessorUsageMax());
     Serial.print(F(")"));
     Serial.print(F("  MEM:"));
-    Serial.println(AudioProcessorUsage());
+    Serial.println(AudioMemoryUsageMax());
     // memInfo();
     // getFreeITCM();
     delayMicroseconds(500);
@@ -2539,6 +2594,7 @@ FLASHMEM void CPUMonitor()
 
 void loop()
 {
+    delayMicroseconds(40); // Improves USB digital audio output
     myusb.Task();
     checkUSBHostStatus();
     // USB Host MIDI Class Compliant
@@ -2551,5 +2607,5 @@ void loop()
     buttons.read();
     sdCardDetect();
     sequencerLEDs();
-    // CPUMonitor();
+    //CPUMonitor();
 }

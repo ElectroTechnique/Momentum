@@ -370,9 +370,6 @@ FLASHMEM boolean loadPatch(uint8_t bank, uint32_t filename)
   currentPatch.Release = Amp["Release"];
 
   currentPatch.KeyTracking = doc["KeyTracking"];
-  currentPatch.LFOTempoValue = doc["LFOTempoValue"];
-  currentPatch.LFOSyncFreq = doc["LFOSyncFreq"];
-  currentPatch.MidiClkTimeInterval = doc["MidiClkTimeInterval"];
   currentPatch.VelocitySensitivity = doc["VelocitySensitivity"];
   currentPatch.ChordDetune = doc["ChordDetune"];
   currentPatch.MonophonicMode = doc["MonophonicMode"];
@@ -477,9 +474,6 @@ FLASHMEM boolean savePatch(uint8_t bankIndex, uint8_t index)
   Amp["Release"] = currentPatch.Release;
 
   doc["KeyTracking"] = currentPatch.KeyTracking;
-  doc["LFOTempoValue"] = currentPatch.LFOTempoValue;
-  doc["LFOSyncFreq"] = currentPatch.LFOSyncFreq;
-  doc["MidiClkTimeInterval"] = currentPatch.MidiClkTimeInterval;
   doc["VelocitySensitivity"] = currentPatch.VelocitySensitivity;
   doc["ChordDetune"] = currentPatch.ChordDetune;
   doc["MonophonicMode"] = currentPatch.MonophonicMode;

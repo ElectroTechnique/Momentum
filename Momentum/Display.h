@@ -13,8 +13,8 @@
 #define rst 4    // D0
 #define miso 255 // Unused
 
-#define SPI_SPEED 100000000
-#define SPICLOCK_READ 80000000
+#define SPI_SPEED 100'000'000
+#define SPICLOCK_READ 80'000'000
 
 #define DISPLAYTIMEOUT 700
 
@@ -69,11 +69,13 @@ void startTimer()
   timer = millis();
 }
 
-void renderKeyboard(int ypos, uint8_t octave)
+void renderKeyboard(uint8_t octave)
 {
   uint8_t offset[5] = {9, 8, 11, 9, 8}; //+ is up
   int offcount = 0;
   uint8_t oct_count = 0;
+  int ypos = 217;
+
   // uint8_t patternspacer = 0;
   // uint8_t barspacer = 0;
   uint8_t CHAR_height = 12;
@@ -123,7 +125,7 @@ void renderKeyboard(int ypos, uint8_t octave)
         {
           colour = ILI9341_YELLOW;
         }
-        tft.fillRect(40 + patternSpacerArray[x] + barSpacerArray[x] + x * 4, ypos + 6 - CHAR_height - (y * 8), 3, 6, colour); // GRID white key
+        tft.fillRect(37 + patternSpacerArray[x] + barSpacerArray[x] + x * 4, ypos + 3 - CHAR_height - (y * 8), 3, 6, colour); // GRID white key
         // if ((x + 1) % 16 == 0)
         //   patternspacer = patternspacer + 2;
         // if ((x + 1) % 4 == 0)
@@ -131,7 +133,7 @@ void renderKeyboard(int ypos, uint8_t octave)
       }
       else
       {
-        tft.fillRect(40 + patternSpacerArray[x] + barSpacerArray[x] + x * 4, ypos + 6 - CHAR_height - (y * 8), 3, 6, ILI9341_DARKERGREY); // Unused keys
+        tft.fillRect(37 + patternSpacerArray[x] + barSpacerArray[x] + x * 4, ypos + 3 - CHAR_height - (y * 8), 3, 6, ILI9341_DARKERGREY); // Unused keys
         // if ((x + 1) % 16 == 0)
         //   patternspacer = patternspacer + 2;
         // if ((x + 1) % 4 == 0)
@@ -141,9 +143,9 @@ void renderKeyboard(int ypos, uint8_t octave)
   }
   if (currentSequence.running)
   {
-    tft.drawFastVLine(40 + patternSpacerArray[currentSequence.step] + barSpacerArray[currentSequence.step] +
+    tft.drawFastVLine(37 + patternSpacerArray[currentSequence.step] + barSpacerArray[currentSequence.step] +
                           (currentSequence.step * 4),
-                      24, 197, ILI9341_ORANGE);
+                      21, 197, ILI9341_ORANGE);
   }
 }
 
@@ -249,15 +251,17 @@ FLASHMEM void renderArpIndicator()
 
 FLASHMEM void renderPageIndicator(uint8_t pages, uint8_t current)
 {
+  if (pages < 2)
+    return;
   for (uint8_t i = 0; i < pages; i++)
   {
     if (i + 1 == current)
     {
-      tft.fillRect(130 + (i * 23), 175, 20, 7, ILI9341_BLUE);
+      tft.fillRect(130 + (i * 23) - (pages * pages), 175, 20, 7, ILI9341_BLUE);
     }
     else
     {
-      tft.drawRect(130 + (i * 23), 175, 20, 7, ILI9341_BLUE);
+      tft.drawRect(130 + (i * 23) - (pages * pages), 175, 20, 7, ILI9341_BLUE);
     }
   }
 }
@@ -353,10 +357,10 @@ FLASHMEM void renderCorners()
     {
       tft.fillTriangle(309, 237, 317, 237, 317, 229, ILI9341_BLACK);
     }
-    tft.setTextDatum(TR_DATUM);
+    tft.setTextDatum(BR_DATUM);
     tft.setTextColor(encTriColour[ENC_BR]);
     tft.setFont(Arial_13);
-    tft.drawString(encMap[ENC_BR].ParameterStr, 303, 224);
+    tft.drawString(encMap[ENC_BR].ParameterStr, 303, 230);
     if (encMap[ENC_BR].ShowValue)
     {
       tft.setFont(Arial_16);
@@ -372,10 +376,10 @@ FLASHMEM void renderCorners()
     {
       tft.fillTriangle(2, 229, 2, 237, 10, 237, ILI9341_BLACK);
     }
-    tft.setTextDatum(TL_DATUM);
+    tft.setTextDatum(BL_DATUM);
     tft.setTextColor(encTriColour[ENC_BL]);
     tft.setFont(Arial_13);
-    tft.drawString(encMap[ENC_BL].ParameterStr, 15, 224);
+    tft.drawString(encMap[ENC_BL].ParameterStr, 15, 230);
     if (encMap[ENC_BL].ShowValue)
     {
       tft.setFont(Arial_16);
@@ -603,7 +607,7 @@ FLASHMEM void renderSeqLength()
   tft.setFont(Arial_13);
   tft.setTextColor(ILI9341_LIGHTBLUE);
   tft.setTextDatum(TR_DATUM);
-  tft.drawString(SEQPOSSTR[currentSequence.length - 1] + " " + String(currentSequence.length), 242, 5);
+  tft.drawString(SEQPOSSTR[currentSequence.length - 1] + "-" + String(currentSequence.length), 242, 5);
 }
 
 FLASHMEM void renderSeqNote()
@@ -619,7 +623,7 @@ FLASHMEM void renderSeqPosition()
   tft.setFont(Arial_13);
   tft.setTextColor(ILI9341_ORANGE);
   tft.setTextDatum(BL_DATUM);
-  tft.drawString(SEQPOSSTR[currentSeqPosition] + " " + String(currentSeqPosition + 1), 85, 230);
+  tft.drawString(SEQPOSSTR[currentSeqPosition] + "-" + String(currentSeqPosition + 1), 85, 230);
 }
 
 FLASHMEM void renderDeletePatchPage()
@@ -1072,10 +1076,13 @@ FLASHMEM void renderOscModPage(size_t no)
     renderWaveformSymbol(groupvec[activeGroupIndex]->getPitchLfoWaveform());
     break;
   case 4:
+    tft.drawString("Osc Pitch", 160, 150);
+    break;
+  case 5:
     tft.drawString("Osc Effects", 160, 150);
     break;
   }
-  renderPageIndicator(4, no);
+  renderPageIndicator(5, no);
   if (no == 1 && currentPatch.PWMSourceA == PWMSOURCEMANUAL)
   {
     if (groupvec[activeGroupIndex]->getWaveformA() == WAVEFORM_BANDLIMIT_PULSE)
@@ -1131,7 +1138,7 @@ FLASHMEM void renderFilterModPage(size_t no)
   tft.setTextColor(ILI9341_BLUE);
   tft.setTextDatum(TC_DATUM);
   tft.drawString("Filter Modulation " + String(no), 160, 150);
-  renderPageIndicator(2, no);
+  renderPageIndicator(3, no);
   renderCorners();
 }
 
@@ -1169,7 +1176,7 @@ FLASHMEM void renderSequencerEditPage()
 {
   tft.fillScreen(ILI9341_BLACK);
   renderCorners();
-  renderKeyboard(217, seqCurrentOctPos);
+  renderKeyboard(seqCurrentOctPos);
   renderSeqTempo();
   renderSeqLength();
   renderSeqNote();
@@ -1630,6 +1637,9 @@ void displayThread()
       case State::OSCMODPAGE4:
         renderOscModPage(4);
         break;
+      case State::OSCMODPAGE5:
+        renderOscModPage(5);
+        break;
       case State::FILTERPAGE1:
         renderFilterPage(1);
         break;
@@ -1641,6 +1651,9 @@ void displayThread()
         break;
       case State::FILTERMODPAGE2:
         renderFilterModPage(2);
+        break;
+      case State::FILTERMODPAGE3:
+        renderFilterModPage(3);
         break;
       case State::AMPPAGE1:
         renderAmpPage(1);

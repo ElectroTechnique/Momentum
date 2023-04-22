@@ -13,9 +13,11 @@ boolean vuMeter = false;
 int8_t tuningCents = 0;
 float tuningCentsFrac = 1.0f;
 
-float midiClkTimeInterval = 0.0f;
+float midiClkTimeInterval = 1000.0f;
+float lfoSyncFreq = 1.0f;
+float lfoFilterTempoValue = 1.0f;
+float lfoPitchTempoValue = 1.0f;
 
-String oscLFOTimeDivStr = ""; // For display
 // Exponential envelopes
 int8_t envTypeAmp = -128;  // Linear
 int8_t envTypeFilt = -128; // Linear

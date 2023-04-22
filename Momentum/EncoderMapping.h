@@ -454,7 +454,10 @@ FLASHMEM void configureCCoscLfoRate(EncoderMappingStruct *enc, State st = State:
     enc->ShowValue = true;
     enc->Value = currentPatch.PitchLFORate;
     enc->DefaultValue = 11;
-    enc->ValueStr = String(groupvec[activeGroupIndex]->getPitchLfoRate()) + " Hz";
+    if (currentPatch.PitchLFOMidiClkSync>0)
+        enc->ValueStr = LFOTEMPOSTR[currentPatch.PitchLFORate];
+    else
+        enc->ValueStr = String(groupvec[activeGroupIndex]->getPitchLfoRate()) + " Hz";
     enc->Range = 127;
     enc->ParameterStr = ParameterStrMap[CCoscLfoRate];
     enc->Push = true;
@@ -734,7 +737,10 @@ FLASHMEM void configureCCfilterlforate(EncoderMappingStruct *enc, State st)
     enc->ShowValue = true;
     enc->Value = currentPatch.FilterLFORate;
     enc->DefaultValue = 18;
-    enc->ValueStr = String(groupvec[activeGroupIndex]->getFilterLfoRate()) + " Hz";
+    if (currentPatch.FilterLFOMidiClkSync)
+        enc->ValueStr = LFOTEMPOSTR[currentPatch.FilterLFORate];
+    else
+        enc->ValueStr = String(groupvec[activeGroupIndex]->getFilterLfoRate()) + " Hz";
     enc->Range = 127;
     enc->ParameterStr = ParameterStrMap[CCfilterlforate];
     enc->Push = true;
@@ -1047,13 +1053,19 @@ FLASHMEM void setEncodersState(State s)
         configureCCoscLfoWaveform(&encMap[ENC_BL], State::OSCMODPAGE3);
         configureCCosclfoamt(&encMap[ENC_BR], State::OSCMODPAGE3);
         configureCCoscLfoRate(&encMap[ENC_TL], State::OSCMODPAGE3);
-        configureCCosclforetrig(&encMap[ENC_TR], State::OSCMODPAGE3);
+        configureCCoscLFOMidiClkSync(&encMap[ENC_TR], State::OSCMODPAGE3);
         break;
     case State::OSCMODPAGE4:
-        configureCCoscLevelB_OscFX(&encMap[ENC_BR], State::OSCMODPAGE4);
-        configureCCoscfx(&encMap[ENC_BL], State::OSCMODPAGE4);
         configureCCpitchenv(&encMap[ENC_TL], State::OSCMODPAGE4);
-        configureCCoscLevelA_OscFX(&encMap[ENC_TR], State::OSCMODPAGE4);
+        configureCCosclforetrig(&encMap[ENC_TR], State::OSCMODPAGE4);
+        configureOff(&encMap[ENC_BL]);
+        configurepitchmodwheeldepth(&encMap[ENC_BR], State::OSCMODPAGE4);
+        break;
+    case State::OSCMODPAGE5:
+        configureCCoscLevelB_OscFX(&encMap[ENC_BR], State::OSCMODPAGE5);
+        configureCCoscfx(&encMap[ENC_BL], State::OSCMODPAGE5);
+        configureOff(&encMap[ENC_TL]);
+        configureCCoscLevelA_OscFX(&encMap[ENC_TR], State::OSCMODPAGE5);
         break;
     case State::FILTERPAGE1:
         configurefilterfreq256(&encMap[ENC_BL], State::FILTERPAGE1);
@@ -1071,13 +1083,19 @@ FLASHMEM void setEncodersState(State s)
         configureCCfilterlfowaveform(&encMap[ENC_BL], State::FILTERMODPAGE1);
         configureCCfilterlfoamt(&encMap[ENC_BR], State::FILTERMODPAGE1);
         configureCCfilterlforate(&encMap[ENC_TL], State::FILTERMODPAGE1);
-        configureCCfilterlforetrig(&encMap[ENC_TR], State::FILTERMODPAGE1);
+        configureCCfilterLFOMidiClkSync(&encMap[ENC_TR], State::FILTERMODPAGE1);
         break;
     case State::FILTERMODPAGE2:
-        configureCCkeytracking(&encMap[ENC_BR], State::FILTERMODPAGE2);
-        configureCCFilterVelocitySens(&encMap[ENC_BL], State::FILTERMODPAGE2);
-        configurefiltermodwheeldepth(&encMap[ENC_TR], State::FILTERMODPAGE2);
-        configurefilterenvshape(&encMap[ENC_TL], State::FILTERMODPAGE2);
+        configureOff(&encMap[ENC_TL]);
+        configureCCfilterlforetrig(&encMap[ENC_TR], State::FILTERMODPAGE2);
+        configureOff(&encMap[ENC_BL]);
+        configureOff(&encMap[ENC_BR]);
+        break;
+    case State::FILTERMODPAGE3:
+        configureCCkeytracking(&encMap[ENC_BR], State::FILTERMODPAGE3);
+        configureCCFilterVelocitySens(&encMap[ENC_BL], State::FILTERMODPAGE3);
+        configurefiltermodwheeldepth(&encMap[ENC_TR], State::FILTERMODPAGE3);
+        configurefilterenvshape(&encMap[ENC_TL], State::FILTERMODPAGE3);
         break;
     case State::AMPPAGE1:
         configureCCampattack(&encMap[ENC_TL], State::AMPPAGE1);
@@ -1088,7 +1106,7 @@ FLASHMEM void setEncodersState(State s)
 
     case State::AMPPAGE2:
         configurepitchbendrange(&encMap[ENC_TL], State::AMPPAGE2);
-        configurepitchmodwheeldepth(&encMap[ENC_TR], State::AMPPAGE2);
+        configureOff(&encMap[ENC_TR]);
         configureCCAmpVelocitySens(&encMap[ENC_BL], State::AMPPAGE2);
         configureCCmonomode(&encMap[ENC_BR], State::AMPPAGE2);
         break;
@@ -1502,7 +1520,7 @@ FLASHMEM void setEncodersState(State s)
         encMap[ENC_TR].ShowValue = true;
         encMap[ENC_TR].Value = arpStyle;
         encMap[ENC_TR].ValueStr = ARP_STYLES[arpStyle];
-        encMap[ENC_TR].Range = 6;
+        encMap[ENC_TR].Range = 5;
         encMap[ENC_TR].DefaultValue = 0;
         encMap[ENC_TR].ParameterStr = ParameterStrMap[ArpStyle];
         encMap[ENC_TR].Push = true;

@@ -40,7 +40,7 @@ private:
     std::vector<Voice *> voices;
 
     // Patch Configs
-    bool midiClockSignal; // midiCC clock
+    bool midiClockSignal; // midiCC clock  TODO - Does nothing, for some planned move to voicegroup?
     bool filterLfoMidiClockSync;
     bool pitchLFOMidiClockSync;
 
@@ -809,11 +809,15 @@ public:
     void setFilterLfoMidiClockSync(bool value)
     {
         filterLfoMidiClockSync = value;
+        shared.filterLfo.frequency(lfoSyncFreq * lfoFilterTempoValue);
+        //filterMidiClock(lfoSyncFreq * lfoFilterTempoValue);
     }
 
     void setPitchLfoMidiClockSync(bool value)
     {
         pitchLFOMidiClockSync = value;
+        shared.pitchLfo.frequency(lfoSyncFreq * lfoPitchTempoValue);
+        pitchMidiClock(lfoSyncFreq * lfoPitchTempoValue);
     }
 
     inline uint8_t unisonNotes()
@@ -942,7 +946,7 @@ public:
         midiClockSignal = false;
     }
 
-    void midiClock(float frequency)
+    void filterMidiClock(float frequency)
     {
         midiClockSignal = true;
 
@@ -950,6 +954,11 @@ public:
         {
             shared.filterLfo.frequency(frequency);
         }
+    }
+
+    void pitchMidiClock(float frequency)
+    {
+        midiClockSignal = true;
 
         if (pitchLFOMidiClockSync)
         {

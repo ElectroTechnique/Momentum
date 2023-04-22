@@ -15,8 +15,10 @@ extern float tuningCentsFrac;
 
 // Global patch modifiers
 extern float midiClkTimeInterval;
+extern float lfoSyncFreq;
 
-extern String oscLFOTimeDivStr;
+extern float lfoFilterTempoValue;
+extern float lfoPitchTempoValue;
 
 // Exponential envelopes
 extern int8_t envTypeAmp;
@@ -43,10 +45,7 @@ typedef struct PatchStruct
     uint8_t NoiseLevel = 63; // Centre off
     uint8_t Unison = 0;
     uint8_t OscFX = 0;
-    uint8_t Detune = 20; // 0.15%
-    uint8_t LFOSyncFreq = 0;
-    uint8_t MidiClkTimeInterval = 0;
-    uint8_t LFOTempoValue = 0;
+    uint8_t Detune = 20;      // 0.15%
     uint8_t KeyTracking = 63; // Half tracking, 0.5
     uint8_t Glide = 0;
     uint8_t PitchA = 0;     //-24
@@ -66,11 +65,11 @@ typedef struct PatchStruct
     uint8_t FilterMixer = 0;
     uint8_t FilterEnv = 89;
     uint8_t PitchLFOAmt = 0;
-    uint8_t PitchLFORate = 0;
+    uint8_t PitchLFORate = 10;
     uint8_t PitchLFOWaveform = 0;
     uint8_t PitchLFORetrig = 0;
     uint8_t PitchLFOMidiClkSync = 0;
-    uint8_t FilterLFORate = 0;
+    uint8_t FilterLFORate = 10;
     uint8_t FilterLFORetrig = 0;
     uint8_t FilterLFOMidiClkSync = 0;
     uint8_t FilterLfoAmt = 0;

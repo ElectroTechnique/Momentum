@@ -2,7 +2,7 @@
 #include "Constants.h"
 #include "MidiCC.h"
 
-const uint8_t PARAMETERSFORENCS = 55;
+const uint8_t PARAMETERSFORENCS = 54;
 const char *ParameterStrMap[256] = {};
 uint8_t ParametersForPerformanceEncoders[PARAMETERSFORENCS] = {};
 
@@ -50,8 +50,8 @@ FLASHMEM void assignStrings()
     ParameterStrMap[CCdetune] = "Detune";
     ParameterStrMap[CCoscLfoRate] = "Pitch LFO Rate";
     ParameterStrMap[CCoscLfoWaveform] = "Pitch LFO Wave";
-    ParameterStrMap[CCfilterLFOMidiClkSync] = "Filter LFO Clk Sync";
-    ParameterStrMap[CCoscLFOMidiClkSync] = "Pitch LFO Clk Sync";
+    ParameterStrMap[CCfilterLFOMidiClkSync] = "Filter LFO MIDI Sync";
+    ParameterStrMap[CCoscLFOMidiClkSync] = "Pitch LFO MIDI Sync";
     ParameterStrMap[CCpwmSourceA] = "1 PWM Source";
     ParameterStrMap[CCpwmSourceB] = "2 PWM Source";
     ParameterStrMap[CCunison] = "Unison";
@@ -61,7 +61,6 @@ FLASHMEM void assignStrings()
     ParameterStrMap[savepatch] = "Save";
     ParameterStrMap[deletepatch] = "Delete";
     ParameterStrMap[renamepatch] = "Rename";
-    ParameterStrMap[temposync] = "Tempo Sync";
     ParameterStrMap[CCvelocitySens] = "Velocity Sens";
     ParameterStrMap[ampenvshape] = "Amp. Env. Shape";
     ParameterStrMap[filterenvshape] = "Filter Env. Shape";
@@ -165,7 +164,6 @@ FLASHMEM void assignParametersForPerformanceEncoders()
     ParametersForPerformanceEncoders[++i] = CCfxamt;
     ParametersForPerformanceEncoders[++i] = CCfxmix;
     ParametersForPerformanceEncoders[++i] = CCmonomode;
-    ParametersForPerformanceEncoders[++i] = temposync;
     ParametersForPerformanceEncoders[++i] = CCvelocitySens;
     ParametersForPerformanceEncoders[++i] = glideshape;
     ParametersForPerformanceEncoders[++i] = pitchbendrange;

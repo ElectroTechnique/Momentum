@@ -44,18 +44,24 @@ typedef enum ArpStyles
     DOWN,
     BOUNCE,
     UPDOWN,
-    RANDOMPLAY
+    RANDOMPLAY,
+    PLAYORDER
 } ArpStyles;
 
 extern void myNoteOff(byte channel, byte note, byte velocity);
 extern void noteOff(byte channel, byte note, byte velocity);
 extern void noteOn(byte channel, byte note, byte velocity);
 
+FLASHMEM void noteOffRoutine();
+
 uint8_t currentSeqPosition = 0; // 1.1.1
 uint8_t currentSeqNote = 60;    // C3
 uint8_t seqCurrentOctPos = 3;   // C3
 
 boolean arpRunning = false;
+bool seqSwapper = false;
+
+bool sequencerTimerStarted = false;
 
 boolean arpUp = true;
 uint8_t playBeat = 0;
@@ -71,12 +77,12 @@ uint8_t arpNotesHeld = 0;
 uint8_t arpDivision = 1;
 uint8_t arpRange = 3;
 uint8_t arpBasis = 2;
-uint8_t bounceArpRange = 3;
+uint8_t playingArpRange = 3;
 int8_t currentArpOct = 0;
 int8_t arpPlayCount = 0;
 boolean upDownExtraNote = false;
 
-const static char *ARP_STYLES[5] = {"Up", "Down", "Bounce", "Up & Down", "Random"};
+const static char *ARP_STYLES[6] = {"Up", "Down", "Bounce", "Up & Down", "Random", "Play Order"};
 const static char *ARP_CYCLES[5] = {"Inf", "1", "2", "3", "Hold"};
 const static char *ARP_DIVISION_STR[10] = {"1/32", "1/24", "1/16", "1/12", "1/8", "1/6", "1/4", "1/3", "1/2", "1"};
 const static uint8_t ARP_DIVISION_24PPQ[10] = {3, 4, 6, 8, 12, 16, 24, 32, 48, 96};
@@ -86,13 +92,17 @@ const static char *ARP_BASIS_STR[5] = {"-2 Oct", "-1 Oct", "Base Oct", "1 Oct", 
 const static int8_t ARP_BASIS[5] = {-2, -1, 0, 1, 2};
 
 // empties out the arpeggio. used when switching modes, when in hold mode and
-// a new arpeggio is started, or when the reset button is pushed.
+// a new arpeggio is started.
 FLASHMEM void resetNotes()
 {
+    // noteOffRoutine();
+    // sequencerTimerStarted = false;
+    // sequencer_timer.setPeriod(10000);
+
     playBeat = 0;
     currentArpOct = 0;
     arpCycleCount = 0;
-    bounceArpRange = arpRange;
+    playingArpRange = arpRange;
     upDownExtraNote = false;
     arpPlayCount = 0;
     arpStarted = false;
@@ -164,12 +174,12 @@ FLASHMEM void down()
 
 FLASHMEM void upDown()
 {
-    if (ARP_RANGE[bounceArpRange] == 0 && getNotesInArp() == 1)
+    if (ARP_RANGE[playingArpRange] == 0 && getNotesInArp() == 1)
     {
         // Special case - one note, base range
         playBeat = 0;
     }
-    else if (ARP_RANGE[bounceArpRange] > -1)
+    else if (ARP_RANGE[playingArpRange] > -1)
     {
         if (arpUp)
         {
@@ -185,10 +195,10 @@ FLASHMEM void upDown()
             if (arpNotes[playBeat] == '\0')
             {
                 playBeat = 0;
-                if (ARP_RANGE[bounceArpRange] != 0)
+                if (ARP_RANGE[playingArpRange] != 0)
                     currentArpOct++;
             }
-            if (playBeat == getNotesInArp() - 1 && currentArpOct == ARP_RANGE[bounceArpRange])
+            if (playBeat == getNotesInArp() - 1 && currentArpOct == ARP_RANGE[playingArpRange])
             {
                 arpUp = false;
                 upDownExtraNote = true;
@@ -196,7 +206,7 @@ FLASHMEM void upDown()
         }
         else
         {
-            if (upDownExtraNote && currentArpOct == ARP_RANGE[bounceArpRange])
+            if (upDownExtraNote && currentArpOct == ARP_RANGE[playingArpRange])
             {
                 upDownExtraNote = false;
                 return;
@@ -209,7 +219,7 @@ FLASHMEM void upDown()
                 {
                     playBeat--;
                 }
-                if (ARP_RANGE[bounceArpRange] != 0)
+                if (ARP_RANGE[playingArpRange] != 0)
                     currentArpOct--;
             }
             else
@@ -227,7 +237,7 @@ FLASHMEM void upDown()
     {
         if (arpUp)
         {
-            if (upDownExtraNote && currentArpOct == ARP_RANGE[bounceArpRange])
+            if (upDownExtraNote && currentArpOct == ARP_RANGE[playingArpRange])
             {
                 upDownExtraNote = false;
                 return;
@@ -265,7 +275,7 @@ FLASHMEM void upDown()
             }
             else
                 playBeat--;
-            if (playBeat == 0 && currentArpOct == ARP_RANGE[bounceArpRange])
+            if (playBeat == 0 && currentArpOct == ARP_RANGE[playingArpRange])
             {
                 arpUp = true;
                 upDownExtraNote = true;
@@ -276,12 +286,12 @@ FLASHMEM void upDown()
 
 FLASHMEM void bounce()
 {
-    if (ARP_RANGE[bounceArpRange] == 0 && getNotesInArp() == 1)
+    if (ARP_RANGE[playingArpRange] == 0 && getNotesInArp() == 1)
     {
         // Special case - one note, base range
         playBeat = 0;
     }
-    else if (ARP_RANGE[bounceArpRange] > -1)
+    else if (ARP_RANGE[playingArpRange] > -1)
     {
         if (arpUp)
         {
@@ -289,10 +299,10 @@ FLASHMEM void bounce()
             if (arpNotes[playBeat] == '\0')
             {
                 playBeat = 0;
-                if (ARP_RANGE[bounceArpRange] != 0)
+                if (ARP_RANGE[playingArpRange] != 0)
                     currentArpOct++;
             }
-            if (playBeat == getNotesInArp() - 1 && currentArpOct == ARP_RANGE[bounceArpRange])
+            if (playBeat == getNotesInArp() - 1 && currentArpOct == ARP_RANGE[playingArpRange])
                 arpUp = false;
         }
         else
@@ -304,7 +314,7 @@ FLASHMEM void bounce()
                 {
                     playBeat--;
                 }
-                if (ARP_RANGE[bounceArpRange] != 0)
+                if (ARP_RANGE[playingArpRange] != 0)
                     currentArpOct--;
             }
             else
@@ -339,7 +349,7 @@ FLASHMEM void bounce()
             }
             else
                 playBeat--;
-            if (playBeat == 0 && currentArpOct == ARP_RANGE[bounceArpRange])
+            if (playBeat == 0 && currentArpOct == ARP_RANGE[playingArpRange])
                 arpUp = true;
         }
     }
@@ -550,9 +560,6 @@ FLASHMEM uint8_t decSequenceIndex()
     }
 }
 
-//////////// Sequencer /////////////
-bool seqSwapper = false;
-
 FLASHMEM void seq_live_recording()
 {
     // record to sequencer if recording is active
@@ -572,7 +579,7 @@ FLASHMEM void noteOnRoutine()
     {
         if ((arpHold && getNotesInArp() > 0) || arpNotesHeld > 0)
         {
-            // Serial.printf("arpCycleCount:%d  arpPlayCount:%d Target:%d\n", arpCycleCount, arpPlayCount, 2 * (abs(ARP_RANGE[bounceArpRange]) + 1 * getNotesInArp()));
+            // Serial.printf("arpCycleCount:%d  arpPlayCount:%d Target:%d\n", arpCycleCount, arpPlayCount, 2 * (abs(ARP_RANGE[playingArpRange]) + 1 * getNotesInArp()));
             if (arpCycles != ARP_HOLD && arpCycles != ARP_INF && arpCycleCount == arpCycles)
             {
                 return;
@@ -583,7 +590,7 @@ FLASHMEM void noteOnRoutine()
                 {
                     arpStarted = true;
 
-                    if (((arpStyle == BOUNCE || arpStyle == UPDOWN) && ARP_RANGE[bounceArpRange] < 0) ||
+                    if (((arpStyle == BOUNCE || arpStyle == UPDOWN) && ARP_RANGE[playingArpRange] < 0) ||
                         arpStyle == DOWN)
                         playBeat = getNotesInArp() - 1;
                 }
@@ -597,10 +604,11 @@ FLASHMEM void noteOnRoutine()
                 previousArpNote = arpNotes[playBeat] + (currentArpOct * 12) + (ARP_BASIS[arpBasis] * 12);
             }
             // Serial.printf("%d:%d %d  held:%d\n", currentArpOct, playBeat, arpUp, arpNotesHeld);
-            //    decide what the next note is based on the mode.
+            //     decide what the next note is based on the mode.
             switch (arpStyle)
             {
             case UP:
+            case PLAYORDER:
                 up();
                 if ((abs(ARP_RANGE[arpRange]) + 1) * getNotesInArp() == arpPlayCount)
                 {
@@ -618,10 +626,10 @@ FLASHMEM void noteOnRoutine()
                 break;
             case BOUNCE:
                 // Avoid problems when changing range
-                if (bounceArpRange != arpRange && currentArpOct == 0 && playBeat == 0)
-                    bounceArpRange = arpRange;
+                if (playingArpRange != arpRange && ((arpUp && currentArpOct == 0 && playBeat == 0) || (!arpUp && currentArpOct == 0 && playBeat == getNotesInArp() - 1)))
+                    playingArpRange = arpRange;
                 // base,2up,3up: [1note]1,3,5  [2notes]3,7,11 [3notes]5,11,17
-                if ((2 * (abs(ARP_RANGE[bounceArpRange]) + 1) * getNotesInArp() - 1) == arpPlayCount)
+                if ((2 * (abs(ARP_RANGE[playingArpRange]) + 1) * getNotesInArp() - 1) == arpPlayCount)
                 {
                     arpCycleCount++;
                     arpPlayCount = 0;
@@ -630,10 +638,10 @@ FLASHMEM void noteOnRoutine()
                 break;
             case UPDOWN:
                 // Avoid problems when changing range
-                if (bounceArpRange != arpRange && currentArpOct == 0 && playBeat == 0)
-                    bounceArpRange = arpRange;
+                if (playingArpRange != arpRange && ((arpUp && currentArpOct == 0 && playBeat == 0) || (!arpUp && currentArpOct == 0 && playBeat == getNotesInArp() - 1)))
+                    playingArpRange = arpRange;
                 // base,2up,3up: [1note]1,4,6  [2notes]4,8,12 [3notes]6,12,18
-                if ((getNotesInArp() == 1 && ARP_RANGE[bounceArpRange] == 0) || (2 * (abs(ARP_RANGE[bounceArpRange]) + 1) * getNotesInArp() == arpPlayCount))
+                if ((getNotesInArp() == 1 && ARP_RANGE[playingArpRange] == 0) || (2 * (abs(ARP_RANGE[playingArpRange]) + 1) * getNotesInArp() == arpPlayCount))
                 {
                     arpCycleCount++;
                     arpPlayCount = 0;

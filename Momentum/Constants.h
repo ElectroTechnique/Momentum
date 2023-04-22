@@ -15,7 +15,6 @@
 #define savepatch 130
 #define renamepatch 131
 #define deletepatch 132
-#define temposync 133
 #define ampenvshape 134
 #define filterenvshape 135
 #define glideshape 136
@@ -97,7 +96,7 @@ const static char *MonophonicStr[] = {"Off", "Last", "First", "Highest", "Lowest
 const static char *MIDIThruStr[] = {"Off", "Full", "Same Ch.", "Diff. Ch."};
 
 #define TOTALCHARS 69
-const static char *CHARACTERS[TOTALCHARS] = {"a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", " ", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", " ", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "-", "!", "?", "+", ":"};
+const static char *CHARACTERS[TOTALCHARS] = {"A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", " ", "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", " ", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "-", "!", "?", "+", ":"};
 
 extern const char *VERSION;
 extern const float PROGMEM FILTERFREQS256[256];
@@ -178,10 +177,12 @@ typedef enum State
   OSCMODPAGE2,           // Osc Mod parameters 2
   OSCMODPAGE3,           // Osc Mod parameters 3
   OSCMODPAGE4,           // Osc Mod parameters 4
+  OSCMODPAGE5,           // Osc Mod parameters 5
   FILTERPAGE1,           // Filter parameters 1
   FILTERPAGE2,           // Filter parameters 2
   FILTERMODPAGE1,        // Filter Mod parameters 1
   FILTERMODPAGE2,        // Filter Mod parameters 2
+  FILTERMODPAGE3,        // Filter Mod parameters 3
   AMPPAGE1,              // Amplifier parameters 1
   AMPPAGE2,              // Amplifier parameters 2
   AMPPAGE3,              // Amplifier parameters 3

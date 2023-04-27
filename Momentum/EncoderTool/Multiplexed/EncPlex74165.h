@@ -30,6 +30,7 @@ namespace EncoderTool
         uint32_t btnStarttime[8] = {0};
         boolean buttonHeld[8] = {false};
         uint8_t w = 0;
+        boolean encRotationBlocked = false;
     };
 
     // IMPLEMENTATION ============================================
@@ -99,6 +100,7 @@ namespace EncoderTool
                     {
                         btnStarttime[i] = millis();
                         w = 0;
+                        encRotationBlocked = true;//Prevent rotation of encoder when pressing button
                     }
                     else
                     {
@@ -106,10 +108,11 @@ namespace EncoderTool
                             btnCallback(i, encoders[i].getButton());
                         buttonHeld[i] = false;
                         w = 0;
+                        encRotationBlocked = false;
                     }
                 }
 
-                else if (delta != 0 && callback != nullptr)
+                else if (delta != 0 && callback != nullptr && !encRotationBlocked)
                 {
                     callback(i, encoders[i].getValue(), delta);
                     if ((now - last[i]) < ACC_TIME) // Accelerate 1

@@ -454,7 +454,7 @@ FLASHMEM void configureCCoscLfoRate(EncoderMappingStruct *enc, State st = State:
     enc->ShowValue = true;
     enc->Value = currentPatch.PitchLFORate;
     enc->DefaultValue = 11;
-    if (currentPatch.PitchLFOMidiClkSync>0)
+    if (currentPatch.PitchLFOMidiClkSync > 0)
         enc->ValueStr = LFOTEMPOSTR[currentPatch.PitchLFORate];
     else
         enc->ValueStr = String(groupvec[activeGroupIndex]->getPitchLfoRate()) + " Hz";
@@ -1152,8 +1152,8 @@ FLASHMEM void setEncodersState(State s)
         encMap[ENC_TL].active = true;
         encMap[ENC_TL].Parameter = editbank;
         encMap[ENC_TL].ShowValue = false;
-        encMap[ENC_TL].Value = 0;
-        encMap[ENC_TL].Range = 0;
+        encMap[ENC_TL].Value = currentBankIndex;
+        encMap[ENC_TL].Range = BANKS_LIMIT;
         encMap[ENC_TL].ValueStr = "";
         encMap[ENC_TL].ParameterStr = ParameterStrMap[editbank];
         encMap[ENC_TL].Push = true;
@@ -1317,36 +1317,44 @@ FLASHMEM void setEncodersState(State s)
         encMap[ENC_TL].ShowValue = true;
         encMap[ENC_TL].Value = getIndexForParametersForPerformanceEncoders(currentPerformance.TL);
         encMap[ENC_TL].ValueStr = ParameterStrMap[ParametersForPerformanceEncoders[encMap[ENC_TL].Value]];
+        encMap[ENC_TL].DefaultValue = 0;
         encMap[ENC_TL].Range = PARAMETERSFORENCS - 1;
         encMap[ENC_TL].ParameterStr = "";
-        encMap[ENC_TL].Push = false;
+        encMap[ENC_TL].Push = true;
+        encMap[ENC_TL].PushAction = State::PERFORMANCEENCEDIT;
 
         encMap[ENC_TR].active = true;
         encMap[ENC_TR].Parameter = chooseEncoderTR;
         encMap[ENC_TR].ShowValue = true;
         encMap[ENC_TR].Value = getIndexForParametersForPerformanceEncoders(currentPerformance.TR);
         encMap[ENC_TR].ValueStr = ParameterStrMap[ParametersForPerformanceEncoders[encMap[ENC_TR].Value]];
+        encMap[ENC_TR].DefaultValue = 0;
         encMap[ENC_TR].Range = PARAMETERSFORENCS - 1;
         encMap[ENC_TR].ParameterStr = "";
-        encMap[ENC_TR].Push = false;
+        encMap[ENC_TR].Push = true;
+        encMap[ENC_TR].PushAction = State::PERFORMANCEENCEDIT;
 
         encMap[ENC_BL].active = true;
         encMap[ENC_BL].Parameter = chooseEncoderBL;
         encMap[ENC_BL].ShowValue = true;
         encMap[ENC_BL].Value = getIndexForParametersForPerformanceEncoders(currentPerformance.BL);
         encMap[ENC_BL].ValueStr = ParameterStrMap[ParametersForPerformanceEncoders[encMap[ENC_BL].Value]];
+        encMap[ENC_BL].DefaultValue = 0;
         encMap[ENC_BL].Range = PARAMETERSFORENCS - 1;
         encMap[ENC_BL].ParameterStr = "";
-        encMap[ENC_BL].Push = false;
+        encMap[ENC_BL].Push = true;
+        encMap[ENC_BL].PushAction = State::PERFORMANCEENCEDIT;
 
         encMap[ENC_BR].active = true;
         encMap[ENC_BR].Parameter = chooseEncoderBR;
         encMap[ENC_BR].ShowValue = true;
         encMap[ENC_BR].Value = getIndexForParametersForPerformanceEncoders(currentPerformance.BR);
         encMap[ENC_BR].ValueStr = ParameterStrMap[ParametersForPerformanceEncoders[encMap[ENC_BR].Value]];
+        encMap[ENC_BR].DefaultValue = 0;
         encMap[ENC_BR].Range = PARAMETERSFORENCS - 1;
         encMap[ENC_BR].ParameterStr = "";
-        encMap[ENC_BR].Push = false;
+        encMap[ENC_BR].Push = true;
+        encMap[ENC_BR].PushAction = State::PERFORMANCEENCEDIT;
         break;
     case State::PERFORMANCEMIDIEDIT:
         encMap[ENC_TL].active = true;
@@ -1701,10 +1709,10 @@ FLASHMEM void setEncodersState(State s)
         encMap[ENC_BR].PushAction = State::SEQUENCEEDIT;
         break;
     case State::EDITBANK:
-        encMap[ENC_TL].active = false;
         encMap[ENC_TL].active = true;
         encMap[ENC_TL].Parameter = deletebank;
         encMap[ENC_TL].ShowValue = false;
+        encMap[ENC_TL].Range = BANKS_LIMIT;
         encMap[ENC_TL].ParameterStr = ParameterStrMap[deletebank];
         encMap[ENC_TL].Push = true;
         encMap[ENC_TL].PushAction = State::MAIN;

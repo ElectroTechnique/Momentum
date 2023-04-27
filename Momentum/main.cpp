@@ -51,7 +51,7 @@
 
 #include <Adafruit_GFX.h>
 #include <ILI9341_t3n.h>
-#include <T4_PowerButton.h>
+// #include <T4_PowerButton.h>
 #include <vector>
 #include "Audio.h" //Using local version to override Teensyduino version
 #include <Wire.h>
@@ -119,6 +119,7 @@ FLASHMEM void myProgramChange(byte channel, byte program);
 void myPitchBend(byte channel, int bend);
 void myNoteOff(byte channel, byte note, byte velocity);
 void myNoteOn(byte channel, byte note, byte velocity);
+FLASHMEM void playNote(uint8_t note);
 FLASHMEM void setCurrentPatchData();
 FLASHMEM void recallPatch(uint8_t bank, long patchUID);
 FLASHMEM void recallPerformance(uint8_t filename);
@@ -148,12 +149,12 @@ int voiceToReturn = -1;       // Initialise
 
 uint8_t seq_last_step = 0;
 
-void NullCB() {}
+// void NullPowerT4CB() {}
 
 FLASHMEM void setup()
 {
-    set_arm_power_button_press_on_time(arm_power_button_press_on_time_50ms); // 50 ms to hold power button for startup
-    set_arm_power_button_callback(&NullCB);                                  // Immediate shut off from on/off button press
+    // set_arm_power_button_press_on_time(arm_power_button_press_on_time_50ms); // 50 ms to hold power button for startup
+    // set_arm_power_button_callback(&NullPowerT4CB);                           // Immediate shut off from on/off button press
 
     sequencer_timer.begin(sequencer, currentSequence.tempo_us / 2.0f, false);
     //  while (!Serial)
@@ -278,7 +279,10 @@ FLASHMEM void setup()
 FLASHMEM void noteOn(byte channel, byte note, byte velocity)
 {
     // Check for out of range notes. Less than 20Hz isn't really audible
-    if (note + groupvec[activeGroupIndex]->params().oscPitchA < 10 || note + groupvec[activeGroupIndex]->params().oscPitchA > 127 || note + groupvec[activeGroupIndex]->params().oscPitchB < 10 || note + groupvec[activeGroupIndex]->params().oscPitchB > 127)
+    if (note + groupvec[activeGroupIndex]->params().oscPitchA < 10 ||
+        note + groupvec[activeGroupIndex]->params().oscPitchA > 127 ||
+        note + groupvec[activeGroupIndex]->params().oscPitchB < 10 ||
+        note + groupvec[activeGroupIndex]->params().oscPitchB > 127)
         return;
     groupvec[activeGroupIndex]->noteOn(note, velocity);
 }
@@ -352,6 +356,19 @@ FLASHMEM void myNoteOn(byte channel, byte note, byte velocity)
         {
             currentSequence.note_in = note;
             currentSequence.note_in_velocity = velocity;
+        }
+        else if (!currentSequence.recording && state == SEQUENCEEDIT)
+        {
+            currentSequence.Notes[currentSeqPosition] = note;
+            if (currentSeqPosition < currentSequence.length - 1)
+                currentSeqPosition++;
+            else
+                currentSeqPosition = 0;
+
+            currentSeqNote = note;
+            if (currentSeqNote < 108)
+                seqCurrentOctPos = nearbyint((currentSeqNote + 4) / 12) - 2;
+            // saveSequence();
         }
 
         noteOn(midiChannel, note, velocity);
@@ -1258,7 +1275,7 @@ FLASHMEM void myMIDIClock()
         else if (midiClkArpCount == (ARP_DIVISION_24PPQ[arpDivision] - 2) && !seqSwapper)
         {
             noteOffRoutine();
-            Serial.printf("MIDIClk %d: %d", midiClkArpCount, ARP_DIVISION_24PPQ[arpDivision]);
+            // Serial.printf("MIDIClk %d: %d", midiClkArpCount, ARP_DIVISION_24PPQ[arpDivision]);
         }
 
         if ((midiClkArpCount + 1) == ARP_DIVISION_24PPQ[arpDivision])
@@ -1350,6 +1367,9 @@ FLASHMEM void recallSequence(uint8_t filename)
         // Sequence missing
         Serial.print(F("Sequence Missing:"));
         Serial.println(filename);
+        // Initialise sequence
+        SequenceStruct ss;
+        currentSequence = ss;
     }
 }
 
@@ -1530,6 +1550,8 @@ FLASHMEM void encoderCallback(unsigned enc_idx, int value, int delta)
             }
             break;
         case savebankselect:
+        case editbank:
+        case deletebank:
             if (!cardStatus)
                 return;
             if (newDelta == 0)
@@ -1537,7 +1559,7 @@ FLASHMEM void encoderCallback(unsigned enc_idx, int value, int delta)
             loadPatchNamesFromBank(newDelta > 0 ? incTempBankIndex() : decTempBankIndex());
             currentBankIndex = tempBankIndex;
             if (patches[0].patchUID != 0)
-                patches.push_back(PatchUIDAndName{0, F("-Empty-")});
+                patches.push_back(PatchUIDAndName{0, EMPTYNAME});
             currentPatchIndex = patches.size() - 1;
             break;
         case bankeditselect:
@@ -1699,10 +1721,14 @@ FLASHMEM void encoderCallback(unsigned enc_idx, int value, int delta)
             if (newDelta == 0 || currentSequence.length + newDelta < 1 || currentSequence.length + newDelta > 64)
                 break;
             currentSequence.length += newDelta;
-            if (currentSeqPosition > currentSequence.length - 1){
-                sequencerStop();
+            if (currentSeqPosition > currentSequence.length - 1)
+            {
+                currentSeqPosition = currentSequence.length - 1;
             }
-
+            if (currentSequence.running && currentSequence.step > currentSequence.length - 1)
+            {
+                sequencerStart();
+            }
             break;
         case SeqPosition:
             if (newDelta == 0 || currentSeqPosition + newDelta < 0 || currentSeqPosition + newDelta > currentSequence.length - 1)
@@ -1823,9 +1849,16 @@ FLASHMEM void encoderButtonCallback(unsigned enc_idx, int buttonState)
                 bankNames[tempBankIndex] = bankNames[tempBankIndex].substring(0, nameCursor + 1) + CHARACTERS[charCursor] + bankNames[tempBankIndex].substring(nameCursor + 1, bankNames[tempBankIndex].length());
             break;
         case choosecharacterPerformance:
-            if (currentPerformance.performanceName.length() < PATCHNAMEMAXLEN)
+            if (currentPerformance.performanceName.length() < PERFORMANCENAMEMAXLEN)
             {
                 currentPerformance.performanceName = currentPerformance.performanceName.substring(0, nameCursor + 1) + CHARACTERS[charCursor] + currentPerformance.performanceName.substring(nameCursor + 1, currentPerformance.performanceName.length());
+                nameCursor++;
+            }
+            break;
+        case choosecharacterSequence:
+            if (currentSequence.SequenceName.length() < SEQUENCENAMEMAXLEN)
+            {
+                currentSequence.SequenceName = currentSequence.SequenceName.substring(0, nameCursor + 1) + CHARACTERS[charCursor] + currentSequence.SequenceName.substring(nameCursor + 1, currentSequence.SequenceName.length());
                 nameCursor++;
             }
             break;
@@ -1852,6 +1885,19 @@ FLASHMEM void encoderButtonCallback(unsigned enc_idx, int buttonState)
                 break;
             nameCursor--;
             bankNames[tempBankIndex] = String(bankNames[tempBankIndex]).substring(0, bankNames[tempBankIndex].length() - 1);
+            break;
+        case deleteCharacterSequence:
+            if (buttonState == HELD)
+            {
+                currentSequence.SequenceName = "";
+                nameCursor = 0;
+                break;
+            }
+            if (currentSequence.SequenceName.length() == 0)
+                break;
+            currentSequence.SequenceName = currentSequence.SequenceName.substring(0, nameCursor) +
+                                           currentSequence.SequenceName.substring(nameCursor + 1, currentSequence.SequenceName.length());
+            nameCursor--;
             break;
         case deleteCharacterPerformance:
             if (buttonState == HELD)
@@ -1918,12 +1964,12 @@ FLASHMEM void encoderButtonCallback(unsigned enc_idx, int buttonState)
             recallPerformance(currentPerformanceIndex + 1);
             singleLED(ledColour::GREEN, 1); // Led 1 stays green
             break;
-        case chooseEncoderBL:
-        case chooseEncoderBR:
-        case chooseEncoderTL:
-        case chooseEncoderTR:
-            savePerformance();
-            break;
+        // case chooseEncoderBL:
+        // case chooseEncoderBR:
+        // case chooseEncoderTL:
+        // case chooseEncoderTR:
+        //     savePerformance();
+        // break;
         case SeqSelect:
         case SeqEdit:
             recallSequence(currentSequenceIndex + 1);
@@ -1945,7 +1991,32 @@ FLASHMEM void encoderButtonCallback(unsigned enc_idx, int buttonState)
             setSeqTimerPeriod(currentSequence.bpm);
             break;
         case SeqLength:
-            currentSequence.length = SEQ_PATTERN_LEN;
+            switch (currentSequence.length)
+            {
+            case 64:
+                currentSequence.length = 8;
+                break;
+            case 48:
+                currentSequence.length = SEQ_PATTERN_LEN;
+                break;
+            case 32:
+                currentSequence.length = 48;
+                break;
+            case 16:
+                currentSequence.length = 32;
+                break;
+            case 8:
+                currentSequence.length = 16;
+                break;
+            default:
+                currentSequence.length = SEQ_PATTERN_LEN;
+                break;
+            }
+            currentSeqPosition = 0;
+            if (currentSequence.running && currentSequence.step > currentSequence.length - 1)
+            {
+                sequencerStart();
+            }
             break;
         case SeqPosition:
             if (currentSeqPosition < currentSequence.length - 1)
@@ -2053,6 +2124,9 @@ FLASHMEM void buttonCallback(unsigned button_idx, int button)
                 break;
             case State::PERFORMANCEMIDIEDIT:
                 savePerformance();
+                if (currentPerformance.performanceName.equals(EMPTYNAME))
+                    currentPerformance.performanceName = "";
+                nameCursor = currentPerformance.performanceName.length() - 1;
                 state = State::RENAMEPERFORMANCE;
                 singleLED(ledColour::GREEN, 1);
                 break;
@@ -2186,6 +2260,10 @@ FLASHMEM void buttonCallback(unsigned button_idx, int button)
                 break;
             case State::SEQUENCEEDIT:
                 saveSequence();
+                currentSequence.recording = false;
+                if (currentSequence.SequenceName.equals(EMPTYNAME))
+                    currentSequence.SequenceName = "";
+                nameCursor = currentSequence.SequenceName.length() - 1;
                 state = State::RENAMESEQUENCE;
                 singleLED(ledColour::GREEN, 3);
                 break;
@@ -2594,7 +2672,7 @@ FLASHMEM void CPUMonitor()
 
 void loop()
 {
-    delayMicroseconds(40); // Improves USB digital audio output
+    delayMicroseconds(10); // Improves USB digital audio output (usb.Task())
     myusb.Task();
     checkUSBHostStatus();
     // USB Host MIDI Class Compliant
@@ -2607,5 +2685,5 @@ void loop()
     buttons.read();
     sdCardDetect();
     sequencerLEDs();
-    //CPUMonitor();
+    // CPUMonitor();
 }

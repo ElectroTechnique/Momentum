@@ -162,7 +162,7 @@ FLASHMEM void loadPatchNamesFromBank(uint8_t bankIndex)
   if (patches.empty())
   {
     // Dummy patch
-    patches.push_back(PatchUIDAndName{0, "-Empty-"});
+    patches.push_back(PatchUIDAndName{0, EMPTYNAME});
   }
   else
   {

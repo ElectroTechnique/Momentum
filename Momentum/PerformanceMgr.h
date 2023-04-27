@@ -27,7 +27,7 @@ typedef enum PerformanceMode
 
 typedef struct PerformanceStruct
 {
-    String performanceName = F("-Empty-");
+    String performanceName = EMPTYNAME;
     PerformanceMode mode = PerformanceMode::Single;
     Array<PatchesInPerfStruct, 2> patches;
     uint8_t TL = noencoder;
@@ -74,7 +74,7 @@ FLASHMEM void loadPerformanceNames()
     File performanceFile;
     for (uint8_t i = 0; i < PERFORMANCES_LIMIT; i++)
     {
-        performances[i] = {F("-Empty-")};
+        performances[i] = {EMPTYNAME};
     }
 
     while (performanceFile = performanceDir.openNextFile())
@@ -95,7 +95,7 @@ FLASHMEM void loadPerformanceNames()
     performanceFile.close();
 }
 
-// Filename is UID
+// Filename is index +1 (1-128)
 FLASHMEM boolean loadPerformance(uint8_t filename)
 {
     // Initial empty
@@ -106,7 +106,7 @@ FLASHMEM boolean loadPerformance(uint8_t filename)
         return false;
     }
 
-    // Open file for reading - UID is Filename
+    // Open file for reading - Filename is index +1 (1-128)
     char result[30];
     concatPerformanceFolderAndFilename(filename, result);
     File file = SD.open(result);

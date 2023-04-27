@@ -249,6 +249,27 @@ FLASHMEM void renderArpIndicator()
   }
 }
 
+FLASHMEM void renderSeqIndicator()
+{
+  tft.setTextColor(ILI9341_BLACK);
+  tft.setTextDatum(TC_DATUM);
+  tft.setFont(Arial_10_Bold);
+  if (currentSequence.running)
+  {
+    tft.fillRect(94, 73, 30, 15, ILI9341_DARKYELLOW);
+    tft.drawString(F("SEQ"), 109, 76);
+  }
+}
+
+FLASHMEM void renderPerfIndicator()
+{
+  tft.setTextColor(ILI9341_BLACK);
+  tft.setTextDatum(TC_DATUM);
+  tft.setFont(Arial_10_Bold);
+  tft.fillRect(204, 73, 30, 15, ILI9341_PINK);
+  tft.drawString(F("PER"), 219, 76);
+}
+
 FLASHMEM void renderPageIndicator(uint8_t pages, uint8_t current)
 {
   if (pages < 2)
@@ -283,7 +304,7 @@ FLASHMEM void renderWaveformSymbol(uint8_t waveform)
     break;
   case WAVEFORM_BANDLIMIT_SAWTOOTH:
   case WAVEFORM_SAWTOOTH:
-    tft.println("C");
+    tft.println("J");
     break;
   case WAVEFORM_BANDLIMIT_SQUARE:
   case WAVEFORM_SQUARE:
@@ -306,7 +327,7 @@ FLASHMEM void renderWaveformSymbol(uint8_t waveform)
     break;
   case WAVEFORM_BANDLIMIT_SAWTOOTH_REVERSE:
   case WAVEFORM_SAWTOOTH_REVERSE:
-    tft.println("J");
+    tft.println("C");
     break;
   }
 }
@@ -885,7 +906,7 @@ FLASHMEM void renderBankNamingPage()
   renderCorners();
 }
 
-FLASHMEM void renderSequencerNamingPage()
+FLASHMEM void renderSequenceNamingPage()
 {
   tft.fillScreen(ILI9341_BLACK);
   tft.setFont(Arial_16);
@@ -1192,6 +1213,7 @@ FLASHMEM void renderSequencerPage()
   tft.drawString(currentSequence.SequenceName, 160, 19);
   renderPatchName();
   renderMidiClk();
+  renderSeqIndicator();
   renderPeak();
   renderCorners();
   renderMIDI();
@@ -1290,6 +1312,8 @@ FLASHMEM void renderPerformancePage()
   tft.fillScreen(ILI9341_BLACK);
   renderMidiClk();
   renderArpIndicator();
+  renderSeqIndicator();
+  renderPerfIndicator();
   renderPeak();
   renderMIDI();
   renderVoiceGrid();
@@ -1676,9 +1700,6 @@ void displayThread()
       case SEQUENCEEDIT:
         renderSequencerEditPage();
         break;
-      case RENAMESEQUENCE:
-        renderSequencerNamingPage();
-        break;
       case State::ARPPAGE1:
         renderArpPage(1);
         break;
@@ -1715,6 +1736,11 @@ void displayThread()
       case State::CHOOSECHARBANK:
       case State::DELETECHARBANK:
         renderBankNamingPage();
+        break;
+      case State::RENAMESEQUENCE:
+      case State::CHOOSECHARSEQUENCE:
+      case State::DELETECHARSEQUENCE:
+        renderSequenceNamingPage();
         break;
       default:
         break;

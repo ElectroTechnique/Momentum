@@ -151,8 +151,11 @@ extern const float FILTERMODMIXERMAX;
 extern const float GLIDEFACTOR;
 extern const uint32_t NO_OF_PARAMS;
 extern const char *INITPATCHNAME;
+extern const char *EMPTYNAME;
 extern const uint8_t PATCHNAMEMAXLEN;
 extern const uint8_t BANKNAMEMAXLEN;
+extern const uint8_t PERFORMANCENAMEMAXLEN;
+extern const uint8_t SEQUENCENAMEMAXLEN;
 extern const uint32_t HOLD_DURATION;
 extern const uint32_t CLICK_DURATION;
 extern const float ENSEMBLE_LFO[128];
@@ -191,9 +194,9 @@ typedef enum State
   ARPPAGE1,              // Arpeggiator parameters
   ARPPAGE2,              // Arpeggiator parameters
   SEQUENCEPAGE,          // Sequencer parameters
-  SEQUENCEEDIT,          // Sequencer parameters
-  SEQUENCERECALL,        // Sequencer recall
-  RENAMESEQUENCE,        // Performance naming
+  SEQUENCEEDIT,          // Sequence parameters
+  SEQUENCERECALL,        // Sequence recall
+  RENAMESEQUENCE,        // Sequence naming
   CHOOSECHARSEQUENCE,    // Choose character
   DELETECHARSEQUENCE,    // Delete character
   PERFORMANCERECALL,     // Performance parameters

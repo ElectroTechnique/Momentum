@@ -371,7 +371,7 @@ FLASHMEM void randomPlay()
 typedef struct SequenceStruct
 {
     uint32_t UID = 0;
-    String SequenceName = F("-Empty-");
+    String SequenceName = EMPTYNAME;
     float bpm = 120.0f;
     uint8_t length = SEQ_PATTERN_LEN;
     uint8_t Notes[SEQ_PATTERN_LEN] = {0};
@@ -384,11 +384,6 @@ typedef struct SequenceStruct
     uint8_t note_in;
     uint8_t note_in_velocity;
     int8_t transpose;
-
-    uint8_t chord_velocity = 60;
-    uint8_t chord_key_amount = 4;
-    uint8_t element_shift = 0; // Not currently used
-    int8_t oct_shift = 0;      // Not currently used
 
     uint32_t tempo_us = 125'000; // 60s/bpm
 
@@ -456,6 +451,7 @@ FLASHMEM void saveSequence()
     StaticJsonDocument<3000> doc;
     // Need to generate a new UID as the sequence settings may have changed if overwriting an existing sequence
     String output;
+    Serial.println("Saving seq:" + currentSequence.SequenceName);
     doc["Name"] = currentSequence.SequenceName;
     doc["Length"] = currentSequence.length;
     doc["bpm"] = currentSequence.bpm;
@@ -472,7 +468,7 @@ FLASHMEM void saveSequence()
     doc["UID"] = getHash(output); // Insert UID
     char result[30];
     concatSequenceFolderAndFilename(currentSequenceIndex + 1, result);
-    File file = SD.open(result, FILE_WRITE);
+    File file = SD.open(result, FILE_WRITE_BEGIN);
     if (!file)
     {
         Serial.println(F("Failed to create file"));
@@ -511,7 +507,7 @@ FLASHMEM void loadSequenceNames()
     File sequenceFile;
     for (uint8_t i = 0; i < SEQUENCES_LIMIT; i++)
     {
-        sequences[i] = {F("-Empty-")};
+        sequences[i] = {EMPTYNAME};
     }
 
     while (sequenceFile = sequenceDir.openNextFile())
@@ -580,7 +576,7 @@ FLASHMEM void noteOnRoutine()
         if ((arpHold && getNotesInArp() > 0) || arpNotesHeld > 0)
         {
             // Serial.printf("arpCycleCount:%d  arpPlayCount:%d Target:%d\n", arpCycleCount, arpPlayCount, 2 * (abs(ARP_RANGE[playingArpRange]) + 1 * getNotesInArp()));
-            if (arpCycles != ARP_HOLD && arpCycles != ARP_INF && arpCycleCount == arpCycles)
+            if (arpCycles != ARP_HOLD && arpCycles != ARP_INF && arpCycleCount >= arpCycles)
             {
                 return;
             }

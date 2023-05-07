@@ -80,6 +80,12 @@ namespace ButtonTool
     Button8 SR2 D6
     ButtonUp SR1 D7
     ButtonDown SR2 D7
+
+    Read in Parallel
+    Buttons 1,2,3
+    Buttons 4,5,6
+    Buttons 7,8
+    Buttons Up, Down
     */
     {
         // load current values to shift register
@@ -112,13 +118,18 @@ namespace ButtonTool
                 digitalWriteFast(CLK, LOW);
                 delayNanoseconds(50);
             }
+            // if (buttons[0].getButton() == LOW && buttons[1].getButton() == LOW)
+            // {
+            //     Serial.println("!!!!!!!!!!");
+            // }
         }
     }
 
     void ButtonPlex74165::readButton(unsigned i)
     {
+        // Ignore unconnected shift register inputs ***** This is Momentum specific *****
         if (i == 2 || i == 5 || i > 11)
-            return; // Ignore unconnected shift register inputs ***** This is Momentium specific *****
+            return;
 
         if (callback != nullptr && buttons[i].buttonChanged())
         {

@@ -40,7 +40,7 @@
 
 void AudioEffectEnvelopeTS::noteOn(void)
 {
-  __disable_irq();
+  //__disable_irq();
   if(release_forced_count==0)
     state=STATE_IDLE;
   switch(state)
@@ -77,12 +77,12 @@ void AudioEffectEnvelopeTS::noteOn(void)
       state=STATE_RELEASE;
       break;
   }
-  __enable_irq();
+  //__enable_irq();
 }
 
 void AudioEffectEnvelopeTS::noteOff(void)
 {
-  __disable_irq();
+  //__disable_irq();
   switch(state)
   {
     case STATE_IDLE:
@@ -95,7 +95,7 @@ void AudioEffectEnvelopeTS::noteOff(void)
       count = release_count;
       inc_hires = (-mult_hires) / (int32_t)count;
   }
-  __enable_irq();
+ // __enable_irq();
 }
 
 void AudioEffectEnvelopeTS::update(void)
@@ -215,10 +215,9 @@ void AudioEffectEnvelopeTS::update(void)
   }
   else  //Exponential ADSR Vince R. Pearson
   {
-    uint16_t i;
     while (p < end) 
     {
-      for(i=0;i<8;i++)
+      for (uint8_t i = 0; i < 8; i++)
       {
         switch(state)
         {
@@ -343,4 +342,3 @@ bool AudioEffectEnvelopeTS::isSustain()
   if (current_state == STATE_SUSTAIN || current_state==STATE_SUSTAIN_FAST_CHANGE) return true;
   return false;
 }
- 

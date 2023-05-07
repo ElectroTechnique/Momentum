@@ -175,12 +175,12 @@ typedef enum State
   SETTINGSVALUE,         // Settings page
   OSCPAGE1,              // Osc parameters 1
   OSCPAGE2,              // Osc parameters 2
-  OSCPAGE3,              // Osc parameters 2
+  OSCPAGE3,              // Osc parameters 3
+  OSCPAGE4,              // Osc parameters 4
   OSCMODPAGE1,           // Osc Mod parameters 1
   OSCMODPAGE2,           // Osc Mod parameters 2
   OSCMODPAGE3,           // Osc Mod parameters 3
   OSCMODPAGE4,           // Osc Mod parameters 4
-  OSCMODPAGE5,           // Osc Mod parameters 5
   FILTERPAGE1,           // Filter parameters 1
   FILTERPAGE2,           // Filter parameters 2
   FILTERMODPAGE1,        // Filter Mod parameters 1

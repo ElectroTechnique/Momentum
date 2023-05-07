@@ -13,7 +13,7 @@ boolean vuMeter = false;
 int8_t tuningCents = 0;
 float tuningCentsFrac = 1.0f;
 
-float midiClkTimeInterval = 1000.0f;
+uint32_t midiClkTimeInterval = 500;
 float lfoSyncFreq = 1.0f;
 float lfoFilterTempoValue = 1.0f;
 float lfoPitchTempoValue = 1.0f;

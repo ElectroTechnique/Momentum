@@ -149,7 +149,6 @@ FLASHMEM void close(){
   bool isSustain();
   using AudioStream::release;
   virtual void update(void);
-  void setEnvType(uint8_t type);
 
 private:
   uint16_t milliseconds2count(float milliseconds) {
@@ -232,7 +231,7 @@ private:
     STATE_IDLE_NEXT,  // Not used for original linear envelope.
     };
  // Exponential ADSR variables
-  int8_t env_type; // Attack curve type. Limit to -8 to 8 integers for exp curve, -128 for linear.
+  int8_t env_type; // Attack curve type. Limit to -8 to 8 integers for exp curve, -128 for original linear.
   uint32_t exp_count; // same function as count in linear generator but for single samples, not groups of 8.
   int32_t ysum;
   int32_t attack_k;

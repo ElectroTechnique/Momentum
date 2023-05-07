@@ -51,7 +51,6 @@
 
 #include <Adafruit_GFX.h>
 #include <ILI9341_t3n.h>
-// #include <T4_PowerButton.h>
 #include <vector>
 #include "Audio.h" //Using local version to override Teensyduino version
 #include <Wire.h>
@@ -102,9 +101,7 @@ extern void noteOnRoutine();
 
 // USB HOST MIDI Class Compliant
 USBHost myusb;
-USBHub hub1(myusb);
-USBHub hub2(myusb);
-MIDIDevice midi1(myusb);
+MIDIDevice usbHostMIDI(myusb);
 // MIDIDevice_BigBuffer midi1(myusb); // Try this if your MIDI Compliant controller has problems
 
 // MIDI 5 Pin DIN - (TRS MIDI)
@@ -142,6 +139,7 @@ void buttonCallback(unsigned button_idx, int state);
 boolean firstPatchLoaded = false;
 
 uint32_t previousMillis = millis(); // For MIDI Clk Sync
+uint32_t timeNow = millis();        // For MIDI Clk Sync
 
 uint32_t midiClkCount = 0;    // For MIDI Clk Sync
 uint32_t midiClkArpCount = 0; // For MIDI Clk Sync with Arp
@@ -149,19 +147,16 @@ int voiceToReturn = -1;       // Initialise
 
 uint8_t seq_last_step = 0;
 
-// void NullPowerT4CB() {}
+uint8_t loopCount = 0;
 
 FLASHMEM void setup()
 {
-    // set_arm_power_button_press_on_time(arm_power_button_press_on_time_50ms); // 50 ms to hold power button for startup
-    // set_arm_power_button_callback(&NullPowerT4CB);                           // Immediate shut off from on/off button press
-
+    AudioMemory(60);
     sequencer_timer.begin(sequencer, currentSequence.tempo_us / 2.0f, false);
     //  while (!Serial)
     //  {
     //  }
     //  Serial.print(CrashReport);
-    AudioMemory(61);
     checkFirstRun();
     // Initialize the voice groups.
     uint8_t total = 0;
@@ -209,15 +204,15 @@ FLASHMEM void setup()
 
     // USB HOST MIDI Class Compliant
     myusb.begin();
-    midi1.setHandleControlChange(usbHostControlChange);
-    midi1.setHandleNoteOff(myNoteOff);
-    midi1.setHandleNoteOn(myNoteOn);
-    midi1.setHandlePitchChange(myPitchBend);
-    midi1.setHandleProgramChange(myProgramChange);
-    midi1.setHandleClock(myMIDIClock);
-    midi1.setHandleContinue(myMIDIClockContinue);
-    midi1.setHandleStart(myMIDIClockStart);
-    midi1.setHandleStop(myMIDIClockStop);
+    usbHostMIDI.setHandleControlChange(usbHostControlChange);
+    usbHostMIDI.setHandleNoteOff(myNoteOff);
+    usbHostMIDI.setHandleNoteOn(myNoteOn);
+    usbHostMIDI.setHandlePitchChange(myPitchBend);
+    usbHostMIDI.setHandleProgramChange(myProgramChange);
+    usbHostMIDI.setHandleClock(myMIDIClock);
+    usbHostMIDI.setHandleContinue(myMIDIClockContinue);
+    usbHostMIDI.setHandleStart(myMIDIClockStart);
+    usbHostMIDI.setHandleStop(myMIDIClockStop);
     Serial.println(F("USB HOST MIDI Class Compliant Listening"));
 
     // USB Client MIDI
@@ -744,7 +739,6 @@ FLASHMEM void myControlChange(byte channel, byte control, byte value)
     case CCbankselectLSB:
         if (value < BANKS_LIMIT)
         {
-            Serial.println(value);
             currentBankIndex = value;
             if (!cardStatus)
                 return;
@@ -1151,10 +1145,12 @@ FLASHMEM void myControlChange(byte channel, byte control, byte value)
 
 FLASHMEM void myProgramChange(byte channel, byte program)
 {
-    if (state == State::PERFORMANCEPAGE)
+    if (state == State::PERFORMANCEPAGE || state == State::PERFORMANCERECALL)
     {
         if (program < PERFORMANCES_LIMIT)
         {
+            if (state == State::PERFORMANCERECALL)
+                state = State::PERFORMANCEPAGE;
             currentPerformanceIndex = program;
             recallPerformance(currentPerformanceIndex + 1);
             setEncodersState(State::PERFORMANCEPAGE);
@@ -1174,11 +1170,12 @@ FLASHMEM void myProgramChange(byte channel, byte program)
     }
 }
 
+// Arp/Sequencer
 FLASHMEM void playNote(uint8_t note)
 {
-    myNoteOn(midiChannel, note, 90);
+    noteOn(midiChannel, note, 90);
     delay(300);
-    myNoteOff(midiChannel, note, 0);
+    noteOff(midiChannel, note, 0);
 }
 
 FLASHMEM void setSeqTimerPeriod(float bpm)
@@ -1192,6 +1189,7 @@ FLASHMEM void setSeqTimerPeriod(float bpm)
 
 FLASHMEM void sequencerStart(boolean cont = false)
 {
+    setSeqTimerPeriod(currentSequence.bpm);
     if (!cont)
     {
         currentSequence.step = 0;
@@ -1212,14 +1210,14 @@ FLASHMEM void sequencerStop()
     currentSequence.running = false;
     currentSequence.recording = false;
     currentSequence.note_in = 0;
-    // currentSequence.step = 0;
 }
 
 FLASHMEM void myMIDIClockContinue()
 {
     if (!currentSequence.running)
     {
-        myMIDIClockStart();
+        seqMidiSync = true;
+        sequencerStart(true);
     }
 }
 
@@ -1248,8 +1246,9 @@ FLASHMEM void myMIDIClockStart()
 
 FLASHMEM void myMIDIClockStop()
 {
-    if (seqMidiSync && arpHold)
+    if (seqMidiSync)
     {
+        sequencerStop();
         groupvec[activeGroupIndex]->allNotesOff();
         resetNotes();
     }
@@ -1264,6 +1263,10 @@ FLASHMEM void myMIDIClock()
     if ((seqMidiSync && currentSequence.running && (midiClkCount + 11) % 3 == 0))
     {
         sequencer();
+        if (state == SEQUENCEPAGE)
+        {
+            setEncValue(SeqTempo, lfoSyncFreq * 60, String(lfoSyncFreq * 60));
+        }
     }
 
     if (seqMidiSync && arpRunning)
@@ -1285,12 +1288,11 @@ FLASHMEM void myMIDIClock()
     }
 
     // This recalculates the LFO frequencies if the tempo changes (MIDI cLock is 24ppq)
+    // At 120bpm, a quarter note is every 500ms, 24ppq may have an error of 20ms giving an error in calculated bpm of up to 5bpm
     if (++midiClkCount > 23)
     {
         // TODO: Most of this needs to move into the VoiceGroup
-
-        // setMIDIClkSignal(!getMIDIClkSignal()); //Flash with tempo
-        float timeNow = millis();
+        timeNow = millis();
         midiClkTimeInterval = (timeNow - previousMillis);
         lfoSyncFreq = 1000.0f / midiClkTimeInterval;
         previousMillis = timeNow;
@@ -1760,6 +1762,7 @@ FLASHMEM void encoderCallback(unsigned enc_idx, int value, int delta)
             if (newDelta == 0 || arpStyle + newDelta < 0 || arpStyle + newDelta > 5)
                 break;
             arpStyle += newDelta;
+            resetArp();
             storeArpStyleToEEPROM(arpStyle);
             setEncValue(ArpStyle, arpStyle, ARP_STYLES[arpStyle]);
             break;
@@ -1834,6 +1837,7 @@ FLASHMEM void encoderButtonCallback(unsigned enc_idx, int buttonState)
             loadBankNames(); // If in the middle of bank renaming
             loadPatchNamesFromBank(currentBankIndex);
             recallPatch(currentBankIndex, patches[currentPatchIndex].patchUID);
+            break;
         case goback:
             lightRGLEDs(0, 0);
             break;
@@ -1964,12 +1968,6 @@ FLASHMEM void encoderButtonCallback(unsigned enc_idx, int buttonState)
             recallPerformance(currentPerformanceIndex + 1);
             singleLED(ledColour::GREEN, 1); // Led 1 stays green
             break;
-        // case chooseEncoderBL:
-        // case chooseEncoderBR:
-        // case chooseEncoderTL:
-        // case chooseEncoderTR:
-        //     savePerformance();
-        // break;
         case SeqSelect:
         case SeqEdit:
             recallSequence(currentSequenceIndex + 1);
@@ -2043,6 +2041,7 @@ FLASHMEM void encoderButtonCallback(unsigned enc_idx, int buttonState)
             }
             else
                 arpCycles = ARP_HOLD;
+            storeArpCyclesToEEPROM(arpCycles);
             break;
         default:
             setDefaultValue(&encMap[enc_idx]);
@@ -2055,7 +2054,7 @@ FLASHMEM void encoderButtonCallback(unsigned enc_idx, int buttonState)
     }
 }
 
-FLASHMEM void buttonCallback(unsigned button_idx, int button)
+FLASHMEM void buttonCallback(unsigned button_idx, int buttonStatus)
 {
     /*
       Button1 SR1 D4  10
@@ -2073,14 +2072,14 @@ FLASHMEM void buttonCallback(unsigned button_idx, int button)
     switch (button_idx)
     {
     case VOL_UP:
-        if (button == HIGH || button == HELD || button == HELD_REPEAT)
+        if (buttonStatus == HIGH || buttonStatus == HELD || buttonStatus == HELD_REPEAT)
         {
             myControlChange(midiChannel, CCvolume, clampToRange<int>(currentVolume, 1, 0, 127));
         }
         break;
 
     case VOL_DOWN:
-        if (button == HIGH || button == HELD || button == HELD_REPEAT)
+        if (buttonStatus == HIGH || buttonStatus == HELD || buttonStatus == HELD_REPEAT)
         {
             myControlChange(midiChannel, CCvolume, clampToRange<int>(currentVolume, -1, 0, 127));
         }
@@ -2088,7 +2087,7 @@ FLASHMEM void buttonCallback(unsigned button_idx, int button)
 
         // Osc / Multi
     case BUTTON_1:
-        if (button == HIGH)
+        if (buttonStatus == HIGH)
         {
             switch (state)
             {
@@ -2101,6 +2100,10 @@ FLASHMEM void buttonCallback(unsigned button_idx, int button)
                 singleLED(RED, 1);
                 break;
             case State::OSCPAGE3:
+                state = State::OSCPAGE4;
+                singleLED(RED, 1);
+                break;
+            case State::OSCPAGE4:
                 state = State::OSCPAGE1;
                 singleLED(RED, 1);
                 break;
@@ -2144,9 +2147,11 @@ FLASHMEM void buttonCallback(unsigned button_idx, int button)
                 break;
             }
         }
-        if (button == HELD)
+        if (buttonStatus == HELD)
         {
-            if (state != State::PERFORMANCERECALL && state != State::PERFORMANCEPAGE && state != State::OSCPAGE1 && state != State::OSCPAGE2 && state != State::OSCPAGE3)
+            if (state != State::PERFORMANCERECALL && state != State::PERFORMANCEPAGE &&
+                state != State::OSCPAGE1 && state != State::OSCPAGE2 &&
+                state != State::OSCPAGE3 && state != State::OSCPAGE4)
             {
                 state = State::PERFORMANCERECALL;
                 // Get performances from SD card
@@ -2163,7 +2168,7 @@ FLASHMEM void buttonCallback(unsigned button_idx, int button)
 
         // Osc Mod / Arp
     case BUTTON_2:
-        if (button == HIGH)
+        if (buttonStatus == HIGH)
         {
             switch (state)
             {
@@ -2180,10 +2185,6 @@ FLASHMEM void buttonCallback(unsigned button_idx, int button)
                 singleLED(RED, 2);
                 break;
             case State::OSCMODPAGE4:
-                state = State::OSCMODPAGE5;
-                singleLED(RED, 2);
-                break;
-            case State::OSCMODPAGE5:
                 state = State::OSCMODPAGE1;
                 singleLED(RED, 2);
                 break;
@@ -2205,11 +2206,11 @@ FLASHMEM void buttonCallback(unsigned button_idx, int button)
                 break;
             }
         }
-        if (button == HELD)
+        if (buttonStatus == HELD)
         {
             if (state != State::ARPPAGE1 && state != State::ARPPAGE2 &&
                 state != State::OSCMODPAGE1 && state != State::OSCMODPAGE2 &&
-                state != State::OSCMODPAGE3 && state != State::OSCMODPAGE4 && state != State::OSCMODPAGE5)
+                state != State::OSCMODPAGE3 && state != State::OSCMODPAGE4)
             {
                 if (!arpRunning)
                 {
@@ -2241,7 +2242,7 @@ FLASHMEM void buttonCallback(unsigned button_idx, int button)
 
         // Filter / Seq
     case BUTTON_3:
-        if (button == HIGH)
+        if (buttonStatus == HIGH)
         {
             switch (state)
             {
@@ -2281,7 +2282,7 @@ FLASHMEM void buttonCallback(unsigned button_idx, int button)
                 break;
             }
         }
-        if (button == HELD)
+        if (buttonStatus == HELD)
         {
             if (arpRunning)
             {
@@ -2295,9 +2296,14 @@ FLASHMEM void buttonCallback(unsigned button_idx, int button)
                 loadSequenceNames();
                 singleLED(GREEN, 3);
             }
-            else if (currentSequence.running)
+            else if (currentSequence.running && state != State::SEQUENCEPAGE)
             {
                 state = State::SEQUENCEPAGE;
+                singleLED(GREEN, 3);
+            }
+            else if (currentSequence.running && state == State::SEQUENCEPAGE)
+            {
+                state = State::SEQUENCEEDIT;
                 singleLED(GREEN, 3);
             }
             else if (state == State::SEQUENCEEDIT)
@@ -2316,7 +2322,7 @@ FLASHMEM void buttonCallback(unsigned button_idx, int button)
 
         // Filter Mod / MIDI
     case BUTTON_4:
-        if (button == HIGH)
+        if (buttonStatus == HIGH)
         {
             switch (state)
             {
@@ -2346,7 +2352,7 @@ FLASHMEM void buttonCallback(unsigned button_idx, int button)
                 break;
             }
         }
-        if (button == HELD)
+        if (buttonStatus == HELD)
         {
             if (state != State::MIDIPAGE && state != State::FILTERMODPAGE1 && state != State::FILTERMODPAGE2 && state != State::FILTERMODPAGE3)
             {
@@ -2362,7 +2368,7 @@ FLASHMEM void buttonCallback(unsigned button_idx, int button)
         break;
         // Amp / Settings
     case BUTTON_5:
-        if (button == HIGH)
+        if (buttonStatus == HIGH)
         {
             switch (state)
             {
@@ -2392,7 +2398,7 @@ FLASHMEM void buttonCallback(unsigned button_idx, int button)
                 break;
             }
         }
-        if (button == HELD)
+        if (buttonStatus == HELD)
         {
             if (state != State::SETTINGS && state != State::AMPPAGE1 && state != State::AMPPAGE2 && state != State::AMPPAGE3)
             {
@@ -2419,12 +2425,12 @@ FLASHMEM void buttonCallback(unsigned button_idx, int button)
         break;
         // FX / Panic
     case BUTTON_6:
-        if (button == HIGH)
+        if (buttonStatus == HIGH)
         {
             state = State::FXPAGE; // show FX parameters
             singleLED(RED, 6);
         }
-        if (button == HELD)
+        if (buttonStatus == HELD)
         {
 
             if (state != State::FXPAGE)
@@ -2444,7 +2450,7 @@ FLASHMEM void buttonCallback(unsigned button_idx, int button)
 
         // Save / Del
     case BUTTON_7:
-        if (button == HIGH)
+        if (buttonStatus == HIGH)
         {
             // Cancel out of Delete
             if (state == State::DELETEPATCH)
@@ -2507,7 +2513,7 @@ FLASHMEM void buttonCallback(unsigned button_idx, int button)
                 singleLED(ledColour::OFF, 7);
             }
         }
-        if (button == HELD)
+        if (buttonStatus == HELD)
         {
             if (state != State::PATCHSAVING && state != State::DELETEPATCH && state != State::SAVE && state != State::EDITBANK && state != State::RENAMEBANK)
             {
@@ -2527,7 +2533,7 @@ FLASHMEM void buttonCallback(unsigned button_idx, int button)
 
         // Recall / Init
     case BUTTON_8:
-        if (button == HIGH)
+        if (buttonStatus == HIGH)
         {
             // RECALL
             singleLED(RED, 8);
@@ -2554,7 +2560,7 @@ FLASHMEM void buttonCallback(unsigned button_idx, int button)
                 break;
             }
         }
-        if (button == HELD)
+        if (buttonStatus == HELD)
         {
             if (state != State::PATCHLIST)
             {
@@ -2588,7 +2594,7 @@ void midiCCOut(byte cc, byte value)
             value = value >> 1;
         }
         usbMIDI.sendControlChange(cc, value, midiOutCh);
-        midi1.sendControlChange(cc, value, midiOutCh);
+        usbHostMIDI.sendControlChange(cc, value, midiOutCh);
         if (MIDIThru == midi::Thru::Off)
             MIDI.sendControlChange(cc, value, midiOutCh); // MIDI DIN is set to Out
     }
@@ -2627,12 +2633,12 @@ FLASHMEM void usbHostControlChange(byte channel, byte control, byte value)
 
 FLASHMEM void checkUSBHostStatus()
 {
-    if (midi1 && !usbHostPluggedIn)
+    if (usbHostMIDI && !usbHostPluggedIn)
     {
         usb_host_wait_timer = 0;
         usbHostPluggedIn = true;
     }
-    else if (!midi1 && usbHostPluggedIn)
+    else if (!usbHostMIDI && usbHostPluggedIn)
     {
         usbHostPluggedIn = false;
     }
@@ -2652,7 +2658,7 @@ FLASHMEM void sequencerLEDs()
         {
             seqLED(GREEN, currentSequence.step % 8 + 1);
         }
-        // Ensure any stored LEDs are lit
+        // TODO Ensure any stored LEDs are lit
     }
 }
 
@@ -2672,18 +2678,21 @@ FLASHMEM void CPUMonitor()
 
 void loop()
 {
-    delayMicroseconds(10); // Improves USB digital audio output (usb.Task())
-    myusb.Task();
-    checkUSBHostStatus();
-    // USB Host MIDI Class Compliant
-    midi1.read(midiChannel);
-    // USB Client MIDI
-    usbMIDI.read(midiChannel);
-    // MIDI 5 Pin DIN
-    MIDI.read(midiChannel);
+    // Improves USB digital audio - Checking USB client MIDI frequently causes drop-outs...
+    if (loopCount++ > 15)
+    {
+        checkUSBHostStatus();
+        // USB Host MIDI Class Compliant
+        usbHostMIDI.read(midiChannel);
+        // USB Client MIDI
+        usbMIDI.read(midiChannel);
+        // MIDI 5 Pin DIN
+        MIDI.read(midiChannel);
+        sdCardDetect();
+        sequencerLEDs();
+        loopCount = 0;
+    }
     encoders.read();
     buttons.read();
-    sdCardDetect();
-    sequencerLEDs();
     // CPUMonitor();
 }

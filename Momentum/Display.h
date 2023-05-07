@@ -106,8 +106,6 @@ void renderKeyboard(uint8_t octave)
   // draw grid
   for (uint8_t y = 0; y < 24; y++)
   {
-    // patternspacer = 0;
-    // barspacer = 0;
     for (uint8_t x = 0; x < 64; x++)
     {
       if (x < currentSequence.length)
@@ -126,18 +124,10 @@ void renderKeyboard(uint8_t octave)
           colour = ILI9341_YELLOW;
         }
         tft.fillRect(37 + patternSpacerArray[x] + barSpacerArray[x] + x * 4, ypos + 3 - CHAR_height - (y * 8), 3, 6, colour); // GRID white key
-        // if ((x + 1) % 16 == 0)
-        //   patternspacer = patternspacer + 2;
-        // if ((x + 1) % 4 == 0)
-        //   barspacer = barspacer + 1;
       }
       else
       {
         tft.fillRect(37 + patternSpacerArray[x] + barSpacerArray[x] + x * 4, ypos + 3 - CHAR_height - (y * 8), 3, 6, ILI9341_DARKERGREY); // Unused keys
-        // if ((x + 1) % 16 == 0)
-        //   patternspacer = patternspacer + 2;
-        // if ((x + 1) % 4 == 0)
-        //   barspacer = barspacer + 1;
       }
     }
   }
@@ -605,6 +595,7 @@ FLASHMEM void renderPatchName()
   tft.drawString(currentPatchName, 45, 120);
   tft.setTextColor(ILI9341_ORANGE);
   tft.setTextDatum(TC_DATUM);
+  tft.setFont(Arial_16);
   if (cardStatus)
   {
     tft.drawString(bankNames[currentBankIndex], 160, 94);
@@ -1072,7 +1063,7 @@ FLASHMEM void renderOscPage(size_t no)
   {
     tft.drawString("Oscillator " + String(no), 160, 150);
   }
-  renderPageIndicator(3, no);
+  renderPageIndicator(4, no);
   renderCorners();
 }
 
@@ -1099,11 +1090,8 @@ FLASHMEM void renderOscModPage(size_t no)
   case 4:
     tft.drawString("Osc Pitch", 160, 150);
     break;
-  case 5:
-    tft.drawString("Osc Effects", 160, 150);
-    break;
   }
-  renderPageIndicator(5, no);
+  renderPageIndicator(4, no);
   if (no == 1 && currentPatch.PWMSourceA == PWMSOURCEMANUAL)
   {
     if (groupvec[activeGroupIndex]->getWaveformA() == WAVEFORM_BANDLIMIT_PULSE)
@@ -1345,7 +1333,7 @@ FLASHMEM void renderPerformanceMidiEditPage()
   tft.setTextColor(ILI9341_YELLOW);
   tft.setTextDatum(TC_DATUM);
   tft.drawString("Edit Performance", 160, 59);
-  tft.drawString("MIDI", 160, 79);
+  tft.drawString("Choose MIDI", 160, 79);
   tft.drawFastHLine(10, 102, tft.width() - 20, ILI9341_RED);
   renderPerformanceName();
   renderCorners();
@@ -1358,7 +1346,7 @@ FLASHMEM void renderPerformanceEncEditPage()
   tft.setTextColor(ILI9341_YELLOW);
   tft.setTextDatum(TC_DATUM);
   tft.drawString("Edit Performance", 160, 59);
-  tft.drawString("Encoders", 160, 79);
+  tft.drawString("Choose Encoders", 160, 79);
   tft.drawFastHLine(10, 102, tft.width() - 20, ILI9341_RED);
 
   renderPerformanceName();
@@ -1400,7 +1388,7 @@ FLASHMEM void renderPerformancePatchEditPage()
   tft.setTextColor(ILI9341_YELLOW);
   tft.setTextDatum(TC_DATUM);
   tft.drawString("Edit Performance", 160, 0);
-  tft.drawString("Patch", 160, 26);
+  tft.drawString("Choose Patch", 160, 26);
   tft.drawFastHLine(10, 49, tft.width() - 20, ILI9341_RED);
 
   // Bank list - 8 banks
@@ -1649,6 +1637,9 @@ void displayThread()
       case State::OSCPAGE3:
         renderOscPage(3);
         break;
+      case State::OSCPAGE4:
+        renderOscPage(4);
+        break;
       case State::OSCMODPAGE1:
         renderOscModPage(1);
         break;
@@ -1660,9 +1651,6 @@ void displayThread()
         break;
       case State::OSCMODPAGE4:
         renderOscModPage(4);
-        break;
-      case State::OSCMODPAGE5:
-        renderOscModPage(5);
         break;
       case State::FILTERPAGE1:
         renderFilterPage(1);

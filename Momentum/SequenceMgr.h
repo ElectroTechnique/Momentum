@@ -91,14 +91,8 @@ const static int8_t ARP_RANGE[7] = {-3, -2, -1, 0, 1, 2, 3};
 const static char *ARP_BASIS_STR[5] = {"-2 Oct", "-1 Oct", "Base Oct", "1 Oct", "2 Oct"};
 const static int8_t ARP_BASIS[5] = {-2, -1, 0, 1, 2};
 
-// empties out the arpeggio. used when switching modes, when in hold mode and
-// a new arpeggio is started.
-FLASHMEM void resetNotes()
+FLASHMEM void resetArp()
 {
-    // noteOffRoutine();
-    // sequencerTimerStarted = false;
-    // sequencer_timer.setPeriod(10000);
-
     playBeat = 0;
     currentArpOct = 0;
     arpCycleCount = 0;
@@ -106,10 +100,6 @@ FLASHMEM void resetNotes()
     upDownExtraNote = false;
     arpPlayCount = 0;
     arpStarted = false;
-
-    for (uint8_t i = 0; i < sizeof(arpNotes); i++)
-        arpNotes[i] = '\0';
-
     if ((arpStyle == BOUNCE || arpStyle == UPDOWN) && ARP_RANGE[arpRange] < 0)
     {
         arpUp = false;
@@ -118,6 +108,18 @@ FLASHMEM void resetNotes()
     {
         arpUp = true;
     }
+}
+
+// empties out the arpeggio. used when switching modes, when in hold mode and
+// a new arpeggio is started.
+FLASHMEM void resetNotes()
+{
+    // noteOffRoutine();
+    // sequencerTimerStarted = false;
+    // sequencer_timer.setPeriod(10000);
+    resetArp();
+    for (uint8_t i = 0; i < sizeof(arpNotes); i++)
+        arpNotes[i] = '\0';
 }
 
 FLASHMEM uint8_t getNotesInArp()
@@ -673,7 +675,7 @@ FLASHMEM void noteOnRoutine()
         {
             if (currentSequence.running)
             {
-                // 130 signifies latched note
+                // TODO - NOT USED - 130 signifies latched note
                 if (currentSequence.Notes[currentSequence.step] != 130)
                 {
                     noteOn(midiChannel, currentSequence.Notes[currentSequence.step], currentSequence.Velocities[currentSequence.step]);
@@ -706,7 +708,7 @@ FLASHMEM void noteOffRoutine()
         {
             if (currentSequence.prev_note > 0)
             {
-                // Note not held
+                // TODO - NOT USED -  Note not held
                 if (currentSequence.Notes[currentSequence.step] != 130) // Latched note
                 {
                     myNoteOff(midiChannel, currentSequence.prev_note, 0);
@@ -721,6 +723,10 @@ FLASHMEM void noteOffRoutine()
 // Runs in Interrupt Timer. Switches between the Noteon and Noteoff Task, each cycle
 FLASHMEM void sequencer()
 {
+    if (currentSequence.running && state == SEQUENCEEDIT)
+        currentSequence.recording = true;
+    else
+        currentSequence.recording = false;
     if (seqSwapper)
         noteOnRoutine();
     else

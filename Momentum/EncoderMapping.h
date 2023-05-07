@@ -1037,6 +1037,12 @@ FLASHMEM void setEncodersState(State s)
         configureCCdetune(&encMap[ENC_TL], State::OSCPAGE3);
         configureOff(&encMap[ENC_TR]);
         break;
+    case State::OSCPAGE4:
+        configureCCoscLevelB_OscFX(&encMap[ENC_BR], State::OSCPAGE4);
+        configureCCoscfx(&encMap[ENC_BL], State::OSCPAGE4);
+        configureOff(&encMap[ENC_TL]);
+        configureCCoscLevelA_OscFX(&encMap[ENC_TR], State::OSCPAGE4);
+        break;
     case State::OSCMODPAGE1:
         configureCCpwmSourceA(&encMap[ENC_BL], State::OSCMODPAGE1);
         configureCCpwmAmtA(&encMap[ENC_BR], State::OSCMODPAGE1);
@@ -1060,12 +1066,6 @@ FLASHMEM void setEncodersState(State s)
         configureCCosclforetrig(&encMap[ENC_TR], State::OSCMODPAGE4);
         configureOff(&encMap[ENC_BL]);
         configurepitchmodwheeldepth(&encMap[ENC_BR], State::OSCMODPAGE4);
-        break;
-    case State::OSCMODPAGE5:
-        configureCCoscLevelB_OscFX(&encMap[ENC_BR], State::OSCMODPAGE5);
-        configureCCoscfx(&encMap[ENC_BL], State::OSCMODPAGE5);
-        configureOff(&encMap[ENC_TL]);
-        configureCCoscLevelA_OscFX(&encMap[ENC_TR], State::OSCMODPAGE5);
         break;
     case State::FILTERPAGE1:
         configurefilterfreq256(&encMap[ENC_BL], State::FILTERPAGE1);
@@ -1802,7 +1802,7 @@ FLASHMEM void setEncodersState(State s)
         encMap[ENC_TR].ValueStr = "";
         encMap[ENC_TR].ParameterStr = ParameterStrMap[cancel];
         encMap[ENC_TR].Push = true;
-        encMap[ENC_TR].PushAction = State::MAIN;
+        encMap[ENC_TR].PushAction = State::SEQUENCEEDIT;
 
         encMap[ENC_BL].active = true;
         encMap[ENC_BL].Parameter = choosecharacterSequence;

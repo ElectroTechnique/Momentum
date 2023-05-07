@@ -1,3 +1,8 @@
+
+/*
+https://forum.pjrc.com/threads/66840-Roadmap-quot-Dynamic-Updates-quot-any-effort-going-on/page4?highlight=dynamic
+*/
+
 #ifndef MOMENTUM_AUDIO_PATCHING_H
 #define MOMENTUM_AUDIO_PATCHING_H
 
@@ -51,9 +56,9 @@ struct PatchShared
         {voiceMixer[2], 0, voiceMixerM, 2},
         {voiceMixerM, 0, dcOffsetFilter, 0},
         {dcOffsetFilter, 2, volumeMixer, 0},
-        {volumeMixer, 0, ensemble, 0},
-        {ensemble, 0, effectMixerL, 1},
-        {ensemble, 1, effectMixerR, 1},
+        {volumeMixer, 0, ensemble, 0},  // 7
+        {ensemble, 0, effectMixerL, 1}, // 8
+        {ensemble, 1, effectMixerR, 1}, // 9
         {volumeMixer, 0, effectMixerL, 0},
         {volumeMixer, 0, effectMixerR, 0},
     };
@@ -178,11 +183,6 @@ public:
         pwbConnection = new AudioConnection(shared.pwb, 0, pwMixer_b, 1);
         noiseMixerConnection = new AudioConnection(shared.noiseMixer, 0, waveformMixer_, 2);
 
-        // filterModMixer_.gain(0, 1.0f);  // Env +1
-        // filterModMixer_.gain(1, 1.0f); // LFO +/-1
-        // filterModMixer_.gain(2, 0.16f);  // Key Tracking  +/-5
-        // filterModMixer_.gain(3, 1.0f);  // Vel +1
-
         uint8_t voiceMixerIndex = 0;
         uint8_t indexMod4 = index % 4;
         if (index != 0)
@@ -257,7 +257,7 @@ public:
             SharedAudio[i].volumeMixer.gain(2, 0);
             SharedAudio[i].volumeMixer.gain(3, 0);
 
-            // This removes dc offset (mostly from unison pulse waves) before the ensemble effect
+            // This removes dc offset (mostly from unison pulse waves) before the effects
             SharedAudio[i].dcOffsetFilter.octaveControl(1.0f);
             SharedAudio[i].dcOffsetFilter.frequency(12.0f); // Lower values will give clicks on note on/off
         }

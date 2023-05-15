@@ -20,15 +20,15 @@ namespace ButtonTool
         inline void read(); // call as often as possible
 
     protected:
-        const unsigned BtnA,
-            BtnB,
-            BtnC,
-            LD,
-            CLK;
+        const unsigned BtnA, BtnB, BtnC, LD, CLK;
         int32_t previousState[8] = {LOW};
         uint32_t WINDOWTIME[7] = {500, 390, 330, 220, 140, 80, 20};
+        uint16_t TWOBUTTONWINDOWTIME = 250;
+        int8_t buttonPairNo = -1;
         uint32_t starttime[24] = {0};
         boolean buttonHeld[24] = {false};
+        boolean buttonWasHeld[24] = {false};
+        boolean twoButtonCall = true; // Must be initally true to prevent callbacks during startup
         inline void readButton(unsigned i);
         uint8_t w = 0;
     };
@@ -85,7 +85,7 @@ namespace ButtonTool
     Buttons 1,2,3
     Buttons 4,5,6
     Buttons 7,8
-    Buttons Up, Down
+    Buttons Up, Down code: 22
     */
     {
         // load current values to shift register
@@ -118,10 +118,6 @@ namespace ButtonTool
                 digitalWriteFast(CLK, LOW);
                 delayNanoseconds(50);
             }
-            // if (buttons[0].getButton() == LOW && buttons[1].getButton() == LOW)
-            // {
-            //     Serial.println("!!!!!!!!!!");
-            // }
         }
     }
 
@@ -131,26 +127,64 @@ namespace ButtonTool
         if (i == 2 || i == 5 || i > 11)
             return;
 
-        if (callback != nullptr && buttons[i].buttonChanged())
+        if (buttons[i].buttonChanged())
         {
             if (buttons[i].getButton() == LOW)
             {
+                callback(i, LOW);
                 starttime[i] = millis();
                 w = 0;
             }
             else
             {
+                twoButtonCall = false;
                 if (!buttonHeld[i])
-                    callback(i, buttons[i].getButton());
+                {
+                    callback(i, HIGH);
+                }
+                if (buttonHeld[i] && buttonWasHeld[i])
+                {
+                    callback(i, HIGH_AFTER_HELD);
+                    buttonWasHeld[i] = false;
+                }
                 buttonHeld[i] = false;
                 w = 0;
             }
         }
 
-        if (callback != nullptr && buttons[i].getButton() == LOW && (millis() - starttime[i]) > WINDOWTIME[w])
+        if (buttons[i].getButton() == LOW && !twoButtonCall)
+        {
+            switch (i)
+            {
+            case 1: // UP
+                if (buttonPairNo == 0 && (starttime[0] - starttime[1]) < TWOBUTTONWINDOWTIME)
+                {
+                    callback(22, HELD);
+                    buttonPairNo = -1; // Reset
+                    twoButtonCall = true;
+                    return;
+                }
+                buttonPairNo = 1;
+                break;
+            case 0: // DOWN
+                if (buttonPairNo == 1 && (starttime[1] - starttime[0]) < TWOBUTTONWINDOWTIME)
+                {
+                    callback(22, HELD);
+                    buttonPairNo = -1; // Reset
+                    twoButtonCall = true;
+                    return;
+                }
+                buttonPairNo = 0;
+                break;
+            }
+        }
+
+        if (buttons[i].getButton() == LOW && (millis() - starttime[i]) > WINDOWTIME[w])
         {
             buttonHeld[i] = true;
+            buttonWasHeld[i] = true;
             starttime[i] = millis();
+
             // Acceleration of callbacks when button is held down
             if (w < 6)
                 w++;

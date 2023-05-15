@@ -103,11 +103,13 @@ typedef enum controlParameter
 const int16_t LED_TO_BIN[9] = {0, 1, 2, 4, 8, 16, 32, 64, 128}; // First value is dummy, LEDs are indexed 1-8
 
 // Shift both red and green LEDs - FOR 595s IN PARALLEL
-void shiftOutX(uint8_t dataPinR, uint8_t dataPinG, uint8_t clockPin, uint8_t bitOrder, uint8_t valR, uint8_t valG)
+/*
+Red: 2.1V 9mA
+Green: 2.8V 1.5mA
+*/
+FLASHMEM void shiftOutParallel(uint8_t dataPinR, uint8_t dataPinG, uint8_t clockPin, uint8_t bitOrder, uint8_t valR, uint8_t valG)
 {
-  uint8_t i;
-
-  for (i = 0; i < 8; i++)
+  for (uint8_t i = 0; i < 8; i++)
   {
     if (bitOrder == LSBFIRST)
     {
@@ -130,30 +132,23 @@ void shiftOutX(uint8_t dataPinR, uint8_t dataPinG, uint8_t clockPin, uint8_t bit
 }
 
 // ledNo starts at 1
-void singleLED(ledColour color, int8_t ledNo)
+FLASHMEM void singleLED(ledColour color, int8_t ledNo)
 {
-  if (color == ledColour::RED)
-  {
-    currentRLEDs = ledNo;
-  }
-  else
-  {
-    currentGLEDs = ledNo;
-  }
-
   digitalWrite(latchPin, LOW);
   switch (color)
   {
   case RED:
-    shiftOutX(dataPinR, dataPinG, clockPin, MSBFIRST, LED_TO_BIN[ledNo], 0);
+    shiftOutParallel(dataPinR, dataPinG, clockPin, MSBFIRST, LED_TO_BIN[ledNo], 0);
     currentRLEDs = ledNo;
+    currentGLEDs = 0;
     break;
   case GREEN:
-    shiftOutX(dataPinR, dataPinG, clockPin, MSBFIRST, 0, LED_TO_BIN[ledNo]);
+    shiftOutParallel(dataPinR, dataPinG, clockPin, MSBFIRST, 0, LED_TO_BIN[ledNo]);
     currentGLEDs = ledNo;
+    currentRLEDs = 0;
     break;
   case OFF:
-    shiftOutX(dataPinR, dataPinG, clockPin, MSBFIRST, 0, 0);
+    shiftOutParallel(dataPinR, dataPinG, clockPin, MSBFIRST, 0, 0);
     currentRLEDs = 0;
     currentGLEDs = 0;
     break;
@@ -161,13 +156,7 @@ void singleLED(ledColour color, int8_t ledNo)
   digitalWrite(latchPin, HIGH);
 }
 
-// ledNo starts at 1
-void seqLED(ledColour color, int8_t ledNo)
-{
-  singleLED(color, ledNo);
-}
-
-void flashLED(ledColour color, int8_t ledNo, int duration)
+FLASHMEM void flashLED(ledColour color, int8_t ledNo, int duration)
 {
   singleLED(OFF, ledNo);
   delay(100);
@@ -176,16 +165,30 @@ void flashLED(ledColour color, int8_t ledNo, int duration)
   singleLED(OFF, ledNo);
 }
 
-void lightRGLEDs(int8_t ledRNos, int8_t ledGNos)
+FLASHMEM void lightRGLEDs(int8_t ledRNos, int8_t ledGNos)
 {
   digitalWrite(latchPin, LOW);
-  shiftOutX(dataPinR, dataPinG, clockPin, MSBFIRST, ledRNos, ledGNos);
+  shiftOutParallel(dataPinR, dataPinG, clockPin, MSBFIRST, ledRNos, ledGNos);
   digitalWrite(latchPin, HIGH);
-  currentRLEDs = ledRNos;
-  currentGLEDs = ledGNos;
 }
 
-void ledAnimation(long millis)
+FLASHMEM void ledsOff()
+{
+  lightRGLEDs(0, 0);
+  currentRLEDs = 0;
+  currentGLEDs = 0;
+}
+
+// ledNo starts at 1
+FLASHMEM void seqLED(ledColour color, int8_t ledNo)
+{
+  if (color == RED)
+    lightRGLEDs(LED_TO_BIN[ledNo] + LED_TO_BIN[currentRLEDs], LED_TO_BIN[currentGLEDs]);
+  else
+    lightRGLEDs(LED_TO_BIN[currentRLEDs], LED_TO_BIN[ledNo] + LED_TO_BIN[currentGLEDs]);
+}
+
+FLASHMEM void ledAnimation(long millis)
 {
   lightRGLEDs(24, 0);
   delay(millis);

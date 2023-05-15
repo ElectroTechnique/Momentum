@@ -68,6 +68,32 @@ FLASHMEM void configureOff(EncoderMappingStruct *enc)
     enc->active = false;
 }
 
+FLASHMEM void configureKeyboardOct(EncoderMappingStruct *enc, State st = State::MAIN)
+{
+    enc->active = true;
+    enc->Parameter = kbdOct;
+    enc->ShowValue = true;
+    enc->Value = keyboardOct;
+    enc->Range = 6;
+    enc->ParameterStr = ParameterStrMap[kbdOct];
+    enc->ValueStr = KEYBOARD_OCT_STR[keyboardOct];
+    enc->Push = true;
+    enc->PushAction = st;
+}
+
+FLASHMEM void configureKeyboardScale(EncoderMappingStruct *enc, State st = State::MAIN)
+{
+    enc->active = true;
+    enc->Parameter = kbdScale;
+    enc->ShowValue = true;
+    enc->Value = keyboardScale;
+    enc->Range = 23;
+    enc->ParameterStr = ParameterStrMap[kbdScale];
+    enc->ValueStr = SCALE_STR[keyboardScale];
+    enc->Push = true;
+    enc->PushAction = st;
+}
+
 FLASHMEM void configureCCbankselectLSB(EncoderMappingStruct *enc, State st = State::MAIN)
 {
     enc->active = true;
@@ -1008,8 +1034,16 @@ FLASHMEM void setEncodersState(State s)
     switch (s)
     {
     case State::MAIN:
-        configureOff(&encMap[ENC_TL]);
-        configureOff(&encMap[ENC_TR]);
+        if (keyboardActive)
+        {
+            configureKeyboardOct(&encMap[ENC_TL]);
+            configureKeyboardScale(&encMap[ENC_TR]);
+        }
+        else
+        {
+            configureOff(&encMap[ENC_TL]);
+            configureOff(&encMap[ENC_TR]);
+        }
         configureCCbankselectLSB(&encMap[ENC_BL], State::PATCHLIST);
         configurePatchselect(&encMap[ENC_BR], State::PATCHLIST);
         break;
@@ -1478,7 +1512,15 @@ FLASHMEM void setEncodersState(State s)
         encMap[ENC_BL].Push = true;
         encMap[ENC_BL].PushAction = State::PERFORMANCEPAGE;
 
-        encMap[ENC_BR].active = false;
+        encMap[ENC_BR].active = true;
+        encMap[ENC_BR].Parameter = PerfDelete;
+        encMap[ENC_BR].ShowValue = false;
+        encMap[ENC_BR].ValueStr = "";
+        encMap[ENC_BR].Value = 0;
+        encMap[ENC_BR].Range = PERFORMANCES_LIMIT - 1;
+        encMap[ENC_BR].ParameterStr = ParameterStrMap[PerfDelete];
+        encMap[ENC_BR].Push = true;
+        encMap[ENC_BR].PushAction = State::PERFORMANCERECALL;
         break;
 
     case State::PERFORMANCEPAGE:
@@ -1629,7 +1671,15 @@ FLASHMEM void setEncodersState(State s)
         encMap[ENC_BL].Push = true;
         encMap[ENC_BL].PushAction = State::SEQUENCEPAGE;
 
-        encMap[ENC_BR].active = false;
+        encMap[ENC_BR].active = true;
+        encMap[ENC_BR].Parameter = SeqDelete;
+        encMap[ENC_BR].ShowValue = false;
+        encMap[ENC_BR].ValueStr = "";
+        encMap[ENC_BR].Value = 0;
+        encMap[ENC_BR].Range = SEQUENCES_LIMIT - 1;
+        encMap[ENC_BR].ParameterStr = ParameterStrMap[SeqDelete];
+        encMap[ENC_BR].Push = true;
+        encMap[ENC_BR].PushAction = State::SEQUENCERECALL;
         break;
     case State::SEQUENCEPAGE:
         encMap[ENC_TL].active = true;

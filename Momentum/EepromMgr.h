@@ -16,6 +16,8 @@
 #define EEPROM_ARP_DIVISION 13
 #define EEPROM_ARP_CYCLES 14
 #define EEPROM_ARP_BASIS 15
+#define EEPROM_KEYBOARD_SCALE 16
+#define EEPROM_KEYBOARD_BASIS 17
 
 FLASHMEM int8_t getFirstRun()
 {
@@ -210,6 +212,32 @@ FLASHMEM int8_t getArpBasis()
   return p;
 }
 
+FLASHMEM void storeKeyboardBasisToEEPROM(byte c)
+{
+  EEPROM.update(EEPROM_KEYBOARD_BASIS, c);
+}
+
+FLASHMEM int8_t getKeyboardBasis()
+{
+  byte p = EEPROM.read(EEPROM_KEYBOARD_BASIS);
+  if (p < 0 || p > 127)
+    return 0;
+  return p;
+}
+
+FLASHMEM void storeKeyboardScaleToEEPROM(byte c)
+{
+  EEPROM.update(EEPROM_KEYBOARD_SCALE, c);
+}
+
+FLASHMEM int8_t getKeyboardScale()
+{
+  byte p = EEPROM.read(EEPROM_KEYBOARD_SCALE);
+  if (p < 0 || p > 127)
+    return 0;
+  return p;
+}
+
 FLASHMEM void storeArpStyleToEEPROM(byte style)
 {
   EEPROM.update(EEPROM_ARP_STYLE, style);
@@ -219,7 +247,8 @@ FLASHMEM void checkFirstRun()
 {
   if (!getFirstRun())
   {
-    Serial.println(F("First Run"));
+    if (DEBUG)
+      Serial.println(F("First Run"));
     // Default the EEPROM contents
     storeMidiChannel(0);
     storeMidiOutCh(0);
@@ -235,6 +264,8 @@ FLASHMEM void checkFirstRun()
     storeArpRangeToEEPROM(3);
     storeArpStyleToEEPROM(0);
     storeArpBasisToEEPROM(2);
+    storeKeyboardScaleToEEPROM(0);
+    storeKeyboardBasisToEEPROM(4);
     storeFirstRun();
   }
 }

@@ -69,6 +69,10 @@
 #define ArpRange 185
 #define ArpCycle 186
 #define ArpBasis 187
+#define SeqDelete 188
+#define PerfDelete 189
+#define kbdOct 190
+#define kbdScale 191
 #define noencoder 255
 
 const static char *SEQUENCE_FOLDER_NAME = "Sequences";

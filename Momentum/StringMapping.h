@@ -103,11 +103,15 @@ FLASHMEM void assignStrings()
     ParameterStrMap[SeqNote] = "Note";
     ParameterStrMap[SeqPosition] = "Position";
     ParameterStrMap[SeqLength] = "Length";
+    ParameterStrMap[SeqDelete] = "Delete";
+    ParameterStrMap[PerfDelete] = "Delete";
     ParameterStrMap[ArpDivision] = "Division";
     ParameterStrMap[ArpStyle] = "Style";
     ParameterStrMap[ArpRange] = "Range";
     ParameterStrMap[ArpBasis] = "Basis";
     ParameterStrMap[ArpCycle] = "Cycles";
+    ParameterStrMap[kbdOct] = "Keyboard Basis";
+    ParameterStrMap[kbdScale] = "Keyboard Scale";
     ParameterStrMap[noencoder] = "None";
 }
 
@@ -177,7 +181,8 @@ FLASHMEM uint8_t getIndexForParametersForPerformanceEncoders(uint8_t cc)
         if (ParametersForPerformanceEncoders[i] == cc)
             return i;
     }
-    Serial.println(F("getIndexForParametersForPerformanceEncoders() not matched:") + String(cc));
+    if (DEBUG)
+        Serial.println(F("getIndexForParametersForPerformanceEncoders() not matched:") + String(cc));
     return 0; // noencoder
 }
 

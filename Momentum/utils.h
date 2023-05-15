@@ -148,7 +148,7 @@ FLASHMEM uint32_t getHash(String tohash)
 
 // FLASHMEM void getFreeITCM()
 // { // end of CODE ITCM, skip full 32 bits
-//   Serial.println("\n\n++++++++++++++++++++++");
+//   if(DEBUG) Serial.println("\n\n++++++++++++++++++++++");
 //   SizeLeft_etext = (32 * 1024) - (((uint32_t)&_etext - (uint32_t)&_stext) % (32 * 1024));
 //   sizeofFreeITCM = SizeLeft_etext - 4;
 //   sizeofFreeITCM /= sizeof(ptrFreeITCM[0]);

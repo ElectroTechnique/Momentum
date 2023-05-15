@@ -217,23 +217,35 @@ FLASHMEM void renderMIDI()
 
 FLASHMEM void renderMidiClk()
 {
-  tft.setTextColor(ILI9341_BLACK);
-  tft.setTextDatum(TC_DATUM);
-  tft.setFont(Arial_10_Bold);
   if (MIDIClkSignal)
   {
+    tft.setTextColor(ILI9341_BLACK);
+    tft.setTextDatum(TC_DATUM);
+    tft.setFont(Arial_10_Bold);
     tft.fillRect(94, 57, 30, 15, ILI9341_LIGHTGREY);
     tft.drawString(F("CLK"), 109, 59);
   }
 }
 
+FLASHMEM void renderKeyboardActive()
+{
+  if (keyboardActive)
+  {
+    tft.setTextColor(ILI9341_BLACK);
+    tft.setTextDatum(TC_DATUM);
+    tft.setFont(Arial_10_Bold);
+    tft.fillRect(204, 57, 30, 15, ILI9341_WHITE);
+    tft.drawString(F("KEY"), 219, 59);
+  }
+}
+
 FLASHMEM void renderArpIndicator()
 {
-  tft.setTextColor(ILI9341_BLACK);
-  tft.setTextDatum(TC_DATUM);
-  tft.setFont(Arial_10_Bold);
   if (arpRunning)
   {
+    tft.setTextColor(ILI9341_BLACK);
+    tft.setTextDatum(TC_DATUM);
+    tft.setFont(Arial_10_Bold);
     tft.fillRect(94, 73, 30, 15, ILI9341_DARKGREEN);
     tft.drawString(F("ARP"), 109, 76);
   }
@@ -241,11 +253,11 @@ FLASHMEM void renderArpIndicator()
 
 FLASHMEM void renderSeqIndicator()
 {
-  tft.setTextColor(ILI9341_BLACK);
-  tft.setTextDatum(TC_DATUM);
-  tft.setFont(Arial_10_Bold);
   if (currentSequence.running)
   {
+    tft.setTextColor(ILI9341_BLACK);
+    tft.setTextDatum(TC_DATUM);
+    tft.setFont(Arial_10_Bold);
     tft.fillRect(94, 73, 30, 15, ILI9341_DARKYELLOW);
     tft.drawString(F("SEQ"), 109, 76);
   }
@@ -611,7 +623,7 @@ FLASHMEM void renderSeqTempo()
   tft.setFont(Arial_13);
   tft.setTextColor(ILI9341_WHITE);
   tft.setTextDatum(TL_DATUM);
-  tft.drawString(currentSequence.bpm, 80, 5);
+  tft.drawString(encMap[ENC_TL].ValueStr, 80, 5); // Tempo is TL
 }
 
 FLASHMEM void renderSeqLength()
@@ -1063,6 +1075,10 @@ FLASHMEM void renderOscPage(size_t no)
   {
     tft.drawString("Oscillator " + String(no), 160, 150);
   }
+  renderVoiceGrid();
+  renderArpIndicator();
+  renderMidiClk();
+  renderKeyboardActive();
   renderPageIndicator(4, no);
   renderCorners();
 }
@@ -1118,6 +1134,10 @@ FLASHMEM void renderOscModPage(size_t no)
       renderVarTriangle(groupvec[activeGroupIndex]->getPwB());
     }
   }
+  renderVoiceGrid();
+  renderArpIndicator();
+  renderMidiClk();
+  renderKeyboardActive();
   renderCorners();
 }
 
@@ -1137,6 +1157,10 @@ FLASHMEM void renderFilterPage(size_t no)
               groupvec[activeGroupIndex]->getFilterSustain(),
               groupvec[activeGroupIndex]->getFilterRelease() * 0.0001f);
   }
+  renderVoiceGrid();
+  renderArpIndicator();
+  renderMidiClk();
+  renderKeyboardActive();
   renderCorners();
 }
 
@@ -1148,6 +1172,10 @@ FLASHMEM void renderFilterModPage(size_t no)
   tft.setTextDatum(TC_DATUM);
   tft.drawString("Filter Modulation " + String(no), 160, 150);
   renderPageIndicator(3, no);
+  renderVoiceGrid();
+  renderArpIndicator();
+  renderMidiClk();
+  renderKeyboardActive();
   renderCorners();
 }
 
@@ -1159,6 +1187,10 @@ FLASHMEM void renderAmpPage(size_t no)
   tft.setTextDatum(TC_DATUM);
   tft.drawString("Amplifier " + String(no), 160, 150);
   renderPageIndicator(3, no);
+  renderVoiceGrid();
+  renderArpIndicator();
+  renderMidiClk();
+  renderKeyboardActive();
   renderCorners();
   if (no == 1)
   {
@@ -1178,6 +1210,10 @@ FLASHMEM void renderFXPage()
   tft.setTextDatum(TC_DATUM);
   tft.drawString("Effects", 160, 150);
   renderPageIndicator(1, 1);
+  renderVoiceGrid();
+  renderArpIndicator();
+  renderMidiClk();
+  renderKeyboardActive();
   renderCorners();
 }
 
@@ -1262,6 +1298,7 @@ FLASHMEM void renderArpPage(uint8_t no)
   renderPatchName();
   renderMidiClk();
   renderArpIndicator();
+  renderKeyboardActive();
   renderPeak();
   renderCorners();
   renderMIDI();
@@ -1275,6 +1312,7 @@ FLASHMEM void renderMainPage()
   renderPatchName();
   renderMidiClk();
   renderArpIndicator();
+  renderKeyboardActive();
   renderPeak();
   renderCorners();
   renderMIDI();
@@ -1300,7 +1338,7 @@ FLASHMEM void renderPerformancePage()
   tft.fillScreen(ILI9341_BLACK);
   renderMidiClk();
   renderArpIndicator();
-  renderSeqIndicator();
+  renderKeyboardActive();
   renderPerfIndicator();
   renderPeak();
   renderMIDI();

@@ -59,7 +59,8 @@ FLASHMEM char *getPerformanceName(File file)
     DeserializationError error = deserializeJson(doc, file);
     if (error)
     {
-        Serial.println(F("getPerformanceName() - Failed to read file"));
+        if (DEBUG)
+            Serial.println(F("getPerformanceName() - Failed to read file"));
         return "Failed to read file";
     }
     // Copy values from the JsonDocument to the PerformanceStruct
@@ -84,8 +85,10 @@ FLASHMEM void loadPerformanceNames()
         uint8_t number = strtoul(performanceFile.name(), NULL, 0);
         if (number < 1 || number > 128)
         {
-            Serial.print(F("Performance number is outside 1-128:"));
-            Serial.println(number);
+            if (DEBUG)
+                Serial.print(F("Performance number is outside 1-128:"));
+            if (DEBUG)
+                Serial.println(number);
         }
         else
         {
@@ -102,9 +105,7 @@ FLASHMEM boolean loadPerformance(uint8_t filename)
     PerformanceStruct ps;
     currentPerformance = ps;
     if (!cardStatus)
-    {
         return false;
-    }
 
     // Open file for reading - Filename is index +1 (1-128)
     char result[30];
@@ -113,7 +114,8 @@ FLASHMEM boolean loadPerformance(uint8_t filename)
 
     if (!file)
     {
-        Serial.println(F("Performance file not found:") + String(filename));
+        if (DEBUG)
+            Serial.println(F("Performance file not found:") + String(filename));
         file.close();
         return false;
     }
@@ -127,8 +129,10 @@ FLASHMEM boolean loadPerformance(uint8_t filename)
     DeserializationError error = deserializeJson(doc, file);
     if (error)
     {
-        Serial.print(F("loadPerformance() - Failed to read file:"));
-        Serial.println(filename);
+        if (DEBUG)
+            Serial.print(F("loadPerformance() - Failed to read file:"));
+        if (DEBUG)
+            Serial.println(filename);
         return false;
     }
     // Copy values from the JsonDocument to the PerformanceStruct
@@ -203,15 +207,35 @@ FLASHMEM void savePerformance()
     File file = SD.open(result, FILE_WRITE);
     if (!file)
     {
-        Serial.println(F("Failed to create file"));
+        if (DEBUG)
+            Serial.println(F("Failed to create file"));
         return;
     }
     if (serializeJson(doc, file) == 0)
     {
-        Serial.println(F("Failed to write to file"));
+        if (DEBUG)
+            Serial.println(F("Failed to write to file"));
         return;
     }
-    Serial.println(F("Save Performance:") + String(currentPerformanceIndex + 1));
+    if (DEBUG)
+        Serial.println(F("Save Performance:") + String(currentPerformanceIndex + 1));
+}
+
+FLASHMEM void deletePerformance(uint8_t filename)
+{
+    if (!cardStatus)
+        return;
+    char result[30];
+    concatPerformanceFolderAndFilename(filename, result);
+    if (!SD.remove(result))
+    {
+        // Performance missing
+        if (DEBUG)
+            Serial.print(F("Performance Missing:"));
+        if (DEBUG)
+            Serial.println(filename);
+    }
+    loadPerformanceNames();
 }
 
 FLASHMEM uint8_t incPerformanceIndex()

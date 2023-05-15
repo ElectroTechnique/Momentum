@@ -41,6 +41,7 @@
     Github members fab672000 & CDW2000 - General improvements to code
     Github member luni64 - EncoderTool library modified and included https://github.com/luni64/EncoderTool
     Mark Tillotson - Special thanks for band-limiting the waveforms in the Audio Library
+    KuretE
 
   Additional libraries:
     Janila Array, Adafruit_GFX (available in Arduino libraries manager), T4_PowerButton
@@ -48,6 +49,7 @@
     Power control:
     https://forum.pjrc.com/threads/65797-Teensy-4-1-ON-OFF-Pin-Access-Use?highlight=Power+Control
 */
+#define DEBUG 0
 
 #include <Adafruit_GFX.h>
 #include <ILI9341_t3n.h>
@@ -80,9 +82,15 @@ State state = State::MAIN;
 #include "HWControls.h"
 #include "EepromMgr.h"
 #include "Detune.h"
+#include "Keyboard.h"
 #include "utils.h"
 #include "Voice.h"
 #include "VoiceGroup.h"
+
+boolean keyboardActive = false;
+uint8_t majMin = MajMin::MAJOR;
+uint8_t keyboardOct = 3;
+uint8_t keyboardScale = 0;
 
 // Initialize the audio configuration.
 Global global{VOICEMIXERLEVEL};
@@ -146,7 +154,6 @@ uint32_t midiClkArpCount = 0; // For MIDI Clk Sync with Arp
 int voiceToReturn = -1;       // Initialise
 
 uint8_t seq_last_step = 0;
-
 uint8_t loopCount = 0;
 
 FLASHMEM void setup()
@@ -156,7 +163,7 @@ FLASHMEM void setup()
     //  while (!Serial)
     //  {
     //  }
-    //  Serial.print(CrashReport);
+    //  if(DEBUG) Serial.print(CrashReport);
     checkFirstRun();
     // Initialize the voice groups.
     uint8_t total = 0;
@@ -176,7 +183,8 @@ FLASHMEM void setup()
     cardStatus = SD.begin(BUILTIN_SDCARD);
     if (cardStatus)
     {
-        Serial.println(F("SD card is connected"));
+        if (DEBUG)
+            Serial.println(F("SD card is connected"));
         // Get patch numbers and names from SD card
         checkSDCardStructure();
         loadBankNames();
@@ -195,25 +203,14 @@ FLASHMEM void setup()
     else
     {
         setCurrentPatchData(); // Initialise to default
-        Serial.println(F("SD card is not connected or unusable"));
+        if (DEBUG)
+            Serial.println(F("SD card is not connected or unusable"));
     }
 
     // Read MIDI Channel from EEPROM
     midiChannel = getMIDIChannel();
-    Serial.println(F("MIDI In Channel:") + String(midiChannel) + F(" (0 is Omni On)"));
-
-    // USB HOST MIDI Class Compliant
-    myusb.begin();
-    usbHostMIDI.setHandleControlChange(usbHostControlChange);
-    usbHostMIDI.setHandleNoteOff(myNoteOff);
-    usbHostMIDI.setHandleNoteOn(myNoteOn);
-    usbHostMIDI.setHandlePitchChange(myPitchBend);
-    usbHostMIDI.setHandleProgramChange(myProgramChange);
-    usbHostMIDI.setHandleClock(myMIDIClock);
-    usbHostMIDI.setHandleContinue(myMIDIClockContinue);
-    usbHostMIDI.setHandleStart(myMIDIClockStart);
-    usbHostMIDI.setHandleStop(myMIDIClockStop);
-    Serial.println(F("USB HOST MIDI Class Compliant Listening"));
+    if (DEBUG)
+        Serial.println(F("MIDI In Channel:") + String(midiChannel) + F(" (0 is Omni On)"));
 
     // USB Client MIDI
     usbMIDI.setHandleControlChange(myControlChange);
@@ -225,7 +222,8 @@ FLASHMEM void setup()
     usbMIDI.setHandleContinue(myMIDIClockContinue);
     usbMIDI.setHandleStart(myMIDIClockStart);
     usbMIDI.setHandleStop(myMIDIClockStop);
-    Serial.println(F("USB Client MIDI Listening"));
+    if (DEBUG)
+        Serial.println(F("USB Client MIDI Listening"));
 
     // MIDI 5 Pin DIN
     MIDI.begin();
@@ -238,7 +236,22 @@ FLASHMEM void setup()
     MIDI.setHandleContinue(myMIDIClockContinue);
     MIDI.setHandleStart(myMIDIClockStart);
     MIDI.setHandleStop(myMIDIClockStop);
-    Serial.println(F("MIDI In DIN Listening"));
+    if (DEBUG)
+        Serial.println(F("MIDI In DIN Listening"));
+
+    // USB HOST MIDI Class Compliant
+    myusb.begin();
+    usbHostMIDI.setHandleControlChange(usbHostControlChange);
+    usbHostMIDI.setHandleNoteOff(myNoteOff);
+    usbHostMIDI.setHandleNoteOn(myNoteOn);
+    usbHostMIDI.setHandlePitchChange(myPitchBend);
+    usbHostMIDI.setHandleProgramChange(myProgramChange);
+    usbHostMIDI.setHandleClock(myMIDIClock);
+    usbHostMIDI.setHandleContinue(myMIDIClockContinue);
+    usbHostMIDI.setHandleStart(myMIDIClockStart);
+    usbHostMIDI.setHandleStop(myMIDIClockStop);
+    if (DEBUG)
+        Serial.println(F("USB HOST MIDI Class Compliant Listening"));
 
     // Read MIDI Out Channel from EEPROM
     midiOutCh = getMIDIOutCh();
@@ -262,12 +275,14 @@ FLASHMEM void setup()
     if (arpCycles == ARP_HOLD)
         arpHold = true;
     arpBasis = getArpBasis();
+    keyboardScale = getKeyboardScale();
+    keyboardOct = getKeyboardBasis();
 
     assignStrings();
     assignParametersForPerformanceEncoders();
     setupDisplay();
-    setupHardware(encoderCallback, encoderButtonCallback, buttonCallback);
     setEncodersState(state);
+    setupHardware(encoderCallback, encoderButtonCallback, buttonCallback);
 }
 
 // Specifically for Sequencer, bypassing recording note in and arp
@@ -415,7 +430,7 @@ FLASHMEM void myPitchBend(byte channel, int bend)
 // MIDI CC
 FLASHMEM void myControlChange(byte channel, byte control, byte value)
 {
-    // Serial.printf("Ch:%u: cc=%d, v=%d\n", channel, control, value);
+    // if(DEBUG) Serial.printf("Ch:%u: cc=%d, v=%d\n", channel, control, value);
     switch (control)
     {
     case CCvolume:
@@ -1069,6 +1084,8 @@ FLASHMEM void myControlChange(byte channel, byte control, byte value)
             showCurrentParameterOverlay(ParameterStrMap[CCmonomode], MonophonicStr[value]);
         break;
     case ampenvshape:
+        if (currentPatch.AmpEnvShape != 0 && value == 0)
+            silence(); // Prevent noise when going to Linear
         currentPatch.AmpEnvShape = value;
         for (uint8_t i = 0; i < global.maxVoices(); i++)
         {
@@ -1154,8 +1171,10 @@ FLASHMEM void myProgramChange(byte channel, byte program)
             currentPerformanceIndex = program;
             recallPerformance(currentPerformanceIndex + 1);
             setEncodersState(State::PERFORMANCEPAGE);
-            Serial.print(F("MIDI Pgm Change Performance:"));
-            Serial.println(performances[currentPerformanceIndex]);
+            if (DEBUG)
+                Serial.print(F("MIDI Pgm Change Performance:"));
+            if (DEBUG)
+                Serial.println(performances[currentPerformanceIndex]);
         }
     }
     else
@@ -1164,8 +1183,10 @@ FLASHMEM void myProgramChange(byte channel, byte program)
         {
             currentPatchIndex = program;
             recallPatch(currentBankIndex, patches[currentPatchIndex].patchUID);
-            Serial.print(F("MIDI Pgm Change:"));
-            Serial.println(patches[currentPatchIndex].patchUID);
+            if (DEBUG)
+                Serial.print(F("MIDI Pgm Change:"));
+            if (DEBUG)
+                Serial.println(patches[currentPatchIndex].patchUID);
         }
     }
 }
@@ -1226,7 +1247,7 @@ FLASHMEM void myMIDIClockStart()
     if ((!currentSequence.running && !seqMidiSync) || arpRunning)
         seqMidiSync = true;
     midiClkCount = 0;
-    if (state == State::SEQUENCEPAGE && seqMidiSync)
+    if ((state == State::SEQUENCEPAGE || state == State::SEQUENCEEDIT) && seqMidiSync)
         sequencerStart();
     else if (arpRunning)
     {
@@ -1259,14 +1280,12 @@ FLASHMEM void myMIDIClockStop()
 FLASHMEM void myMIDIClock()
 {
     MIDIClkSignal = true;
-    // 24ppq
-    if ((seqMidiSync && currentSequence.running && (midiClkCount + 11) % 3 == 0))
+    // 24ppq this is for 4/4 time, alternates between noteon and noteoff, 8 times
+    if ((seqMidiSync && currentSequence.running && (midiClkCount % 3) == 0))
     {
         sequencer();
-        if (state == SEQUENCEPAGE)
-        {
+        if (state == SEQUENCEPAGE || state == SEQUENCEEDIT)
             setEncValue(SeqTempo, lfoSyncFreq * 60, String(lfoSyncFreq * 60));
-        }
     }
 
     if (seqMidiSync && arpRunning)
@@ -1278,7 +1297,7 @@ FLASHMEM void myMIDIClock()
         else if (midiClkArpCount == (ARP_DIVISION_24PPQ[arpDivision] - 2) && !seqSwapper)
         {
             noteOffRoutine();
-            // Serial.printf("MIDIClk %d: %d", midiClkArpCount, ARP_DIVISION_24PPQ[arpDivision]);
+            // if(DEBUG) Serial.printf("MIDIClk %d: %d", midiClkArpCount, ARP_DIVISION_24PPQ[arpDivision]);
         }
 
         if ((midiClkArpCount + 1) == ARP_DIVISION_24PPQ[arpDivision])
@@ -1313,17 +1332,19 @@ FLASHMEM void recallPatch(uint8_t bank, long patchUID)
     if (patchUID == 0)
         return;
     silence();
-    loadPatch(bank, patchUID);
-    setCurrentPatchData();
-    previousPatchIndex = currentPatchIndex;
-    previousBankIndex = currentBankIndex;
-    storeLastPatchToEEPROM(currentPatchIndex);
-    storeLastBankToEEPROM(currentBankIndex);
-    // Reset Midi channels - if coming from performance mode
-    midiChannel = getMIDIChannel();
-    midiOutCh = getMIDIOutCh();
-    MIDIThru = getMidiThru();
-    changeMIDIThruMode();
+    if (loadPatch(bank, patchUID))
+    {
+        setCurrentPatchData();
+        previousPatchIndex = currentPatchIndex;
+        previousBankIndex = currentBankIndex;
+        storeLastPatchToEEPROM(currentPatchIndex);
+        storeLastBankToEEPROM(currentBankIndex);
+        // Reset Midi channels - if coming from performance mode
+        midiChannel = getMIDIChannel();
+        midiOutCh = getMIDIOutCh();
+        MIDIThru = getMidiThru();
+        changeMIDIThruMode();
+    }
 }
 
 FLASHMEM void recallPerformance(uint8_t filename)
@@ -1339,7 +1360,8 @@ FLASHMEM void recallPerformance(uint8_t filename)
             MIDIThru = currentPerformance.patches[0].midiThru;
             changeMIDIThruMode();
 
-            Serial.println(midiChannel);
+            if (DEBUG)
+                Serial.println(midiChannel);
             // TODO Set min and max note range but this is only useful for split and layer(multitimbral functionality)
             setCurrentPatchData();
             currentBankIndex = currentPerformance.patches[0].bankIndex;
@@ -1349,15 +1371,19 @@ FLASHMEM void recallPerformance(uint8_t filename)
         else
         {
             // Patch missing
-            Serial.print(F("Patch Missing:"));
-            Serial.println(currentPerformance.patches[0].UID);
+            if (DEBUG)
+                Serial.print(F("Patch Missing:"));
+            if (DEBUG)
+                Serial.println(currentPerformance.patches[0].UID);
         }
     }
     else
     {
         // Performance missing
-        Serial.print(F("Performance Missing:"));
-        Serial.println(filename);
+        if (DEBUG)
+            Serial.print(F("Performance Missing:"));
+        if (DEBUG)
+            Serial.println(filename);
     }
 }
 
@@ -1367,8 +1393,10 @@ FLASHMEM void recallSequence(uint8_t filename)
     if (!loadSequence(filename))
     {
         // Sequence missing
-        Serial.print(F("Sequence Missing:"));
-        Serial.println(filename);
+        if (DEBUG)
+            Serial.print(F("Sequence Missing:"));
+        if (DEBUG)
+            Serial.println(filename);
         // Initialise sequence
         SequenceStruct ss;
         currentSequence = ss;
@@ -1437,10 +1465,14 @@ FLASHMEM void setCurrentPatchData()
     groupvec[activeGroupIndex]->setMonophonic(currentPatch.MonophonicMode);
     updateDisplay = true;
 
-    Serial.print(F("Set Patch: "));
-    Serial.print(currentPatch.PatchName);
-    Serial.print(F(" UID: "));
-    Serial.println(groupvec[activeGroupIndex]->getUID());
+    if (DEBUG)
+        Serial.print(F("Set Patch: "));
+    if (DEBUG)
+        Serial.print(currentPatch.PatchName);
+    if (DEBUG)
+        Serial.print(F(" UID: "));
+    if (DEBUG)
+        Serial.println(groupvec[activeGroupIndex]->getUID());
 }
 
 // Scales the encoder inc/decrement depending on the range to traverse
@@ -1492,7 +1524,7 @@ FLASHMEM int8_t encScaling(EncoderMappingStruct *enc, int8_t delta)
 FLASHMEM void encoderCallback(unsigned enc_idx, int value, int delta)
 {
     // --- Value isn't used because it's absolute values that dont change with changes to the encoder assignment---
-    // Serial.printf("enc[%u]: v=%d, d=%d\n", enc_idx, value, delta);
+    // if(DEBUG) Serial.printf("enc[%u]: v=%d, d=%d\n", enc_idx, value, delta);
     //  Subtract 4 from encoder index due to numbering on shift registers
     enc_idx -= 4;
     if (encMap[enc_idx].active)
@@ -1500,6 +1532,23 @@ FLASHMEM void encoderCallback(unsigned enc_idx, int value, int delta)
         int8_t newDelta = encScaling(&encMap[enc_idx], delta);
         switch (encMap[enc_idx].Parameter)
         {
+        case kbdOct:
+            if (newDelta == 0 || keyboardOct + newDelta < 0 || keyboardOct + newDelta > encMap[enc_idx].Range)
+                break;
+            groupvec[activeGroupIndex]->allNotesOff();
+            keyboardOct += newDelta;
+            storeKeyboardBasisToEEPROM(keyboardOct);
+            setEncValue(kbdOct, encMap[enc_idx].Value, KEYBOARD_OCT_STR[keyboardOct]);
+            break;
+        case kbdScale:
+            if (newDelta == 0 || keyboardScale + newDelta < 0 || keyboardScale + newDelta > encMap[enc_idx].Range)
+                break;
+            groupvec[activeGroupIndex]->allNotesOff();
+            keyboardScale += newDelta;
+            majMin = keyboardScale % 2;
+            storeKeyboardScaleToEEPROM(keyboardScale);
+            setEncValue(kbdScale, encMap[enc_idx].Value, SCALE_STR[keyboardScale]);
+            break;
         case patchselect:
         case namepatch:
             if (!cardStatus)
@@ -1623,6 +1672,7 @@ FLASHMEM void encoderCallback(unsigned enc_idx, int value, int delta)
             break;
         case PerfSelect:
         case PerfEdit:
+        case PerfDelete:
             if (!cardStatus)
                 return;
             if (newDelta == 0)
@@ -1631,6 +1681,7 @@ FLASHMEM void encoderCallback(unsigned enc_idx, int value, int delta)
             break;
         case SeqSelect:
         case SeqEdit:
+        case SeqDelete:
             if (!cardStatus)
                 return;
             if (newDelta == 0)
@@ -1789,7 +1840,7 @@ FLASHMEM void encoderCallback(unsigned enc_idx, int value, int delta)
             setEncValue(ArpBasis, arpBasis, ARP_BASIS_STR[arpBasis]);
             break;
         default:
-            // Serial.printf("enc[%u]: v=%d, d=%d\n", enc_idx, encMap[enc_idx].Value, newDelta);
+            // if(DEBUG) Serial.printf("enc[%u]: v=%d, d=%d\n", enc_idx, encMap[enc_idx].Value, newDelta);
             myControlChange(midiChannel, encMap[enc_idx].Parameter, encMap[enc_idx].Value);
             midiCCOut(encMap[enc_idx].Parameter, encMap[enc_idx].Value);
             break;
@@ -1810,18 +1861,25 @@ FLASHMEM void encoderButtonCallback(unsigned enc_idx, int buttonState)
     {
         switch (encMap[enc_idx].Parameter)
         {
+        case kbdOct:
+        case kbdScale:
+            keyboardActive = !keyboardActive;
+            break;
         case patchselect:
         case CCbankselectLSB:
-            // If current patch is empty in this bank, go to previous bank with valid patch
-            while (patches[0].patchUID == 0)
+            if (cardStatus)
             {
-                tempBankIndex = decTempBankIndex();
-                loadPatchNamesFromBank(tempBankIndex);
-                currentBankIndex = tempBankIndex;
-                currentPatchIndex = 0;
+                // If current patch is empty in this bank, go to previous bank with valid patch
+                while (patches[0].patchUID == 0)
+                {
+                    tempBankIndex = decTempBankIndex();
+                    loadPatchNamesFromBank(tempBankIndex);
+                    currentBankIndex = tempBankIndex;
+                    currentPatchIndex = 0;
+                }
+                recallPatch(currentBankIndex, patches[currentPatchIndex].patchUID);
             }
-            recallPatch(currentBankIndex, patches[currentPatchIndex].patchUID);
-            lightRGLEDs(0, 0);
+            ledsOff();
             break;
         case namepatch:
             if (patches[currentPatchIndex].patchUID == 0)
@@ -1839,7 +1897,8 @@ FLASHMEM void encoderButtonCallback(unsigned enc_idx, int buttonState)
             recallPatch(currentBankIndex, patches[currentPatchIndex].patchUID);
             break;
         case goback:
-            lightRGLEDs(0, 0);
+            if (state != SEQUENCEPAGE)
+                ledsOff();
             break;
         case choosecharacterPatch:
             if (currentPatchName.length() < PATCHNAMEMAXLEN)
@@ -1922,7 +1981,7 @@ FLASHMEM void encoderButtonCallback(unsigned enc_idx, int buttonState)
             savePatch(currentBankIndex, currentPatchIndex);
             updatePatchnameAndIndex(currentPatch.PatchName, currentPatchIndex + 1, currentPatch.UID);
             recallPatch(currentBankIndex, patches[currentPatchIndex].patchUID);
-            lightRGLEDs(0, 0);
+            ledsOff();
             break;
         case deletepatch:
             if (patches.size() > 0)
@@ -1933,7 +1992,7 @@ FLASHMEM void encoderButtonCallback(unsigned enc_idx, int buttonState)
             currentPatchIndex = 0;
             loadPatchNamesFromBank(currentBankIndex);
             recallPatch(currentBankIndex, patches[currentPatchIndex].patchUID);
-            lightRGLEDs(0, 0);
+            ledsOff();
             break;
         case savebank:
             state = State::MAIN;
@@ -1946,7 +2005,7 @@ FLASHMEM void encoderButtonCallback(unsigned enc_idx, int buttonState)
                 currentPatchIndex = 0;
             }
             recallPatch(currentBankIndex, patches[currentPatchIndex].patchUID);
-            lightRGLEDs(0, 0);
+            ledsOff();
             break;
         case deletebank:
             state = State::DELETEBANKMSG;
@@ -1961,17 +2020,23 @@ FLASHMEM void encoderButtonCallback(unsigned enc_idx, int buttonState)
                 currentPatchIndex = 0;
             }
             recallPatch(currentBankIndex, patches[currentPatchIndex].patchUID);
-            lightRGLEDs(0, 0);
+            ledsOff();
             break;
         case PerfSelect:
         case PerfEdit:
             recallPerformance(currentPerformanceIndex + 1);
             singleLED(ledColour::GREEN, 1); // Led 1 stays green
             break;
+        case PerfDelete:
+            deletePerformance(currentPerformanceIndex + 1);
+            break;
         case SeqSelect:
         case SeqEdit:
             recallSequence(currentSequenceIndex + 1);
             singleLED(ledColour::GREEN, 3); // Led 3 stays green
+            break;
+        case SeqDelete:
+            deleteSequence(currentSequenceIndex + 1);
             break;
         case SeqStartStop:
             if (currentSequence.running)
@@ -2068,27 +2133,43 @@ FLASHMEM void buttonCallback(unsigned button_idx, int buttonStatus)
       ButtonUp SR1 D7 1
       ButtonDown SR2 D7 0
     */
-    // Serial.println(button_idx);
+    // if(DEBUG) Serial.println(button_idx);
     switch (button_idx)
     {
+    case 22: // VOL_UP & VOL_DOWN Held
+        keyboardActive = !keyboardActive;
+        break;
     case VOL_UP:
         if (buttonStatus == HIGH || buttonStatus == HELD || buttonStatus == HELD_REPEAT)
         {
             myControlChange(midiChannel, CCvolume, clampToRange<int>(currentVolume, 1, 0, 127));
         }
         break;
-
     case VOL_DOWN:
         if (buttonStatus == HIGH || buttonStatus == HELD || buttonStatus == HELD_REPEAT)
         {
             myControlChange(midiChannel, CCvolume, clampToRange<int>(currentVolume, -1, 0, 127));
         }
         break;
-
-        // Osc / Multi
+        // Osc / Performance
     case BUTTON_1:
+        if (keyboardActive && buttonStatus == LOW)
+        {
+            myNoteOn(midiChannel, SCALE_STEPS[majMin][0] + ((keyboardOct + 2) * 12) + ((keyboardScale - majMin) / 2), 127);
+        }
+
+        if (keyboardActive && buttonStatus == HIGH_AFTER_HELD)
+        {
+            myNoteOff(midiChannel, SCALE_STEPS[majMin][0] + ((keyboardOct + 2) * 12) + ((keyboardScale - majMin) / 2), 0);
+        }
         if (buttonStatus == HIGH)
         {
+            if (keyboardActive)
+            {
+                myNoteOff(midiChannel, SCALE_STEPS[majMin][0] + ((keyboardOct + 2) * 12) + ((keyboardScale - majMin) / 2), 0);
+                return;
+            }
+
             switch (state)
             {
             case State::OSCPAGE1:
@@ -2149,6 +2230,8 @@ FLASHMEM void buttonCallback(unsigned button_idx, int buttonStatus)
         }
         if (buttonStatus == HELD)
         {
+            if (keyboardActive)
+                return;
             if (state != State::PERFORMANCERECALL && state != State::PERFORMANCEPAGE &&
                 state != State::OSCPAGE1 && state != State::OSCPAGE2 &&
                 state != State::OSCPAGE3 && state != State::OSCPAGE4)
@@ -2168,8 +2251,22 @@ FLASHMEM void buttonCallback(unsigned button_idx, int buttonStatus)
 
         // Osc Mod / Arp
     case BUTTON_2:
+        if (keyboardActive && buttonStatus == LOW)
+        {
+            myNoteOn(midiChannel, SCALE_STEPS[majMin][1] + ((keyboardOct + 2) * 12) + ((keyboardScale - majMin) / 2), 127);
+        }
+
+        if (keyboardActive && buttonStatus == HIGH_AFTER_HELD)
+        {
+            myNoteOff(midiChannel, SCALE_STEPS[majMin][1] + ((keyboardOct + 2) * 12) + ((keyboardScale - majMin) / 2), 0);
+        }
         if (buttonStatus == HIGH)
         {
+            if (keyboardActive)
+            {
+                myNoteOff(midiChannel, SCALE_STEPS[majMin][1] + ((keyboardOct + 2) * 12) + ((keyboardScale - majMin) / 2), 0);
+                return;
+            }
             switch (state)
             {
             case State::OSCMODPAGE1:
@@ -2208,6 +2305,8 @@ FLASHMEM void buttonCallback(unsigned button_idx, int buttonStatus)
         }
         if (buttonStatus == HELD)
         {
+            if (keyboardActive)
+                return;
             if (state != State::ARPPAGE1 && state != State::ARPPAGE2 &&
                 state != State::OSCMODPAGE1 && state != State::OSCMODPAGE2 &&
                 state != State::OSCMODPAGE3 && state != State::OSCMODPAGE4)
@@ -2242,8 +2341,22 @@ FLASHMEM void buttonCallback(unsigned button_idx, int buttonStatus)
 
         // Filter / Seq
     case BUTTON_3:
+        if (keyboardActive && buttonStatus == LOW)
+        {
+            myNoteOn(midiChannel, SCALE_STEPS[majMin][2] + ((keyboardOct + 2) * 12) + ((keyboardScale - majMin) / 2), 127);
+        }
+
+        if (keyboardActive && buttonStatus == HIGH_AFTER_HELD)
+        {
+            myNoteOff(midiChannel, SCALE_STEPS[majMin][2] + ((keyboardOct + 2) * 12) + ((keyboardScale - majMin) / 2), 0);
+        }
         if (buttonStatus == HIGH)
         {
+            if (keyboardActive)
+            {
+                myNoteOff(midiChannel, SCALE_STEPS[majMin][2] + ((keyboardOct + 2) * 12) + ((keyboardScale - majMin) / 2), 0);
+                return;
+            }
             switch (state)
             {
             case State::FILTERPAGE1:
@@ -2284,6 +2397,8 @@ FLASHMEM void buttonCallback(unsigned button_idx, int buttonStatus)
         }
         if (buttonStatus == HELD)
         {
+            if (keyboardActive)
+                return;
             if (arpRunning)
             {
                 sequencerStop();
@@ -2322,8 +2437,22 @@ FLASHMEM void buttonCallback(unsigned button_idx, int buttonStatus)
 
         // Filter Mod / MIDI
     case BUTTON_4:
+        if (keyboardActive && buttonStatus == LOW)
+        {
+            myNoteOn(midiChannel, SCALE_STEPS[majMin][3] + ((keyboardOct + 2) * 12) + ((keyboardScale - majMin) / 2), 127);
+        }
+
+        if (keyboardActive && buttonStatus == HIGH_AFTER_HELD)
+        {
+            myNoteOff(midiChannel, SCALE_STEPS[majMin][3] + ((keyboardOct + 2) * 12) + ((keyboardScale - majMin) / 2), 0);
+        }
         if (buttonStatus == HIGH)
         {
+            if (keyboardActive)
+            {
+                myNoteOff(midiChannel, SCALE_STEPS[majMin][3] + ((keyboardOct + 2) * 12) + ((keyboardScale - majMin) / 2), 0);
+                return;
+            }
             switch (state)
             {
             case State::FILTERMODPAGE1:
@@ -2354,6 +2483,8 @@ FLASHMEM void buttonCallback(unsigned button_idx, int buttonStatus)
         }
         if (buttonStatus == HELD)
         {
+            if (keyboardActive)
+                return;
             if (state != State::MIDIPAGE && state != State::FILTERMODPAGE1 && state != State::FILTERMODPAGE2 && state != State::FILTERMODPAGE3)
             {
                 state = State::MIDIPAGE;
@@ -2368,8 +2499,22 @@ FLASHMEM void buttonCallback(unsigned button_idx, int buttonStatus)
         break;
         // Amp / Settings
     case BUTTON_5:
+        if (keyboardActive && buttonStatus == LOW)
+        {
+            myNoteOn(midiChannel, SCALE_STEPS[majMin][4] + ((keyboardOct + 2) * 12) + ((keyboardScale - majMin) / 2), 127);
+        }
+
+        if (keyboardActive && buttonStatus == HIGH_AFTER_HELD)
+        {
+            myNoteOff(midiChannel, SCALE_STEPS[majMin][4] + ((keyboardOct + 2) * 12) + ((keyboardScale - majMin) / 2), 0);
+        }
         if (buttonStatus == HIGH)
         {
+            if (keyboardActive)
+            {
+                myNoteOff(midiChannel, SCALE_STEPS[majMin][4] + ((keyboardOct + 2) * 12) + ((keyboardScale - majMin) / 2), 0);
+                return;
+            }
             switch (state)
             {
             case State::AMPPAGE1:
@@ -2400,6 +2545,8 @@ FLASHMEM void buttonCallback(unsigned button_idx, int buttonStatus)
         }
         if (buttonStatus == HELD)
         {
+            if (keyboardActive)
+                return;
             if (state != State::SETTINGS && state != State::AMPPAGE1 && state != State::AMPPAGE2 && state != State::AMPPAGE3)
             {
                 switch (state)
@@ -2425,14 +2572,29 @@ FLASHMEM void buttonCallback(unsigned button_idx, int buttonStatus)
         break;
         // FX / Panic
     case BUTTON_6:
+        if (keyboardActive && buttonStatus == LOW)
+        {
+            myNoteOn(midiChannel, SCALE_STEPS[majMin][5] + ((keyboardOct + 2) * 12) + ((keyboardScale - majMin) / 2), 127);
+        }
+
+        if (keyboardActive && buttonStatus == HIGH_AFTER_HELD)
+        {
+            myNoteOff(midiChannel, SCALE_STEPS[majMin][5] + ((keyboardOct + 2) * 12) + ((keyboardScale - majMin) / 2), 0);
+        }
         if (buttonStatus == HIGH)
         {
+            if (keyboardActive)
+            {
+                myNoteOff(midiChannel, SCALE_STEPS[majMin][5] + ((keyboardOct + 2) * 12) + ((keyboardScale - majMin) / 2), 0);
+                return;
+            }
             state = State::FXPAGE; // show FX parameters
             singleLED(RED, 6);
         }
         if (buttonStatus == HELD)
         {
-
+            if (keyboardActive)
+                return;
             if (state != State::FXPAGE)
             {
                 // If Back button held, Panic - all notes off
@@ -2450,8 +2612,22 @@ FLASHMEM void buttonCallback(unsigned button_idx, int buttonStatus)
 
         // Save / Del
     case BUTTON_7:
+        if (keyboardActive && buttonStatus == LOW)
+        {
+            myNoteOn(midiChannel, SCALE_STEPS[majMin][6] + ((keyboardOct + 2) * 12) + ((keyboardScale - majMin) / 2), 127);
+        }
+
+        if (keyboardActive && buttonStatus == HIGH_AFTER_HELD)
+        {
+            myNoteOff(midiChannel, SCALE_STEPS[majMin][6] + ((keyboardOct + 2) * 12) + ((keyboardScale - majMin) / 2), 0);
+        }
         if (buttonStatus == HIGH)
         {
+            if (keyboardActive)
+            {
+                myNoteOff(midiChannel, SCALE_STEPS[majMin][6] + ((keyboardOct + 2) * 12) + ((keyboardScale - majMin) / 2), 0);
+                return;
+            }
             // Cancel out of Delete
             if (state == State::DELETEPATCH)
             {
@@ -2478,11 +2654,13 @@ FLASHMEM void buttonCallback(unsigned button_idx, int buttonStatus)
                     if (patches[0].patchUID != 0 && patches.back().patchUID != 0)
                         patches.push_back(PatchUIDAndName{0, F("-Empty-")});
                     currentPatchIndex = patches.size() - 1;
-                    Serial.printf(F("currentPatchIndex: %i\n"), currentPatchIndex);
+                    if (DEBUG)
+                        Serial.printf(F("currentPatchIndex: %i\n"), currentPatchIndex);
                 }
                 else
                 {
-                    Serial.println(F("Over patch limit on this bank"));
+                    if (DEBUG)
+                        Serial.println(F("Over patch limit on this bank"));
                 }
             }
             else if (state == State::PATCHSAVING)
@@ -2515,6 +2693,8 @@ FLASHMEM void buttonCallback(unsigned button_idx, int buttonStatus)
         }
         if (buttonStatus == HELD)
         {
+            if (keyboardActive)
+                return;
             if (state != State::PATCHSAVING && state != State::DELETEPATCH && state != State::SAVE && state != State::EDITBANK && state != State::RENAMEBANK)
             {
                 // DELETE
@@ -2533,8 +2713,22 @@ FLASHMEM void buttonCallback(unsigned button_idx, int buttonStatus)
 
         // Recall / Init
     case BUTTON_8:
+        if (keyboardActive && buttonStatus == LOW)
+        {
+            myNoteOn(midiChannel, SCALE_STEPS[majMin][7] + ((keyboardOct + 2) * 12) + ((keyboardScale - majMin) / 2), 127);
+        }
+
+        if (keyboardActive && buttonStatus == HIGH_AFTER_HELD)
+        {
+            myNoteOff(midiChannel, SCALE_STEPS[majMin][7] + ((keyboardOct + 2) * 12) + ((keyboardScale - majMin) / 2), 0);
+        }
         if (buttonStatus == HIGH)
         {
+            if (keyboardActive)
+            {
+                myNoteOff(midiChannel, SCALE_STEPS[majMin][7] + ((keyboardOct + 2) * 12) + ((keyboardScale - majMin) / 2), 0);
+                return;
+            }
             // RECALL
             singleLED(RED, 8);
             switch (state)
@@ -2562,6 +2756,8 @@ FLASHMEM void buttonCallback(unsigned button_idx, int buttonStatus)
         }
         if (buttonStatus == HELD)
         {
+            if (keyboardActive)
+                return;
             if (state != State::PATCHLIST)
             {
                 // Reinitialise to default patch
@@ -2570,7 +2766,6 @@ FLASHMEM void buttonCallback(unsigned button_idx, int buttonStatus)
                 setCurrentPatchData();
                 flashLED(GREEN, 8, 300);
                 state = State::MAIN;
-                lightRGLEDs(currentRLEDs, currentGLEDs);
             }
             else
             {
@@ -2617,7 +2812,7 @@ FLASHMEM void sdCardDetect()
             // arpRunning = false;
             // sequencerStop();
             setEncodersState(state);
-            lightRGLEDs(0, 0);
+            ledsOff();
         }
         sdCardInterrupt = false;
     }
@@ -2648,7 +2843,7 @@ FLASHMEM void sequencerLEDs()
 {
     if (currentSequence.running && currentSequence.step != seq_last_step)
     {
-        // Serial.println(currentSequence.step);
+        // if(DEBUG) Serial.println(currentSequence.step);
         seq_last_step = currentSequence.step;
         if (currentSequence.step % 16 < 8)
         {
@@ -2658,19 +2853,25 @@ FLASHMEM void sequencerLEDs()
         {
             seqLED(GREEN, currentSequence.step % 8 + 1);
         }
-        // TODO Ensure any stored LEDs are lit
     }
 }
 
 FLASHMEM void CPUMonitor()
 {
-    Serial.print(F(" CPU:"));
-    Serial.print(AudioProcessorUsage());
-    Serial.print(F(" ("));
-    Serial.print(AudioProcessorUsageMax());
-    Serial.print(F(")"));
-    Serial.print(F("  MEM:"));
-    Serial.println(AudioMemoryUsageMax());
+    if (DEBUG)
+        Serial.print(F(" CPU:"));
+    if (DEBUG)
+        Serial.print(AudioProcessorUsage());
+    if (DEBUG)
+        Serial.print(F(" ("));
+    if (DEBUG)
+        Serial.print(AudioProcessorUsageMax());
+    if (DEBUG)
+        Serial.print(F(")"));
+    if (DEBUG)
+        Serial.print(F("  MEM:"));
+    if (DEBUG)
+        Serial.println(AudioMemoryUsageMax());
     // memInfo();
     // getFreeITCM();
     delayMicroseconds(500);

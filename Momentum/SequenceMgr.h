@@ -411,6 +411,8 @@ FLASHMEM void concatSequenceFolderAndFilename(uint8_t filename, char *result)
 // Filename is Index
 FLASHMEM boolean loadSequence(uint8_t filename)
 {
+    if (!cardStatus)
+        return false;
     // Open file for reading - UID is Filename
     char result[30];
     concatSequenceFolderAndFilename(filename, result);
@@ -425,8 +427,10 @@ FLASHMEM boolean loadSequence(uint8_t filename)
     DeserializationError error = deserializeJson(doc, file);
     if (error)
     {
-        Serial.print(F("loadSequence() - Failed to read file:"));
-        Serial.println(filename);
+        if (DEBUG)
+            Serial.print(F("loadSequence() - Failed to read file:"));
+        if (DEBUG)
+            Serial.println(filename);
         return false;
     }
     // Copy values from the JsonDocument to the SequenceStruct
@@ -450,10 +454,13 @@ FLASHMEM boolean loadSequence(uint8_t filename)
 
 FLASHMEM void saveSequence()
 {
+    if (!cardStatus)
+        return;
     StaticJsonDocument<3000> doc;
     // Need to generate a new UID as the sequence settings may have changed if overwriting an existing sequence
     String output;
-    Serial.println("Saving seq:" + currentSequence.SequenceName);
+    if (DEBUG)
+        Serial.println("Saving seq:" + currentSequence.SequenceName);
     doc["Name"] = currentSequence.SequenceName;
     doc["Length"] = currentSequence.length;
     doc["bpm"] = currentSequence.bpm;
@@ -473,12 +480,14 @@ FLASHMEM void saveSequence()
     File file = SD.open(result, FILE_WRITE_BEGIN);
     if (!file)
     {
-        Serial.println(F("Failed to create file"));
+        if (DEBUG)
+            Serial.println(F("Failed to create file"));
         return;
     }
     if (serializeJson(doc, file) == 0)
     {
-        Serial.println(F("Failed to write to file"));
+        if (DEBUG)
+            Serial.println(F("Failed to write to file"));
         return;
     }
 }
@@ -494,7 +503,8 @@ FLASHMEM char *getSequenceName(File file)
     DeserializationError error = deserializeJson(doc, file);
     if (error)
     {
-        Serial.println(F("getSequenceName() - Failed to read file"));
+        if (DEBUG)
+            Serial.println(F("getSequenceName() - Failed to read file"));
         return "Failed to read file";
     }
     // Copy values from the JsonDocument to the SequenceStruct
@@ -519,8 +529,10 @@ FLASHMEM void loadSequenceNames()
         uint8_t number = strtoul(sequenceFile.name(), NULL, 0);
         if (number < 1 || number > 128)
         {
-            Serial.print(F("Sequence number is outside 1-128:"));
-            Serial.println(number);
+            if (DEBUG)
+                Serial.print(F("Sequence number is outside 1-128:"));
+            if (DEBUG)
+                Serial.println(number);
         }
         else
         {
@@ -528,6 +540,23 @@ FLASHMEM void loadSequenceNames()
         }
     }
     sequenceFile.close();
+}
+
+FLASHMEM void deleteSequence(uint8_t filename)
+{
+    if (!cardStatus)
+        return;
+    char result[30];
+    concatSequenceFolderAndFilename(filename, result);
+    if (!SD.remove(result))
+    {
+        // Sequence missing
+        if (DEBUG)
+            Serial.print(F("Sequence Missing:"));
+        if (DEBUG)
+            Serial.println(filename);
+    }
+    loadSequenceNames();
 }
 
 FLASHMEM uint8_t incSequenceIndex()
@@ -577,7 +606,7 @@ FLASHMEM void noteOnRoutine()
     {
         if ((arpHold && getNotesInArp() > 0) || arpNotesHeld > 0)
         {
-            // Serial.printf("arpCycleCount:%d  arpPlayCount:%d Target:%d\n", arpCycleCount, arpPlayCount, 2 * (abs(ARP_RANGE[playingArpRange]) + 1 * getNotesInArp()));
+            // if(DEBUG) Serial.printf("arpCycleCount:%d  arpPlayCount:%d Target:%d\n", arpCycleCount, arpPlayCount, 2 * (abs(ARP_RANGE[playingArpRange]) + 1 * getNotesInArp()));
             if (arpCycles != ARP_HOLD && arpCycles != ARP_INF && arpCycleCount >= arpCycles)
             {
                 return;
@@ -601,7 +630,7 @@ FLASHMEM void noteOnRoutine()
                 noteOn(midiChannel, arpNotes[playBeat] + (currentArpOct * 12) + (ARP_BASIS[arpBasis] * 12), arpVels[playBeat]);
                 previousArpNote = arpNotes[playBeat] + (currentArpOct * 12) + (ARP_BASIS[arpBasis] * 12);
             }
-            // Serial.printf("%d:%d %d  held:%d\n", currentArpOct, playBeat, arpUp, arpNotesHeld);
+            // if(DEBUG) Serial.printf("%d:%d %d  held:%d\n", currentArpOct, playBeat, arpUp, arpNotesHeld);
             //     decide what the next note is based on the mode.
             switch (arpStyle)
             {

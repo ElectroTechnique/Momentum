@@ -40,6 +40,8 @@ FLASHMEM void concatBankAndFilename(uint8_t bankIndex, const char *filename, cha
 
 FLASHMEM void insertIntoPatchIndexFile(uint8_t bankIndex, uint8_t index, uint32_t UID)
 {
+  if (DEBUG)
+    Serial.printf("insertIntoPatchIndexFile B:%d I:%d UID:%u", bankIndex, index, UID);
   if (!cardStatus)
     return;
   char result[30];
@@ -55,22 +57,31 @@ FLASHMEM void insertIntoPatchIndexFile(uint8_t bankIndex, uint8_t index, uint32_
   else
   {
     deserializeJson(doc, file);
-    serializeJsonPretty(doc, Serial);
+    if (DEBUG)
+      serializeJsonPretty(doc, Serial);
   }
   file.close();
-  file = SD.open(result, FILE_WRITE);
+  file = SD.open(result, FILE_WRITE); // TODO FILE_WRITE_BEGIN
   file.seek(0);
   file.print("");
   doc[String(index + 1)] = UID;
-  serializeJsonPretty(doc, Serial);
+  if (DEBUG)
+    serializeJsonPretty(doc, Serial);
   serializeJson(doc, file);
   file.close();
 }
 
+// Creates patch index file directly from patches array for currently slected bank
+// patches must be in correct order already
 FLASHMEM void recreatePatchIndexFile(uint8_t bankIndex)
 {
   if (!cardStatus)
     return;
+  if (DEBUG)
+    Serial.printf("recreatePatchIndexFile bank:%d", bankIndex);
+  if (DEBUG)
+    Serial.printf("recreatePatchIndexFile patches size:%d", patches.size());
+
   char result[30];
   concatBankAndFilename(bankIndex, PATCH_INDEX_FILE_NAME, result);
   SD.remove(result); // Delete PatchIndex file
@@ -80,7 +91,8 @@ FLASHMEM void recreatePatchIndexFile(uint8_t bankIndex)
   {
     doc[String(i + 1)] = patches[i].patchUID;
   }
-  serializeJsonPretty(doc, Serial);
+  if (DEBUG)
+    serializeJsonPretty(doc, Serial);
   serializeJson(doc, file);
   file.close();
 }
@@ -251,7 +263,11 @@ FLASHMEM void checkSDCardStructure()
         Serial.println(F("Creating Bank dir:") + String(BANK_FOLDER_NAMES[i]));
       // Save default patch file into Bank 1 folder at first index
       if (i == 0)
+      {
         savePatch(0, 0);
+        currentBankIndex = 0;
+        currentPatchIndex = 0;
+      }
     }
   }
   if (!SD.exists(SEQUENCE_FOLDER_NAME_SLASH))
@@ -388,8 +404,10 @@ FLASHMEM boolean loadPatch(uint8_t bank, uint32_t filename)
   currentPatch.ChordDetune = doc["ChordDetune"];
   currentPatch.MonophonicMode = doc["MonophonicMode"];
   currentPatch.Glide = doc["Glide"];
-  currentPatch.EffectAmt = doc["EffectAmt"];
-  currentPatch.EffectMix = doc["EffectMix"];
+  currentPatch.EnsembleEffectAmt = doc["EnsembleEffectAmt"];
+  currentPatch.EnsembleEffectMix = doc["EnsembleEffectMix"];
+  currentPatch.ReverbEffectTime = doc["ReverbEffectTime"];
+  currentPatch.ReverbEffectMix = doc["ReverbEffectMix"];
   currentPatch.FilterEnvShape = doc["FilterEnvShape"];
   currentPatch.AmpEnvShape = doc["AmpEnvShape"];
   currentPatch.GlideShape = doc["GlideShape"];
@@ -408,18 +426,20 @@ FLASHMEM void reinitialisePatch()
   currentPatch = ps;
 }
 
-FLASHMEM int8_t findPatchIndex(uint32_t UID)
+FLASHMEM int8_t findPatchIndex(uint32_t UID, int8_t ignoreIndex = -1)
 {
   for (uint8_t i = 0; i < patches.size(); i++)
   {
+    // This is to find a duplicate UID where a patch is in the same bank multiple times
+    // and the current index
+    if (i == ignoreIndex)
+      continue;
     // if(DEBUG) Serial.printf("findPatchIndex()  UID:%u currentUID:%u index:%i \n", UID, patches[i].patchUID, i);
     if (UID == patches[i].patchUID)
     {
       return i;
     }
   }
-  // Could be that patch array isn't for this bank, but patches
-  // can be deleted from SD card from other bank folders
   if (DEBUG)
     Serial.println(F("UID not found in patch array:") + String(UID));
   return -1;
@@ -427,15 +447,17 @@ FLASHMEM int8_t findPatchIndex(uint32_t UID)
 
 FLASHMEM boolean savePatch(uint8_t bankIndex, uint8_t index)
 {
+  if (DEBUG)
+    Serial.printf("B:%d I:%d\n", bankIndex, index);
   if (!cardStatus)
     return false;
-  if (patches[index].patchUID != 0)
+  if (patches[index].patchUID != 0 && findPatchIndex(patches[index].patchUID, index) == -1) //-1 means duplicate not found so safe to delete
   {
     // Overwriting, need to delete existing patch at this index, or it will stay on card (UID is filename)
-    if (DEBUG)
-      Serial.println("Overwriting");
+    // but check if same patch is elsewhere in bank
     deletePatch(bankIndex, index);
   }
+  patches.remove(index);
   StaticJsonDocument<2048> doc;
   doc["PatchName"] = currentPatch.PatchName;
 
@@ -495,8 +517,10 @@ FLASHMEM boolean savePatch(uint8_t bankIndex, uint8_t index)
   doc["ChordDetune"] = currentPatch.ChordDetune;
   doc["MonophonicMode"] = currentPatch.MonophonicMode;
   doc["Glide"] = currentPatch.Glide;
-  doc["EffectAmt"] = currentPatch.EffectAmt;
-  doc["EffectMix"] = currentPatch.EffectMix;
+  doc["EnsembleEffectAmt"] = currentPatch.EnsembleEffectAmt;
+  doc["EnsembleEffectMix"] = currentPatch.EnsembleEffectMix;
+  doc["ReverbEffectTime"] = currentPatch.ReverbEffectTime;
+  doc["ReverbEffectMix"] = currentPatch.ReverbEffectMix;
   doc["FilterEnvShape"] = currentPatch.FilterEnvShape;
   doc["AmpEnvShape"] = currentPatch.AmpEnvShape;
   doc["GlideShape"] = currentPatch.GlideShape;
@@ -530,6 +554,16 @@ FLASHMEM boolean savePatch(uint8_t bankIndex, uint8_t index)
     return false;
   }
   file.close();
+  // Insert into patches array
+  if (patches[index].patchUID != 0)
+  {
+    patches[index].patchUID = iUID;
+    patches[index].patchName = currentPatch.PatchName;
+  }
+  // else
+  // {
+  //   patches.push_back(PatchUIDAndName{currentPatch.UID, currentPatch.PatchName});
+  // }
   // Save index number to Patchindex
   insertIntoPatchIndexFile(bankIndex, index, iUID);
   loadPatchNamesFromBank(bankIndex);
@@ -553,17 +587,7 @@ FLASHMEM void deletePatch(uint8_t bank, uint8_t index)
   {
     if (DEBUG)
       Serial.println(F("Couldn't delete from SD card"));
-    return;
   }
-  // Remove from array if patch is in current bank
-  if (bank == currentBankIndex)
-  {
-    patches.remove(index);
-    if (DEBUG)
-      Serial.printf("Deleted Patch:%s index:%i \n", result, index);
-  }
-  // Recreate patchindex file
-  recreatePatchIndexFile(bank);
 }
 
 FLASHMEM void deleteBank(uint8_t bank)

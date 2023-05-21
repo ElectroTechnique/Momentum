@@ -82,8 +82,10 @@ typedef struct PatchStruct
     uint8_t Decay = 20;
     uint8_t Sustain = 80;
     uint8_t Release = 25;
-    uint8_t EffectAmt = 8;
-    uint8_t EffectMix = 63;
+    uint8_t EnsembleEffectAmt = 8;
+    uint8_t EnsembleEffectMix = 31;
+    uint8_t ReverbEffectTime = 8;
+    uint8_t ReverbEffectMix = 0;
     uint8_t PitchEnv = 63; // Centre off
     uint8_t VelocitySensitivity = 0;
     uint8_t FilterVelocitySensitivity = 0;

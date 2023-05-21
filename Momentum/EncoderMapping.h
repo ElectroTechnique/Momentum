@@ -787,30 +787,58 @@ FLASHMEM void configureCCfilterlforetrig(EncoderMappingStruct *enc, State st = S
     enc->PushAction = st;
 }
 
-FLASHMEM void configureCCfxamt(EncoderMappingStruct *enc, State st = State::MAIN)
+FLASHMEM void configureCCensemblefxamt(EncoderMappingStruct *enc, State st = State::MAIN)
 {
     enc->active = true;
-    enc->Parameter = CCfxamt;
+    enc->Parameter = CCensemblefxamt;
     enc->ShowValue = true;
-    enc->Value = currentPatch.EffectAmt;
+    enc->Value = currentPatch.EnsembleEffectAmt;
     enc->DefaultValue = 0;
-    enc->ValueStr = String(ENSEMBLE_LFO[currentPatch.EffectAmt]) + " Hz";
+    enc->ValueStr = String(ENSEMBLE_LFO[currentPatch.EnsembleEffectAmt]) + " Hz";
     enc->Range = 127;
-    enc->ParameterStr = ParameterStrMap[CCfxamt];
+    enc->ParameterStr = ParameterStrMap[CCensemblefxamt];
     enc->Push = true;
     enc->PushAction = st;
 }
 
-FLASHMEM void configureCCfxmix(EncoderMappingStruct *enc, State st = State::MAIN)
+FLASHMEM void configureCCensemblefxmix(EncoderMappingStruct *enc, State st = State::MAIN)
 {
     enc->active = true;
-    enc->Parameter = CCfxmix;
+    enc->Parameter = CCensemblefxmix;
     enc->ShowValue = true;
-    enc->Value = currentPatch.EffectMix;
+    enc->Value = currentPatch.EnsembleEffectMix;
     enc->DefaultValue = 0;
-    enc->ValueStr = String(groupvec[activeGroupIndex]->getEffectMix());
+    enc->ValueStr = String(groupvec[activeGroupIndex]->getEnsembleEffectMix());
     enc->Range = 127;
-    enc->ParameterStr = ParameterStrMap[CCfxmix];
+    enc->ParameterStr = ParameterStrMap[CCensemblefxmix];
+    enc->Push = true;
+    enc->PushAction = st;
+}
+
+FLASHMEM void configureCCreverbfxtime(EncoderMappingStruct *enc, State st = State::MAIN)
+{
+    enc->active = true;
+    enc->Parameter = CCreverbfxtime;
+    enc->ShowValue = true;
+    enc->Value = currentPatch.ReverbEffectTime;
+    enc->DefaultValue = 0;
+    enc->ValueStr = String(LINEAR[currentPatch.ReverbEffectTime] * 10.0f) + " s";
+    enc->Range = 127;
+    enc->ParameterStr = ParameterStrMap[CCreverbfxtime];
+    enc->Push = true;
+    enc->PushAction = st;
+}
+
+FLASHMEM void configureCCreverbfxmix(EncoderMappingStruct *enc, State st = State::MAIN)
+{
+    enc->active = true;
+    enc->Parameter = CCreverbfxmix;
+    enc->ShowValue = true;
+    enc->Value = currentPatch.ReverbEffectMix;
+    enc->DefaultValue = 0;
+    enc->ValueStr = String(groupvec[activeGroupIndex]->getReverbEffectMix());
+    enc->Range = 127;
+    enc->ParameterStr = ParameterStrMap[CCreverbfxmix];
     enc->Push = true;
     enc->PushAction = st;
 }
@@ -1140,24 +1168,29 @@ FLASHMEM void setEncodersState(State s)
 
     case State::AMPPAGE2:
         configurepitchbendrange(&encMap[ENC_TL], State::AMPPAGE2);
-        configureOff(&encMap[ENC_TR]);
+        configureampenvshape(&encMap[ENC_TR], State::AMPPAGE2);
         configureCCAmpVelocitySens(&encMap[ENC_BL], State::AMPPAGE2);
         configureCCmonomode(&encMap[ENC_BR], State::AMPPAGE2);
         break;
 
     case State::AMPPAGE3:
         configureOff(&encMap[ENC_TL]);
-        configureampenvshape(&encMap[ENC_TR], State::AMPPAGE3);
+        configureOff(&encMap[ENC_TR]);
         configureCCglide(&encMap[ENC_BL], State::AMPPAGE3);
         configureglideshape(&encMap[ENC_BR], State::AMPPAGE3);
         break;
-    case State::FXPAGE:
+    case State::FXPAGE1:
         configureOff(&encMap[ENC_TL]);
         configureOff(&encMap[ENC_TR]);
-        configureCCfxamt(&encMap[ENC_BL], State::FXPAGE);
-        configureCCfxmix(&encMap[ENC_BR], State::FXPAGE);
+        configureCCensemblefxamt(&encMap[ENC_BL], State::FXPAGE1);
+        configureCCensemblefxmix(&encMap[ENC_BR], State::FXPAGE1);
         break;
-
+    case State::FXPAGE2:
+        configureOff(&encMap[ENC_TL]);
+        configureOff(&encMap[ENC_TR]);
+        configureCCreverbfxtime(&encMap[ENC_BL], State::FXPAGE2);
+        configureCCreverbfxmix(&encMap[ENC_BR], State::FXPAGE2);
+        break;
     case State::SAVE:
         encMap[ENC_TL].active = false;
 
@@ -1582,7 +1615,7 @@ FLASHMEM void setEncodersState(State s)
         encMap[ENC_BL].ValueStr = ARP_DIVISION_STR[arpDivision];
         encMap[ENC_BL].Value = arpDivision;
         encMap[ENC_BL].Range = 9;
-        encMap[ENC_BL].DefaultValue = 1;
+        encMap[ENC_BL].DefaultValue = 2;
         encMap[ENC_BL].ParameterStr = ParameterStrMap[ArpDivision];
         encMap[ENC_BL].Push = true;
         encMap[ENC_BL].PushAction = State::ARPPAGE1;
@@ -1625,8 +1658,8 @@ FLASHMEM void setEncodersState(State s)
         encMap[ENC_BL].ShowValue = true;
         encMap[ENC_BL].ValueStr = ARP_DIVISION_STR[arpDivision];
         encMap[ENC_BL].Value = arpDivision;
-        encMap[ENC_BL].Range = 3;
-        encMap[ENC_BL].DefaultValue = 0;
+        encMap[ENC_BL].Range = 9;
+        encMap[ENC_BL].DefaultValue = 2;
         encMap[ENC_BL].ParameterStr = ParameterStrMap[ArpDivision];
         encMap[ENC_BL].Push = true;
         encMap[ENC_BL].PushAction = State::ARPPAGE2;
@@ -1788,6 +1821,7 @@ FLASHMEM void setEncodersState(State s)
         encMap[ENC_BR].active = true;
         encMap[ENC_BR].Parameter = renamebank;
         encMap[ENC_BR].ShowValue = false;
+        encMap[ENC_TL].Range = BANKS_LIMIT;
         encMap[ENC_BR].ParameterStr = ParameterStrMap[renamebank];
         encMap[ENC_BR].Push = true;
         encMap[ENC_BR].PushAction = State::RENAMEBANK;
@@ -2010,11 +2044,11 @@ FLASHMEM void setConfigurationForCC(uint8_t enc, uint8_t cc)
     case CCoscfx:
         configureCCoscfx(&encMap[enc], State::PERFORMANCEPAGE);
         break;
-    case CCfxamt:
-        configureCCfxamt(&encMap[enc], State::PERFORMANCEPAGE);
+    case CCensemblefxamt:
+        configureCCensemblefxamt(&encMap[enc], State::PERFORMANCEPAGE);
         break;
-    case CCfxmix:
-        configureCCfxmix(&encMap[enc], State::PERFORMANCEPAGE);
+    case CCensemblefxmix:
+        configureCCensemblefxmix(&encMap[enc], State::PERFORMANCEPAGE);
         break;
     case CCvelocitySens:
         configureCCAmpVelocitySens(&encMap[enc], State::PERFORMANCEPAGE);

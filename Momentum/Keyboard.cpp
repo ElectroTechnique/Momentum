@@ -12,4 +12,4 @@ const char *SCALE_STR[24] PROGMEM = {"C maj", "C min", "C# maj", "C# min",
 const uint8_t SCALE_STEPS[2][8]  = {{0, 2, 4, 5, 7, 9, 11, 12},  // Maj
                                            {0, 2, 3, 5, 7, 8, 10, 12}}; // Min
 
-const char *KEYBOARD_OCT_STR[7] = {"3 below", "2 below", "1 below mid", "Middle", "1 above", "2 above mid", "3 above"};
+const char *KEYBOARD_OCT_STR[7] = {"3 below", "2 below", "1 below", "Middle", "1 above", "2 above", "3 above"};

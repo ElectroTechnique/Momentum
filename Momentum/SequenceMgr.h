@@ -37,6 +37,7 @@ This code is taken from:
 #define SEQ_PATTERN_LEN 64
 #define ARP_INF 0
 #define ARP_HOLD 4
+#define LATCHED_NOTE 130 // TODO not used currently
 
 typedef enum ArpStyles
 {
@@ -704,8 +705,8 @@ FLASHMEM void noteOnRoutine()
         {
             if (currentSequence.running)
             {
-                // TODO - NOT USED - 130 signifies latched note
-                if (currentSequence.Notes[currentSequence.step] != 130)
+                // TODO - NOT USED - latched note
+                if (currentSequence.Notes[currentSequence.step] != LATCHED_NOTE)
                 {
                     noteOn(midiChannel, currentSequence.Notes[currentSequence.step], currentSequence.Velocities[currentSequence.step]);
                     currentSequence.prev_note = currentSequence.Notes[currentSequence.step];
@@ -738,7 +739,7 @@ FLASHMEM void noteOffRoutine()
             if (currentSequence.prev_note > 0)
             {
                 // TODO - NOT USED -  Note not held
-                if (currentSequence.Notes[currentSequence.step] != 130) // Latched note
+                if (currentSequence.Notes[currentSequence.step] != LATCHED_NOTE)
                 {
                     myNoteOff(midiChannel, currentSequence.prev_note, 0);
                     currentSequence.noteoffsent = true;

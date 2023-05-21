@@ -45,8 +45,10 @@ FLASHMEM void assignStrings()
     ParameterStrMap[CCpwmAmtB] = "2 PWM Level";
     ParameterStrMap[CCkeytracking] = "Key Tracking";
     ParameterStrMap[CCfilterlfowaveform] = "Filter LFO Wave";
-    ParameterStrMap[CCfxamt] = "Effects Amount";
-    ParameterStrMap[CCfxmix] = "Effects Mix";
+    ParameterStrMap[CCensemblefxamt] = "Rate";
+    ParameterStrMap[CCensemblefxmix] = "Mix";
+    ParameterStrMap[CCreverbfxtime] = "Reverb Time";
+    ParameterStrMap[CCreverbfxmix] = "Mix";
     ParameterStrMap[CCdetune] = "Detune";
     ParameterStrMap[CCoscLfoRate] = "Pitch LFO Rate";
     ParameterStrMap[CCoscLfoWaveform] = "Pitch LFO Wave";
@@ -78,7 +80,7 @@ FLASHMEM void assignStrings()
     ParameterStrMap[choosePerfMIDIChOut] = "Channel Out";
     ParameterStrMap[choosePerfMIDIThruMode] = "MIDI Thru Mode";
     ParameterStrMap[PerfSelect] = "Performance";
-    ParameterStrMap[PerfEdit] = "Save/Edit";
+    ParameterStrMap[PerfEdit] = "Edit";
     ParameterStrMap[deleteCharacterPerformance] = "Del. Char";
     ParameterStrMap[choosecharacterPerformance] = "Character";
     ParameterStrMap[cancel] = "Back";
@@ -96,7 +98,7 @@ FLASHMEM void assignStrings()
     ParameterStrMap[deleteCharacterPatch] = "Del. Char";
     ParameterStrMap[deleteCharacterBank] = "Del. Char";
     ParameterStrMap[deleteCharacterSequence] = "Del. Char";
-    ParameterStrMap[SeqEdit] = "Save/Edit";
+    ParameterStrMap[SeqEdit] = "Edit";
     ParameterStrMap[SeqSelect] = "Sequence";
     ParameterStrMap[SeqTempo] = "Tempo";
     ParameterStrMap[SeqStartStop] = "Start/Stop";
@@ -165,8 +167,8 @@ FLASHMEM void assignParametersForPerformanceEncoders()
     ParametersForPerformanceEncoders[++i] = CCampsustain;
     ParametersForPerformanceEncoders[++i] = CCamprelease;
     ParametersForPerformanceEncoders[++i] = ampenvshape;
-    ParametersForPerformanceEncoders[++i] = CCfxamt;
-    ParametersForPerformanceEncoders[++i] = CCfxmix;
+    ParametersForPerformanceEncoders[++i] = CCensemblefxamt;
+    ParametersForPerformanceEncoders[++i] = CCensemblefxmix;
     ParametersForPerformanceEncoders[++i] = CCmonomode;
     ParametersForPerformanceEncoders[++i] = CCvelocitySens;
     ParametersForPerformanceEncoders[++i] = glideshape;

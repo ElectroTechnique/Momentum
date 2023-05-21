@@ -12,18 +12,6 @@ using namespace EncoderTool;
 #define ENC_TR 0
 #define ENC_BR 1
 
-// Button numbering
-#define VOL_DOWN 0
-#define VOL_UP 1
-#define BUTTON_8 3
-#define BUTTON_7 4
-#define BUTTON_5 6
-#define BUTTON_4 7
-#define BUTTON_6 8
-#define BUTTON_2 9
-#define BUTTON_1 10
-#define BUTTON_3 11
-
 // Because of the way the four encoders and ten buttons are arranged on three 74HC595 shift registers in parallel, these counts are not the same
 constexpr unsigned encoderCount = 8; // There are four arranged over three Shift Registers on the last four positions, hence all eight positions must be shifted to reach them.
 constexpr unsigned buttonCount = 12; // There are ten buttons, but arranged over three Shift Registers on the first four positions. The last four are skipped.

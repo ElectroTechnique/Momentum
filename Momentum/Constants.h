@@ -193,7 +193,8 @@ typedef enum State
   AMPPAGE1,              // Amplifier parameters 1
   AMPPAGE2,              // Amplifier parameters 2
   AMPPAGE3,              // Amplifier parameters 3
-  FXPAGE,                // FX parameters
+  FXPAGE1,               // FX parameters
+  FXPAGE2,               // FX parameters
   MIDIPAGE,              // MIDI parameters
   ARPPAGE1,              // Arpeggiator parameters
   ARPPAGE2,              // Arpeggiator parameters

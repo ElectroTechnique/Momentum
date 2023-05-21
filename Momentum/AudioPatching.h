@@ -43,12 +43,15 @@ struct PatchShared
     AudioMixer4 voiceMixerM;
 
     AudioEffectEnsemble ensemble;
+    AudioEffectReverb reverb;
     AudioFilterStateVariableTS dcOffsetFilter;
+    AudioAmplifier reverbAmpSwitch;
     AudioMixer4 volumeMixer;
-    AudioMixer4 effectMixerL;
-    AudioMixer4 effectMixerR;
+    AudioMixer4 ensembleEffectMixerL;
+    AudioMixer4 ensembleEffectMixerR;
+    AudioMixer4 reverbMixer;
 
-    AudioConnection connections[12] = {
+    AudioConnection connections[16] = {
         {pitchBend, 0, pitchMixer, 0},
         {pitchLfo, 0, pitchMixer, 1},
         {voiceMixer[0], 0, voiceMixerM, 0},
@@ -56,11 +59,15 @@ struct PatchShared
         {voiceMixer[2], 0, voiceMixerM, 2},
         {voiceMixerM, 0, dcOffsetFilter, 0},
         {dcOffsetFilter, 2, volumeMixer, 0},
-        {volumeMixer, 0, ensemble, 0},  // 7
-        {ensemble, 0, effectMixerL, 1}, // 8
-        {ensemble, 1, effectMixerR, 1}, // 9
-        {volumeMixer, 0, effectMixerL, 0},
-        {volumeMixer, 0, effectMixerR, 0},
+        {volumeMixer, 0, reverbAmpSwitch, 0},
+        {reverbAmpSwitch, 0, reverb, 0},
+        {volumeMixer, 0, reverbMixer, 0},
+        {reverb, 0, reverbMixer, 1},
+        {reverbMixer, 0, ensemble, 0},
+        {ensemble, 0, ensembleEffectMixerL, 1},
+        {ensemble, 1, ensembleEffectMixerR, 1},
+        {reverbMixer, 0, ensembleEffectMixerL, 0},
+        {reverbMixer, 0, ensembleEffectMixerR, 0},
     };
 
 private:
@@ -82,8 +89,8 @@ public:
     {
         delete outputLConnection;
         delete outputRConnection;
-        outputLConnection = new AudioConnection(effectMixerL, 0, left, index);
-        outputRConnection = new AudioConnection(effectMixerR, 0, right, index);
+        outputLConnection = new AudioConnection(ensembleEffectMixerL, 0, left, index);
+        outputRConnection = new AudioConnection(ensembleEffectMixerR, 0, right, index);
     }
 };
 
@@ -205,9 +212,9 @@ public:
     AudioSynthNoiseWhite white;
     AudioAnalyzePeak peak;
     Oscilloscope scope;
-    AudioMixer4 effectMixerR[3];
+    AudioMixer4 ensembleEffectMixerR[3];
     AudioMixer4 effectMixerRM;
-    AudioMixer4 effectMixerL[3];
+    AudioMixer4 ensembleEffectMixerL[3];
     AudioMixer4 effectMixerLM;
     AudioOutputI2S i2s;
 
@@ -215,12 +222,12 @@ public:
     Patch Oscillators[MAX_NO_VOICE];
 
     AudioConnection connectionsArray[12] = {
-        {effectMixerL[0], 0, effectMixerLM, 0},
-        {effectMixerL[1], 0, effectMixerLM, 1},
-        {effectMixerL[2], 0, effectMixerLM, 2},
-        {effectMixerR[0], 0, effectMixerRM, 0},
-        {effectMixerR[1], 0, effectMixerRM, 1},
-        {effectMixerR[2], 0, effectMixerRM, 2},
+        {ensembleEffectMixerL[0], 0, effectMixerLM, 0},
+        {ensembleEffectMixerL[1], 0, effectMixerLM, 1},
+        {ensembleEffectMixerL[2], 0, effectMixerLM, 2},
+        {ensembleEffectMixerR[0], 0, effectMixerRM, 0},
+        {ensembleEffectMixerR[1], 0, effectMixerRM, 1},
+        {ensembleEffectMixerR[2], 0, effectMixerRM, 2},
         {effectMixerLM, 0, scope, 0},
         {effectMixerLM, 0, peak, 0},
         {effectMixerRM, 0, usbAudio, 1},
@@ -245,7 +252,7 @@ public:
             uint8_t mixerIdx = 0;
             if (i > 0)
                 mixerIdx = i / 12;
-            SharedAudio[i].connectOutput(effectMixerL[mixerIdx], effectMixerR[mixerIdx], i % 4);
+            SharedAudio[i].connectOutput(ensembleEffectMixerL[mixerIdx], ensembleEffectMixerR[mixerIdx], i % 4);
 
             SharedAudio[i].voiceMixerM.gain(0, mixerLevel);
             SharedAudio[i].voiceMixerM.gain(1, mixerLevel);

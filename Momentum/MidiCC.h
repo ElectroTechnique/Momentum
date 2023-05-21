@@ -37,11 +37,13 @@
 #define CCpwmAmtA 88
 #define CCkeytracking 89
 #define CCfilterlfowaveform 90
-#define CCfxamt 91
-#define CCfxmix 93
+#define CCensemblefxamt 91
+#define CCensemblefxmix 93
 #define CCdetune 94
 #define CCpwmAmtB 95
 #define CCpwmRateB 96
+#define CCreverbfxtime 97
+#define CCreverbfxmix 98
 #define CCoscLfoRate 102
 #define CCoscLfoWaveform 103
 #define CCfilterLFOMidiClkSync 104 // Off/On

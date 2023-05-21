@@ -436,9 +436,9 @@ FLASHMEM void renderPeak()
       len = prevLen;
       peakCount++;
     }
-    tft.drawFastVLine(314, 200 - len, len, len > 180 ? ILI9341_RED : ILI9341_GREEN);
-    tft.drawFastVLine(315, 200 - len, len, len > 180 ? ILI9341_RED : ILI9341_GREEN);
-    tft.drawFastVLine(316, 200 - len, len, len > 180 ? ILI9341_RED : ILI9341_GREEN);
+    tft.drawFastVLine(314, 200 - len, len, len > 180 ? ILI9341_RED : ILI9341_WHITE);
+    tft.drawFastVLine(315, 200 - len, len, len > 180 ? ILI9341_RED : ILI9341_WHITE);
+    tft.drawFastVLine(316, 200 - len, len, len > 180 ? ILI9341_RED : ILI9341_WHITE);
   }
 }
 
@@ -652,7 +652,6 @@ FLASHMEM void renderSeqPosition()
 
 FLASHMEM void renderDeletePatchPage()
 {
-
   tft.fillScreen(ILI9341_BLACK);
   tft.setFont(Arial_16_Bold);
   tft.setTextColor(ILI9341_YELLOW);
@@ -695,7 +694,8 @@ FLASHMEM void renderDeleteMessagePage()
   tft.setFont(Arial_16);
   tft.setTextDatum(TC_DATUM);
   tft.setTextColor(ILI9341_YELLOW);
-  tft.drawString(F("Deleted Patch"), 160, 100);
+  tft.drawString(F("Deleting Patch"), 160, 100);
+  tft.drawString(currentPatch.PatchName, 160, 125);
 }
 
 FLASHMEM void renderDeleteBankMessagePage()
@@ -706,7 +706,8 @@ FLASHMEM void renderDeleteBankMessagePage()
   tft.setFont(Arial_16);
   tft.setTextDatum(TC_DATUM);
   tft.setTextColor(ILI9341_YELLOW);
-  tft.drawString(F("Deleted Bank"), 160, 100);
+  tft.drawString(F("Deleting Bank"), 160, 100);
+  tft.drawString(bankNames[currentBankIndex], 160, 125);
 }
 
 FLASHMEM void renderSavePage()
@@ -718,32 +719,14 @@ FLASHMEM void renderSavePage()
   tft.setTextDatum(TC_DATUM);
   tft.setTextColor(ILI9341_YELLOW);
   if (patches[currentPatchIndex].patchUID == 0)
-  {
     tft.drawString(F("Saving Patch"), 160, 100);
-    tft.setTextColor(ILI9341_WHITE);
-
-    if (strlen(currentPatch.PatchName) > 12)
-    {
-      tft.drawString(String(currentPatch.PatchName).substring(0, 11) + String(".."), 160, 125);
-    }
-    else
-    {
-      tft.drawString(currentPatch.PatchName, 160, 125);
-    }
-  }
   else
-  {
     tft.drawString(F("Overwriting Patch"), 160, 100);
-    tft.setTextColor(ILI9341_WHITE);
-    if (strlen(currentPatch.PatchName) > 12)
-    {
-      tft.drawString(String(currentPatch.PatchName).substring(0, 11) + String(".."), 160, 125);
-    }
-    else
-    {
-      tft.drawString(currentPatch.PatchName, 160, 125);
-    }
-  }
+  tft.setTextColor(ILI9341_WHITE);
+  if (strlen(currentPatch.PatchName) > 12)
+    tft.drawString(String(currentPatch.PatchName).substring(0, 11) + String(".."), 160, 125);
+  else
+    tft.drawString(currentPatch.PatchName, 160, 125);
 }
 
 FLASHMEM void renderReinitialisePage()
@@ -1067,16 +1050,23 @@ FLASHMEM void renderOscPage(size_t no)
   tft.setFont(Arial_16);
   tft.setTextColor(ILI9341_BLUE);
   tft.setTextDatum(TC_DATUM);
-  if (no == 3)
+  switch (no)
   {
-    tft.drawString("Noise & Unison", 160, 150);
-  }
-  else
-  {
+  case 1:
+  case 2:
     tft.drawString("Oscillator " + String(no), 160, 150);
+    break;
+  case 3:
+    tft.drawString("Noise & Unison", 160, 150);
+    break;
+  case 4:
+    tft.drawString("Oscillator Effects", 160, 150);
+    break;
   }
   renderVoiceGrid();
   renderArpIndicator();
+  if (!arpRunning)
+    renderSeqIndicator();
   renderMidiClk();
   renderKeyboardActive();
   renderPageIndicator(4, no);
@@ -1136,6 +1126,8 @@ FLASHMEM void renderOscModPage(size_t no)
   }
   renderVoiceGrid();
   renderArpIndicator();
+  if (!arpRunning)
+    renderSeqIndicator();
   renderMidiClk();
   renderKeyboardActive();
   renderCorners();
@@ -1147,18 +1139,24 @@ FLASHMEM void renderFilterPage(size_t no)
   tft.setFont(Arial_16);
   tft.setTextColor(ILI9341_BLUE);
   tft.setTextDatum(TC_DATUM);
-  tft.drawString("Filter", 160, 150);
   renderPageIndicator(2, no);
   if (no == 2)
   {
+    tft.drawString("Filter Envelope", 160, 150);
     tft.setOrigin(-80, -55);
     renderEnv(groupvec[activeGroupIndex]->getFilterAttack() * 0.0001f,
               groupvec[activeGroupIndex]->getFilterDecay() * 0.0001f,
               groupvec[activeGroupIndex]->getFilterSustain(),
               groupvec[activeGroupIndex]->getFilterRelease() * 0.0001f);
   }
+  else
+  {
+    tft.drawString("Filter", 160, 150);
+  }
   renderVoiceGrid();
   renderArpIndicator();
+  if (!arpRunning)
+    renderSeqIndicator();
   renderMidiClk();
   renderKeyboardActive();
   renderCorners();
@@ -1170,10 +1168,12 @@ FLASHMEM void renderFilterModPage(size_t no)
   tft.setFont(Arial_16);
   tft.setTextColor(ILI9341_BLUE);
   tft.setTextDatum(TC_DATUM);
-  tft.drawString("Filter Modulation " + String(no), 160, 150);
+  tft.drawString("Filter Modulation", 160, 150);
   renderPageIndicator(3, no);
   renderVoiceGrid();
   renderArpIndicator();
+  if (!arpRunning)
+    renderSeqIndicator();
   renderMidiClk();
   renderKeyboardActive();
   renderCorners();
@@ -1185,10 +1185,12 @@ FLASHMEM void renderAmpPage(size_t no)
   tft.setFont(Arial_16);
   tft.setTextColor(ILI9341_BLUE);
   tft.setTextDatum(TC_DATUM);
-  tft.drawString("Amplifier " + String(no), 160, 150);
+  tft.drawString("Amplifier", 160, 150);
   renderPageIndicator(3, no);
   renderVoiceGrid();
   renderArpIndicator();
+  if (!arpRunning)
+    renderSeqIndicator();
   renderMidiClk();
   renderKeyboardActive();
   renderCorners();
@@ -1202,16 +1204,26 @@ FLASHMEM void renderAmpPage(size_t no)
   }
 }
 
-FLASHMEM void renderFXPage()
+FLASHMEM void renderFXPage(size_t no)
 {
   tft.fillScreen(ILI9341_BLACK);
   tft.setFont(Arial_16);
   tft.setTextColor(ILI9341_BLUE);
   tft.setTextDatum(TC_DATUM);
-  tft.drawString("Effects", 160, 150);
-  renderPageIndicator(1, 1);
+  switch (no)
+  {
+  case 1:
+    tft.drawString("FX - Stereo Ensemble", 160, 150);
+    break;
+  case 2:
+    tft.drawString("FX - Reverb", 160, 150);
+    break;
+  }
+  renderPageIndicator(2, no);
   renderVoiceGrid();
   renderArpIndicator();
+  if (!arpRunning)
+    renderSeqIndicator();
   renderMidiClk();
   renderKeyboardActive();
   renderCorners();
@@ -1312,6 +1324,8 @@ FLASHMEM void renderMainPage()
   renderPatchName();
   renderMidiClk();
   renderArpIndicator();
+  if (!arpRunning)
+    renderSeqIndicator();
   renderKeyboardActive();
   renderPeak();
   renderCorners();
@@ -1714,8 +1728,11 @@ void displayThread()
       case State::AMPPAGE3:
         renderAmpPage(3);
         break;
-      case State::FXPAGE:
-        renderFXPage();
+      case State::FXPAGE1:
+        renderFXPage(1);
+        break;
+      case State::FXPAGE2:
+        renderFXPage(2);
         break;
       case State::SEQUENCEPAGE:
         renderSequencerPage();

@@ -54,16 +54,17 @@
 //
 // ElectroTechnique Note: I don't use these as I found they introduced noise(!)
 #define AudioNoInterrupts() (NVIC_DISABLE_IRQ(IRQ_SOFTWARE))
-#define AudioInterrupts()   (NVIC_ENABLE_IRQ(IRQ_SOFTWARE))
+#define AudioInterrupts() (NVIC_ENABLE_IRQ(IRQ_SOFTWARE))
 
 #include "output_dacs.h"
-#include "effect_ensemble.h"
-#include "effect_envelope.h"//Local version
-#include "effect_combine.h"//Local version
-#include "filter_variable.h"//Local version
+#include "effect_ensemble.h" //Electrotechnique exclusive stereo emsemble effect
+#include "effect_reverb.h"
+#include "effect_envelope.h" //Local version
+#include "effect_combine.h"  //Local version
+#include "filter_variable.h" //Local version
 #include "mixer.h"
 #include "output_i2s.h"
-#include "synth_waveform.h"//Local version
+#include "synth_waveform.h" //Local version
 #include "synth_dc.h"
 #include "synth_whitenoise.h"
 #include "synth_pinknoise.h"

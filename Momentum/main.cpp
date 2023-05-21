@@ -49,7 +49,7 @@
     Power control:
     https://forum.pjrc.com/threads/65797-Teensy-4-1-ON-OFF-Pin-Access-Use?highlight=Power+Control
 */
-#define DEBUG 0
+#define DEBUG 1
 
 #include <Adafruit_GFX.h>
 #include <ILI9341_t3n.h>
@@ -77,6 +77,7 @@ elapsedMillis usb_host_wait_timer;
 boolean MIDIClkSignal = false;
 
 State state = State::MAIN;
+boolean keyboardActive = false;
 
 #include "PatchMgr.h"
 #include "HWControls.h"
@@ -87,7 +88,6 @@ State state = State::MAIN;
 #include "Voice.h"
 #include "VoiceGroup.h"
 
-boolean keyboardActive = false;
 uint8_t majMin = MajMin::MAJOR;
 uint8_t keyboardOct = 3;
 uint8_t keyboardScale = 0;
@@ -158,7 +158,7 @@ uint8_t loopCount = 0;
 
 FLASHMEM void setup()
 {
-    AudioMemory(60);
+    AudioMemory(62);
     sequencer_timer.begin(sequencer, currentSequence.tempo_us / 2.0f, false);
     //  while (!Serial)
     //  {
@@ -185,10 +185,10 @@ FLASHMEM void setup()
     {
         if (DEBUG)
             Serial.println(F("SD card is connected"));
+        loadLastPatchUsed();
         // Get patch numbers and names from SD card
         checkSDCardStructure();
         loadBankNames();
-        loadLastPatchUsed();
         loadPatchNamesFromBank(currentBankIndex);
         // If current patch is empty in this bank, go to previous bank with valid patch
         while (patches[0].patchUID == 0)
@@ -859,7 +859,7 @@ FLASHMEM void myControlChange(byte channel, byte control, byte value)
         float rate = 0.0;
         if (groupvec[activeGroupIndex]->getPitchLfoMidiClockSync())
         {
-            // TODO: MIDI Tempo stuff remains global?
+            // TODO: Multitimbral - MIDI Tempo stuff remains global?
             lfoPitchTempoValue = LFOTEMPO[value];
             rate = lfoSyncFreq * LFOTEMPO[value];
             if (!setEncValue(CCoscLfoRate, value, LFOTEMPOSTR[value]))
@@ -1049,20 +1049,32 @@ FLASHMEM void myControlChange(byte channel, byte control, byte value)
         }
         break;
     }
-    case CCfxamt:
-        currentPatch.EffectAmt = value;
-        groupvec[activeGroupIndex]->setEffectAmount(ENSEMBLE_LFO[value]);
-        if (!setEncValue(CCfxamt, value, String(ENSEMBLE_LFO[value]) + F(" Hz")))
-            showCurrentParameterOverlay(ParameterStrMap[CCfxamt], String(ENSEMBLE_LFO[value]) + F(" Hz"));
+    case CCensemblefxamt:
+        currentPatch.EnsembleEffectAmt = value;
+        groupvec[activeGroupIndex]->setEnsembleEffectAmount(ENSEMBLE_LFO[value]);
+        if (!setEncValue(CCensemblefxamt, value, String(ENSEMBLE_LFO[value]) + F(" Hz")))
+            showCurrentParameterOverlay(ParameterStrMap[CCensemblefxamt], String(ENSEMBLE_LFO[value]) + F(" Hz"));
         break;
 
-    case CCfxmix:
-        currentPatch.EffectMix = value;
-        groupvec[activeGroupIndex]->setEffectMix(LINEAR[value]);
-        if (!setEncValue(CCfxmix, value, String(LINEAR[value])))
-            showCurrentParameterOverlay(ParameterStrMap[CCfxmix], String(LINEAR[value]));
+    case CCensemblefxmix:
+        currentPatch.EnsembleEffectMix = value;
+        groupvec[activeGroupIndex]->setEnsembleEffectMix(LINEAR[value]);
+        if (!setEncValue(CCensemblefxmix, value, String(LINEAR[value])))
+            showCurrentParameterOverlay(ParameterStrMap[CCensemblefxmix], String(LINEAR[value]));
+        break;
+    case CCreverbfxtime:
+        currentPatch.ReverbEffectTime = value;
+        groupvec[activeGroupIndex]->setReverbEffectTime(LINEAR[value] * 10.0f);
+        if (!setEncValue(CCreverbfxtime, value, String(LINEAR[value] * 10.0f) + F(" s")))
+            showCurrentParameterOverlay(ParameterStrMap[CCreverbfxtime], String(LINEAR[value] * 10.0f) + F(" s"));
         break;
 
+    case CCreverbfxmix:
+        currentPatch.ReverbEffectMix = value;
+        groupvec[activeGroupIndex]->setReverbEffectMix(LINEAR[value]);
+        if (!setEncValue(CCreverbfxmix, value, String(LINEAR[value])))
+            showCurrentParameterOverlay(ParameterStrMap[CCreverbfxmix], String(LINEAR[value]));
+        break;
     case CCallnotesoff:
         groupvec[activeGroupIndex]->allNotesOff();
         break;
@@ -1310,7 +1322,7 @@ FLASHMEM void myMIDIClock()
     // At 120bpm, a quarter note is every 500ms, 24ppq may have an error of 20ms giving an error in calculated bpm of up to 5bpm
     if (++midiClkCount > 23)
     {
-        // TODO: Most of this needs to move into the VoiceGroup
+        // TODO: Multitimbral Most of this needs to move into the VoiceGroup
         timeNow = millis();
         midiClkTimeInterval = (timeNow - previousMillis);
         lfoSyncFreq = 1000.0f / midiClkTimeInterval;
@@ -1450,8 +1462,10 @@ FLASHMEM void setCurrentPatchData()
     myControlChange(midiChannel, CCampdecay, currentPatch.Decay);
     myControlChange(midiChannel, CCampsustain, currentPatch.Sustain);
     myControlChange(midiChannel, CCamprelease, currentPatch.Release);
-    myControlChange(midiChannel, CCfxamt, currentPatch.EffectAmt);
-    myControlChange(midiChannel, CCfxmix, currentPatch.EffectMix);
+    myControlChange(midiChannel, CCensemblefxamt, currentPatch.EnsembleEffectAmt);
+    myControlChange(midiChannel, CCensemblefxmix, currentPatch.EnsembleEffectMix);
+    myControlChange(midiChannel, CCreverbfxtime, currentPatch.ReverbEffectTime);
+    myControlChange(midiChannel, CCreverbfxmix, currentPatch.ReverbEffectMix);
     myControlChange(midiChannel, CCpitchenv, currentPatch.PitchEnv);
     myControlChange(midiChannel, CCvelocitySens, currentPatch.VelocitySensitivity);
     myControlChange(midiChannel, pitchmodwheeldepth, currentPatch.PitchModWheelDepth);
@@ -1551,6 +1565,7 @@ FLASHMEM void encoderCallback(unsigned enc_idx, int value, int delta)
             break;
         case patchselect:
         case namepatch:
+        case deletepatch:
             if (!cardStatus)
                 return;
             if (newDelta == 0)
@@ -1614,6 +1629,7 @@ FLASHMEM void encoderCallback(unsigned enc_idx, int value, int delta)
             currentPatchIndex = patches.size() - 1;
             break;
         case bankeditselect:
+        case renamebank:
             if (!cardStatus)
                 return;
             if (newDelta == 0)
@@ -1895,6 +1911,7 @@ FLASHMEM void encoderButtonCallback(unsigned enc_idx, int buttonState)
             loadBankNames(); // If in the middle of bank renaming
             loadPatchNamesFromBank(currentBankIndex);
             recallPatch(currentBankIndex, patches[currentPatchIndex].patchUID);
+            ledsOff();
             break;
         case goback:
             if (state != SEQUENCEPAGE)
@@ -1984,13 +2001,24 @@ FLASHMEM void encoderButtonCallback(unsigned enc_idx, int buttonState)
             ledsOff();
             break;
         case deletepatch:
-            if (patches.size() > 0)
+            if (patches[0].patchUID != 0)
             {
                 state = State::DELETEMSG;
-                deletePatch(currentBankIndex, currentPatchIndex);
+                if (findPatchIndex(patches[currentPatchIndex].patchUID, currentPatchIndex) == -1)
+                    deletePatch(currentBankIndex, currentPatchIndex);
+                // Remove from array if patch is in current bank
+                patches.remove(currentPatchIndex);
+                recreatePatchIndexFile(currentBankIndex);
             }
             currentPatchIndex = 0;
-            loadPatchNamesFromBank(currentBankIndex);
+            // First Patch is empty in this bank, go to previous bank with valid patch
+            while (patches[0].patchUID == 0)
+            {
+                tempBankIndex = decTempBankIndex();
+                loadPatchNamesFromBank(tempBankIndex);
+                currentBankIndex = tempBankIndex;
+                currentPatchIndex = 0;
+            }
             recallPatch(currentBankIndex, patches[currentPatchIndex].patchUID);
             ledsOff();
             break;
@@ -2133,11 +2161,22 @@ FLASHMEM void buttonCallback(unsigned button_idx, int buttonStatus)
       ButtonUp SR1 D7 1
       ButtonDown SR2 D7 0
     */
-    // if(DEBUG) Serial.println(button_idx);
     switch (button_idx)
     {
     case 22: // VOL_UP & VOL_DOWN Held
         keyboardActive = !keyboardActive;
+        break;
+    case 33: // Arp & Seq Held
+        if (currentSequence.running)
+        {
+            sequencerStop();
+            arpRunning = false;
+            if (state == State::ARPPAGE1 | state == State::ARPPAGE2)
+            {
+                state = State::MAIN;
+                ledsOff();
+            }
+        }
         break;
     case VOL_UP:
         if (buttonStatus == HIGH || buttonStatus == HELD || buttonStatus == HELD_REPEAT)
@@ -2232,7 +2271,7 @@ FLASHMEM void buttonCallback(unsigned button_idx, int buttonStatus)
         {
             if (keyboardActive)
                 return;
-            if (state != State::PERFORMANCERECALL && state != State::PERFORMANCEPAGE &&
+            if (cardStatus && state != State::PERFORMANCERECALL && state != State::PERFORMANCEPAGE &&
                 state != State::OSCPAGE1 && state != State::OSCPAGE2 &&
                 state != State::OSCPAGE3 && state != State::OSCPAGE4)
             {
@@ -2405,7 +2444,7 @@ FLASHMEM void buttonCallback(unsigned button_idx, int buttonStatus)
                 arpRunning = false;
             }
 
-            if (state != State::SEQUENCERECALL && state != State::SEQUENCEEDIT && state != State::FILTERPAGE1 && state != State::FILTERPAGE2 && !currentSequence.running)
+            if (cardStatus && state != State::SEQUENCERECALL && state != State::SEQUENCEEDIT && state != State::FILTERPAGE1 && state != State::FILTERPAGE2 && !currentSequence.running)
             {
                 state = State::SEQUENCERECALL;
                 loadSequenceNames();
@@ -2588,19 +2627,31 @@ FLASHMEM void buttonCallback(unsigned button_idx, int buttonStatus)
                 myNoteOff(midiChannel, SCALE_STEPS[majMin][5] + ((keyboardOct + 2) * 12) + ((keyboardScale - majMin) / 2), 0);
                 return;
             }
-            state = State::FXPAGE; // show FX parameters
+
+            switch (state)
+            {
+            case State::FXPAGE1:
+                state = State::FXPAGE2; // show FX parameters
+                break;
+            case State::FXPAGE2:
+                state = State::FXPAGE1; // show FX parameters
+                break;
+            default:
+                state = State::FXPAGE1; // show FX parameters
+                break;
+            }
+
             singleLED(RED, 6);
         }
         if (buttonStatus == HELD)
         {
             if (keyboardActive)
                 return;
-            if (state != State::FXPAGE)
+            if (state != State::FXPAGE1 && state != State::FXPAGE2)
             {
                 // If Back button held, Panic - all notes off
                 silence();
                 flashLED(GREEN, 6, 250);
-                // state = State::MAIN;
             }
             else
             {
@@ -2652,7 +2703,7 @@ FLASHMEM void buttonCallback(unsigned button_idx, int buttonStatus)
                     currentPatchIndex++;
                     state = State::PATCHSAVING;
                     if (patches[0].patchUID != 0 && patches.back().patchUID != 0)
-                        patches.push_back(PatchUIDAndName{0, F("-Empty-")});
+                        patches.push_back(PatchUIDAndName{0, EMPTYNAME});
                     currentPatchIndex = patches.size() - 1;
                     if (DEBUG)
                         Serial.printf(F("currentPatchIndex: %i\n"), currentPatchIndex);
@@ -2695,7 +2746,7 @@ FLASHMEM void buttonCallback(unsigned button_idx, int buttonStatus)
         {
             if (keyboardActive)
                 return;
-            if (state != State::PATCHSAVING && state != State::DELETEPATCH && state != State::SAVE && state != State::EDITBANK && state != State::RENAMEBANK)
+            if (cardStatus && state != State::PATCHSAVING && state != State::DELETEPATCH && state != State::SAVE && state != State::EDITBANK && state != State::RENAMEBANK)
             {
                 // DELETE
                 state = State::DELETEPATCH;
@@ -2730,6 +2781,12 @@ FLASHMEM void buttonCallback(unsigned button_idx, int buttonStatus)
                 return;
             }
             // RECALL
+            if (!cardStatus)
+            {
+                state = State::MAIN;
+                ledsOff();
+                return;
+            }
             singleLED(RED, 8);
             switch (state)
             {
@@ -2800,11 +2857,13 @@ FLASHMEM void sdCardDetect()
     if (sdCardInterrupt)
     {
         silence();
-        delayMicroseconds(200'000);
+        delayMicroseconds(200'000); // Switch bounce
         cardStatus = !digitalReadFast(pinCD);
         if (cardStatus)
         {
             cardStatus = SD.begin(BUILTIN_SDCARD); // Reinitialise when card inserted
+            loadBankNames();
+            loadPatchNamesFromBank(currentBankIndex);
         }
         else
         {
@@ -2818,10 +2877,13 @@ FLASHMEM void sdCardDetect()
     }
 }
 
+// Ignores CC messages for four seconds after USB Host is plugged in
+// Some MIDI controllers send data when connected that changes synth settings
 FLASHMEM void usbHostControlChange(byte channel, byte control, byte value)
 {
     if (usbHostPluggedIn && usb_host_wait_timer > 4000) // wait 4s
     {
+        // When waiting time has expired, all CC messages go through to the normal handler
         myControlChange(channel, control, value);
     }
 }
@@ -2843,7 +2905,6 @@ FLASHMEM void sequencerLEDs()
 {
     if (currentSequence.running && currentSequence.step != seq_last_step)
     {
-        // if(DEBUG) Serial.println(currentSequence.step);
         seq_last_step = currentSequence.step;
         if (currentSequence.step % 16 < 8)
         {
@@ -2895,5 +2956,6 @@ void loop()
     }
     encoders.read();
     buttons.read();
-    // CPUMonitor();
+    // if (DEBUG)
+    //     CPUMonitor();
 }

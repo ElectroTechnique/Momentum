@@ -40,7 +40,7 @@ private:
     std::vector<Voice *> voices;
 
     // Patch Configs
-    bool midiClockSignal; // midiCC clock  TODO - Does nothing, for some planned move to voicegroup?
+    bool midiClockSignal;
     bool filterLfoMidiClockSync;
     bool pitchLFOMidiClockSync;
 
@@ -87,8 +87,10 @@ private:
     float pitchLfoRate;
     float pitchModWheelDepth;
     float filterModWheelDepth;
-    float effectAmount;
-    float effectMix;
+    float ensembleEffectAmount;
+    float ensembleEffectMix;
+    float reverbEffectTime;
+    float reverbEffectMix;
 
     // Used to remember active mono notes.
     MonoNoteHistory noteStack;
@@ -141,8 +143,10 @@ public:
                                        pitchLfoRate(4.0f),
                                        pitchModWheelDepth(0.0f),
                                        filterModWheelDepth(0.0f),
-                                       effectAmount(1.0f),
-                                       effectMix(0.0f)
+                                       ensembleEffectAmount(1.0f),
+                                       ensembleEffectMix(0.0f),
+                                       reverbEffectTime(1.0f),
+                                       reverbEffectMix(0.0f)
     {
         _params.keytrackingAmount = 0.0f;
         _params.mixerLevel = 0.0f;
@@ -163,8 +167,11 @@ public:
         shared.pwmLfoB.amplitude(ONE);
         shared.pwmLfoB.begin(PWMWAVEFORM);
 
-        setEffectAmount(effectAmount);
-        setEffectMix(effectMix);
+        setEnsembleEffectAmount(ensembleEffectAmount);
+        setEnsembleEffectMix(ensembleEffectMix);
+
+        setReverbEffectTime(reverbEffectTime);
+        setReverbEffectMix(reverbEffectMix);
     }
 
     inline uint8_t size() { return this->voices.size(); }
@@ -213,8 +220,10 @@ public:
     float getPitchLfoRate() { return pitchLfoRate; }
     float getPitchModWheelDepth() { return pitchModWheelDepth; }
     float getfilterModWheelDepth() { return filterModWheelDepth; }
-    float getEffectAmount() { return effectAmount; }
-    float getEffectMix() { return effectMix; }
+    float getEnsebleEffectAmount() { return ensembleEffectAmount; }
+    float getEnsembleEffectMix() { return ensembleEffectMix; }
+    float getReverbEffectTime() { return reverbEffectTime; }
+    float getReverbEffectMix() { return reverbEffectMix; }
 
     inline void setPatchName(String name)
     {
@@ -670,7 +679,6 @@ public:
 
     void setKeytracking(float value)
     {
-        // TODO: Move this out of params to avoid setting it directly without updating the mixer.
         _params.keytrackingAmount = value;
     }
 
@@ -681,7 +689,6 @@ public:
 
     void setFilterModWheelAmount(float value)
     {
-        // TODO
         VG_FOR_EACH_OSC(filter_.frequency(value + cutoff))
     }
 
@@ -750,7 +757,7 @@ public:
     void setPitchLfoAmount(float value)
     {
         pitchLfoAmount = value;
-        shared.pitchLfo.amplitude(value); // TODO Add PitchModWheelAmount
+        shared.pitchLfo.amplitude(value);
     }
 
     void setPitchLfoRate(float value)
@@ -769,19 +776,42 @@ public:
         pitchModWheelDepth = value;
     }
 
-    void setEffectAmount(float value)
+    void setEnsembleEffectAmount(float value)
     {
-        effectAmount = value;
-        shared.ensemble.lfoRate(effectAmount);
+        ensembleEffectAmount = value;
+        shared.ensemble.lfoRate(ensembleEffectAmount);
     }
 
-    void setEffectMix(float value)
+    void setEnsembleEffectMix(float value)
     {
-        effectMix = value;
-        shared.effectMixerL.gain(0, 1.0f - effectMix); // Dry
-        shared.effectMixerL.gain(1, effectMix);        // Wet
-        shared.effectMixerR.gain(0, 1.0f - effectMix); // Dry
-        shared.effectMixerR.gain(1, effectMix);        // Wet
+        ensembleEffectMix = value;
+        shared.ensembleEffectMixerL.gain(0, 1.0f - ensembleEffectMix); // Dry
+        shared.ensembleEffectMixerL.gain(1, ensembleEffectMix);        // Wet
+        shared.ensembleEffectMixerR.gain(0, 1.0f - ensembleEffectMix); // Dry
+        shared.ensembleEffectMixerR.gain(1, ensembleEffectMix);        // Wet
+    }
+
+    void setReverbEffectTime(float value)
+    {
+        reverbEffectTime = value;
+        shared.reverb.reverbTime(reverbEffectTime);
+    }
+
+    void setReverbEffectMix(float value)
+    {
+        reverbEffectMix = value;
+        if (value == 0)
+        {
+            // Stops reverb from processing if mix is totally dry
+            shared.reverbAmpSwitch.gain(0);
+        }
+        else
+        {
+            // Reverb seems to distort easily
+            shared.reverbAmpSwitch.gain(0.6f);
+        }
+        shared.reverbMixer.gain(0, 1.0f - reverbEffectMix); // Dry
+        shared.reverbMixer.gain(1, reverbEffectMix * 4.0f); // Wet
     }
 
     inline void setMonophonic(uint8_t mode)
@@ -810,7 +840,7 @@ public:
     {
         filterLfoMidiClockSync = value;
         shared.filterLfo.frequency(lfoSyncFreq * lfoFilterTempoValue);
-        //filterMidiClock(lfoSyncFreq * lfoFilterTempoValue);
+        // filterMidiClock(lfoSyncFreq * lfoFilterTempoValue);
     }
 
     void setPitchLfoMidiClockSync(bool value)

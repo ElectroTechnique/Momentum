@@ -5,6 +5,7 @@
 /*
 Modified from https://github.com/luni64/EncoderTool to support buttons on 74HC595 parallel shift registers
 The tick() code has been written specifically for Momentum due to the three parallel shift registers
+This is mostly Momentum specific and includes references to Button numbers
 */
 
 namespace ButtonTool
@@ -22,8 +23,8 @@ namespace ButtonTool
     protected:
         const unsigned BtnA, BtnB, BtnC, LD, CLK;
         int32_t previousState[8] = {LOW};
-        uint32_t WINDOWTIME[7] = {500, 390, 330, 220, 140, 80, 20};
-        uint16_t TWOBUTTONWINDOWTIME = 250;
+        uint32_t WINDOWTIME[7] = {500, 390, 330, 220, 140, 60, 15};
+        uint16_t TWOBUTTONWINDOWTIME = 250; // Maximum time to detect two buttons pressed/held
         int8_t buttonPairNo = -1;
         uint32_t starttime[24] = {0};
         boolean buttonHeld[24] = {false};
@@ -82,7 +83,7 @@ namespace ButtonTool
     ButtonDown SR2 D7
 
     Read in Parallel
-    Buttons 1,2,3
+    Buttons 1,2,3  code for 2&3: 33
     Buttons 4,5,6
     Buttons 7,8
     Buttons Up, Down code: 22
@@ -142,7 +143,7 @@ namespace ButtonTool
                 {
                     callback(i, HIGH);
                 }
-                if (buttonHeld[i] && buttonWasHeld[i])
+                if (buttonHeld[i] && buttonWasHeld[i] && w < 127)
                 {
                     callback(i, HIGH_AFTER_HELD);
                     buttonWasHeld[i] = false;
@@ -152,29 +153,75 @@ namespace ButtonTool
             }
         }
 
+        // Two button press
         if (buttons[i].getButton() == LOW && !twoButtonCall)
         {
             switch (i)
             {
-            case 1: // UP
-                if (buttonPairNo == 0 && (starttime[0] - starttime[1]) < TWOBUTTONWINDOWTIME)
+            case VOL_UP: // UP
+                if (buttonPairNo == VOL_DOWN && (starttime[VOL_DOWN] - starttime[VOL_UP]) < TWOBUTTONWINDOWTIME)
                 {
                     callback(22, HELD);
                     buttonPairNo = -1; // Reset
                     twoButtonCall = true;
+                    starttime[VOL_DOWN] = millis() + 1000;
+                    starttime[VOL_UP] = millis() + 1000;
+                    buttonWasHeld[VOL_DOWN] = false;
+                    buttonWasHeld[VOL_UP] = false;
+                    w = 127;
                     return;
                 }
-                buttonPairNo = 1;
+                buttonPairNo = VOL_UP;
                 break;
-            case 0: // DOWN
-                if (buttonPairNo == 1 && (starttime[1] - starttime[0]) < TWOBUTTONWINDOWTIME)
+            case VOL_DOWN:
+
+                if (buttonPairNo == VOL_UP && (starttime[VOL_UP] - starttime[VOL_DOWN]) < TWOBUTTONWINDOWTIME)
                 {
                     callback(22, HELD);
                     buttonPairNo = -1; // Reset
                     twoButtonCall = true;
+                    starttime[VOL_DOWN] = millis() + 1000;
+                    starttime[VOL_UP] = millis() + 1000;
+                    buttonWasHeld[VOL_DOWN] = false;
+                    buttonWasHeld[VOL_UP] = false;
+                    w = 127;
                     return;
                 }
-                buttonPairNo = 0;
+                buttonPairNo = VOL_DOWN;
+                break;
+            case BUTTON_2:
+                if (keyboardActive)
+                    return;
+                if (buttonPairNo == BUTTON_3 && (starttime[BUTTON_3] - starttime[BUTTON_2]) < TWOBUTTONWINDOWTIME)
+                {
+                    callback(33, HELD);
+                    buttonPairNo = -1; // Reset
+                    twoButtonCall = true;
+                    starttime[BUTTON_2] = millis() + 1000;
+                    starttime[BUTTON_3] = millis() + 1000;
+                    buttonWasHeld[BUTTON_3] = false;
+                    buttonWasHeld[BUTTON_2] = false;
+                    w = 127;
+                    return;
+                }
+                buttonPairNo = BUTTON_2;
+                break;
+            case BUTTON_3:
+                if (keyboardActive)
+                    return;
+                if (buttonPairNo == BUTTON_2 && (starttime[BUTTON_2] - starttime[BUTTON_3]) < TWOBUTTONWINDOWTIME)
+                {
+                    callback(33, HELD);
+                    buttonPairNo = -1; // Reset
+                    twoButtonCall = true;
+                    starttime[BUTTON_2] = millis() + 1000;
+                    starttime[BUTTON_3] = millis() + 1000;
+                    buttonWasHeld[BUTTON_3] = false;
+                    buttonWasHeld[BUTTON_2] = false;
+                    w = 127;
+                    return;
+                }
+                buttonPairNo = BUTTON_3;
                 break;
             }
         }
@@ -184,7 +231,8 @@ namespace ButtonTool
             buttonHeld[i] = true;
             buttonWasHeld[i] = true;
             starttime[i] = millis();
-
+            if (w == 127) // prevent HELD calbacks after two button press
+                return;
             // Acceleration of callbacks when button is held down
             if (w < 6)
                 w++;

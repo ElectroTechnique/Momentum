@@ -46,6 +46,7 @@ const float GLIDEFACTOR = 5000.0f; // Maximum glide time
 const uint32_t NO_OF_PARAMS = 52;
 const char *INITPATCHNAME = "Init";
 const char *EMPTYNAME = "-Empty-";
+const char *MISSINGNAME = "-MISSING-";
 const uint8_t PATCHNAMEMAXLEN = 24;
 const uint8_t BANKNAMEMAXLEN = 16;
 const uint8_t PERFORMANCENAMEMAXLEN = 24;

@@ -10,6 +10,7 @@ midi::Thru::Mode MIDIThru = midi::Thru::Off; //(EEPROM)
 String patchName = INITPATCHNAME;
 boolean encCW = true; // This is to set the encoder to increment when turned CW - Settings Option
 boolean vuMeter = false;
+boolean sendCC = false;
 int8_t tuningCents = 0;
 float tuningCentsFrac = 1.0f;
 

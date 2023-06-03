@@ -139,7 +139,7 @@ FLASHMEM char *getPatchName(uint8_t bankIndex, uint32_t uid)
     Serial.println(result);
   File file = SD.open(result);
   if (!file)
-    return "- MISSING -";
+    return MISSINGNAME;
   char *patchName = getPatchName(file);
   file.close();
   return patchName;

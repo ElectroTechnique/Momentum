@@ -66,6 +66,7 @@ FLASHMEM boolean setEncInactive(uint8_t parameter)
 FLASHMEM void configureOff(EncoderMappingStruct *enc)
 {
     enc->active = false;
+    enc->Parameter = 255;
 }
 
 FLASHMEM void configureKeyboardOct(EncoderMappingStruct *enc, State st = State::MAIN)
@@ -1148,10 +1149,10 @@ FLASHMEM void setEncodersState(State s)
         configureCCfilterLFOMidiClkSync(&encMap[ENC_TR], State::FILTERMODPAGE1);
         break;
     case State::FILTERMODPAGE2:
-        configureOff(&encMap[ENC_TL]);
+        configureCCfilterlfowaveform(&encMap[ENC_BL], State::FILTERMODPAGE2);
+        configureCCfilterlfoamt(&encMap[ENC_BR], State::FILTERMODPAGE2);
+        configureCCfilterlforate(&encMap[ENC_TL], State::FILTERMODPAGE2);
         configureCCfilterlforetrig(&encMap[ENC_TR], State::FILTERMODPAGE2);
-        configureOff(&encMap[ENC_BL]);
-        configureOff(&encMap[ENC_BR]);
         break;
     case State::FILTERMODPAGE3:
         configureCCkeytracking(&encMap[ENC_BR], State::FILTERMODPAGE3);
@@ -1479,7 +1480,7 @@ FLASHMEM void setEncodersState(State s)
         encMap[ENC_BL].Range = BANKS_LIMIT;
         encMap[ENC_BL].ParameterStr = ParameterStrMap[CCbankselectLSB];
         encMap[ENC_BL].ValueStr = "";
-        encMap[ENC_BL].Push = false;
+        encMap[ENC_BL].Push = true;
 
         encMap[ENC_BR].active = true;
         encMap[ENC_BR].Parameter = patchselect;
@@ -1488,7 +1489,7 @@ FLASHMEM void setEncodersState(State s)
         encMap[ENC_BR].Range = patches.size();
         encMap[ENC_BR].ValueStr = "";
         encMap[ENC_BR].ParameterStr = ParameterStrMap[patchselect];
-        encMap[ENC_BR].Push = false;
+        encMap[ENC_BR].Push = true;
         break;
     case State::RENAMEPERFORMANCE:
         encMap[ENC_TL].active = true;
@@ -1899,12 +1900,6 @@ FLASHMEM void setEncodersState(State s)
         encMap[ENC_BL].PushAction = State::CHOOSECHARSEQUENCE;
 
         encMap[ENC_BR].active = false;
-        // encMap[ENC_BR].Parameter = savebank;
-        // encMap[ENC_BR].ShowValue = false;
-        // encMap[ENC_BR].ValueStr = "";
-        // encMap[ENC_BR].ParameterStr = ParameterStrMap[savebank];
-        // encMap[ENC_BR].Push = true;
-        // encMap[ENC_BR].PushAction = State::MAIN;
         break;
     default:
         break;

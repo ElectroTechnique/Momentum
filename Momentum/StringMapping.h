@@ -2,7 +2,7 @@
 #include "Constants.h"
 #include "MidiCC.h"
 
-const uint8_t PARAMETERSFORENCS = 54;
+const uint8_t PARAMETERSFORENCS = 56;
 const char *ParameterStrMap[256] = {};
 uint8_t ParametersForPerformanceEncoders[PARAMETERSFORENCS] = {};
 
@@ -11,16 +11,16 @@ FLASHMEM void assignStrings()
     ParameterStrMap[CCosclfoamt] = "Pitch LFO Amount";
     ParameterStrMap[CCglide] = "Glide Time";
     ParameterStrMap[CCvolume] = "Volume";
-    ParameterStrMap[CCoscwaveformA] = "1 Waveform";
-    ParameterStrMap[CCoscwaveformB] = "2 Waveform";
+    ParameterStrMap[CCoscwaveformA] = "Waveform";
+    ParameterStrMap[CCoscwaveformB] = "Waveform";
     ParameterStrMap[CCfilterenv] = "Filter Envelope";
     ParameterStrMap[CCfiltermixer] = "Filter Type";
-    ParameterStrMap[CCoscLevelA] = "Osc1 Level";
-    ParameterStrMap[CCoscLevelB] = "Osc2 Level";
+    ParameterStrMap[CCoscLevelA] = "Level";
+    ParameterStrMap[CCoscLevelB] = "Level";
     ParameterStrMap[CCnoiseLevel] = "Noise Level";
     ParameterStrMap[CCoscfx] = "Osc Effect";
-    ParameterStrMap[CCpitchA] = "1 Pitch";
-    ParameterStrMap[CCpitchB] = "2 Pitch";
+    ParameterStrMap[CCpitchA] = "Pitch";
+    ParameterStrMap[CCpitchB] = "Pitch";
     ParameterStrMap[CCpitchenv] = "Pitch Envelope";
     ParameterStrMap[CCosclforetrig] = "Pitch LFO Retrig";
     ParameterStrMap[CCfilterlforetrig] = "Filter LFO Retrig";
@@ -37,25 +37,25 @@ FLASHMEM void assignStrings()
     ParameterStrMap[CCfilterdecay] = "Filter Decay";
     ParameterStrMap[CCfiltersustain] = "Filter Sustain";
     ParameterStrMap[CCfilterrelease] = "Filter Release";
-    ParameterStrMap[CCpwA] = "1 Pulse Width";
-    ParameterStrMap[CCpwB] = "2 Pulse Width";
-    ParameterStrMap[CCpwmRateA] = "1 PWM LFO Rate";
-    ParameterStrMap[CCpwmRateB] = "2 PWM LFO Rate";
-    ParameterStrMap[CCpwmAmtA] = "1 PWM Level";
-    ParameterStrMap[CCpwmAmtB] = "2 PWM Level";
+    ParameterStrMap[CCpwA] = "Pulse Width";
+    ParameterStrMap[CCpwB] = "Pulse Width";
+    ParameterStrMap[CCpwmRateA] = "PWM LFO Rate";
+    ParameterStrMap[CCpwmRateB] = "PWM LFO Rate";
+    ParameterStrMap[CCpwmAmtA] = "PWM Level";
+    ParameterStrMap[CCpwmAmtB] = "PWM Level";
     ParameterStrMap[CCkeytracking] = "Key Tracking";
     ParameterStrMap[CCfilterlfowaveform] = "Filter LFO Wave";
-    ParameterStrMap[CCensemblefxamt] = "Rate";
-    ParameterStrMap[CCensemblefxmix] = "Mix";
+    ParameterStrMap[CCensemblefxamt] = "Ensemble Rate";
+    ParameterStrMap[CCensemblefxmix] = "Ensemble Mix";
     ParameterStrMap[CCreverbfxtime] = "Reverb Time";
-    ParameterStrMap[CCreverbfxmix] = "Mix";
+    ParameterStrMap[CCreverbfxmix] = "Reverb Mix";
     ParameterStrMap[CCdetune] = "Detune";
     ParameterStrMap[CCoscLfoRate] = "Pitch LFO Rate";
     ParameterStrMap[CCoscLfoWaveform] = "Pitch LFO Wave";
     ParameterStrMap[CCfilterLFOMidiClkSync] = "Filter LFO MIDI Sync";
     ParameterStrMap[CCoscLFOMidiClkSync] = "Pitch LFO MIDI Sync";
-    ParameterStrMap[CCpwmSourceA] = "1 PWM Source";
-    ParameterStrMap[CCpwmSourceB] = "2 PWM Source";
+    ParameterStrMap[CCpwmSourceA] = "PWM Source";
+    ParameterStrMap[CCpwmSourceB] = "PWM Source";
     ParameterStrMap[CCunison] = "Unison";
     ParameterStrMap[CCmonomode] = "Monophonic";
     ParameterStrMap[patchselect] = "Patch";
@@ -169,6 +169,8 @@ FLASHMEM void assignParametersForPerformanceEncoders()
     ParametersForPerformanceEncoders[++i] = ampenvshape;
     ParametersForPerformanceEncoders[++i] = CCensemblefxamt;
     ParametersForPerformanceEncoders[++i] = CCensemblefxmix;
+    ParametersForPerformanceEncoders[++i] = CCreverbfxtime;
+    ParametersForPerformanceEncoders[++i] = CCreverbfxmix;
     ParametersForPerformanceEncoders[++i] = CCmonomode;
     ParametersForPerformanceEncoders[++i] = CCvelocitySens;
     ParametersForPerformanceEncoders[++i] = glideshape;

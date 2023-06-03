@@ -10,6 +10,7 @@ extern midi::Thru::Mode MIDIThru;
 extern String patchName;
 extern boolean encCW;
 extern boolean vuMeter;
+extern boolean sendCC;
 extern int8_t tuningCents;
 extern float tuningCentsFrac;
 

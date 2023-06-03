@@ -156,6 +156,7 @@ extern const float GLIDEFACTOR;
 extern const uint32_t NO_OF_PARAMS;
 extern const char *INITPATCHNAME;
 extern const char *EMPTYNAME;
+extern const char *MISSINGNAME;
 extern const uint8_t PATCHNAMEMAXLEN;
 extern const uint8_t BANKNAMEMAXLEN;
 extern const uint8_t PERFORMANCENAMEMAXLEN;

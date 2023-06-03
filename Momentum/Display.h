@@ -42,7 +42,7 @@ const uint8_t noteArray[12 * 4] = {0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 0, 
 #define ILI9341_DARKRED 0x6000
 #define ILI9341_MIDGREY 0xB576
 #define ILI9341_DARKERGREY 0x31A6
-#define ILI9341_DARKYELLOW 0xB5C0
+#define ILI9341_DARKYELLOW 0xA540
 
 ILI9341_t3n tft = ILI9341_t3n(cs, dc, rst, mosi, sclk, miso);
 
@@ -1229,6 +1229,18 @@ FLASHMEM void renderFXPage(size_t no)
   renderCorners();
 }
 
+FLASHMEM void renderSeqRecIndicator()
+{
+  if (currentSequence.recording || state == State::SEQUENCEEDIT)
+  {
+    tft.setTextColor(ILI9341_BLACK);
+    tft.setTextDatum(TC_DATUM);
+    tft.setFont(Arial_10_Bold);
+    tft.fillRect(140, 3, 30, 15, ILI9341_RED);
+    tft.drawString(F("REC"), 155, 5);
+  }
+}
+
 FLASHMEM void renderSequencerEditPage()
 {
   tft.fillScreen(ILI9341_BLACK);
@@ -1236,6 +1248,7 @@ FLASHMEM void renderSequencerEditPage()
   renderKeyboard(seqCurrentOctPos);
   renderSeqTempo();
   renderSeqLength();
+  renderSeqRecIndicator();
   renderSeqNote();
   renderSeqPosition();
 }
@@ -1352,6 +1365,7 @@ FLASHMEM void renderPerformancePage()
   tft.fillScreen(ILI9341_BLACK);
   renderMidiClk();
   renderArpIndicator();
+  renderSeqIndicator();
   renderKeyboardActive();
   renderPerfIndicator();
   renderPeak();
@@ -1371,10 +1385,10 @@ FLASHMEM void renderPerformancePage()
   default:
     tft.drawString(String(currentPerformanceIndex + 1), 45, 94);
   }
-  tft.drawString(F("Performance"), 100, 94);
+  tft.drawString(currentPerformance.performanceName, 100, 94);
   currentPerformance.performanceName.length() > 12 ? tft.setFont(Arial_12) : tft.setFont(Arial_16);
   tft.setTextColor(ILI9341_YELLOW);
-  tft.drawString(currentPerformance.performanceName, 45, 120);
+  tft.drawString(currentPerformance.patches[0].patchName, 45, 120);
   renderCorners();
 }
 

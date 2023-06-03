@@ -18,6 +18,7 @@
 #define EEPROM_ARP_BASIS 15
 #define EEPROM_KEYBOARD_SCALE 16
 #define EEPROM_KEYBOARD_BASIS 17
+#define EEPROM_SEND_CC 18
 
 FLASHMEM int8_t getFirstRun()
 {
@@ -27,6 +28,16 @@ FLASHMEM int8_t getFirstRun()
 FLASHMEM void storeFirstRun()
 {
   EEPROM.update(EEPROM_FIRST_RUN, FIRSTRUN);
+}
+
+FLASHMEM int8_t getSendCC()
+{
+  return EEPROM.read(EEPROM_SEND_CC);
+}
+
+FLASHMEM void storeSendCCToEEPROM(byte cc)
+{
+  EEPROM.update(EEPROM_SEND_CC, cc);
 }
 
 FLASHMEM int8_t getLastBank()
@@ -266,6 +277,7 @@ FLASHMEM void checkFirstRun()
     storeArpBasisToEEPROM(2);
     storeKeyboardScaleToEEPROM(0);
     storeKeyboardBasisToEEPROM(4);
+    storeSendCCToEEPROM(0);
     storeFirstRun();
   }
 }

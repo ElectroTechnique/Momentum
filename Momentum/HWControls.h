@@ -144,15 +144,6 @@ FLASHMEM void singleLED(ledColour color, int8_t ledNo)
   digitalWrite(latchPin, HIGH);
 }
 
-FLASHMEM void flashLED(ledColour color, int8_t ledNo, int duration)
-{
-  singleLED(OFF, ledNo);
-  delay(100);
-  singleLED(color, ledNo);
-  delay(duration);
-  singleLED(OFF, ledNo);
-}
-
 FLASHMEM void lightRGLEDs(int8_t ledRNos, int8_t ledGNos)
 {
   digitalWrite(latchPin, LOW);
@@ -174,6 +165,16 @@ FLASHMEM void seqLED(ledColour color, int8_t ledNo)
     lightRGLEDs(LED_TO_BIN[ledNo] + LED_TO_BIN[currentRLEDs], LED_TO_BIN[currentGLEDs]);
   else
     lightRGLEDs(LED_TO_BIN[currentRLEDs], LED_TO_BIN[ledNo] + LED_TO_BIN[currentGLEDs]);
+}
+
+FLASHMEM void flashLED(ledColour color, int8_t ledNo, int duration)
+{
+  if (color == RED)
+    lightRGLEDs(LED_TO_BIN[ledNo] + LED_TO_BIN[currentRLEDs], LED_TO_BIN[currentGLEDs]);
+  else
+    lightRGLEDs(LED_TO_BIN[currentRLEDs], LED_TO_BIN[ledNo] + LED_TO_BIN[currentGLEDs]);
+  delay(duration);
+  lightRGLEDs(LED_TO_BIN[currentRLEDs], LED_TO_BIN[currentGLEDs]);
 }
 
 FLASHMEM void ledAnimation(long millis)

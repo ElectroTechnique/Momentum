@@ -16,7 +16,7 @@ struct VoiceParams
     int prevNote;
     float glideSpeed;
     int unisonMode;
-    uint32_t chordDetune;
+    uint8_t chordDetune;
     float detune;
     int oscPitchA;
     int oscPitchB;

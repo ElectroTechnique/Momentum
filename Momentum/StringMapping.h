@@ -52,8 +52,8 @@ FLASHMEM void assignStrings()
     ParameterStrMap[CCdetune] = "Detune";
     ParameterStrMap[CCoscLfoRate] = "Pitch LFO Rate";
     ParameterStrMap[CCoscLfoWaveform] = "Pitch LFO Wave";
-    ParameterStrMap[CCfilterLFOMidiClkSync] = "Filter LFO MIDI Sync";
-    ParameterStrMap[CCoscLFOMidiClkSync] = "Pitch LFO MIDI Sync";
+    ParameterStrMap[CCfilterLFOMidiClkSync] = "Filter LFO Sync";
+    ParameterStrMap[CCoscLFOMidiClkSync] = "Pitch LFO Sync";
     ParameterStrMap[CCpwmSourceA] = "PWM Source";
     ParameterStrMap[CCpwmSourceB] = "PWM Source";
     ParameterStrMap[CCunison] = "Unison";

@@ -522,19 +522,20 @@ FLASHMEM void myControlChange(byte channel, byte control, byte value)
 
     case CCdetune:
     {
-        currentPatch.Detune = value;
         float detune = 1.0f - (MAXDETUNE * POWER[value]);
         groupvec[activeGroupIndex]->params().detune = detune;
         groupvec[activeGroupIndex]->params().chordDetune = value;
         groupvec[activeGroupIndex]->updateVoices();
 
-        if (groupvec[activeGroupIndex]->params().unisonMode == 2)
+        if (groupvec[activeGroupIndex]->params().unisonMode == 2) // Chord Detune
         {
+            currentPatch.ChordDetune = value;
             if (!setEncValue(CCdetune, value, CDT_STR[value]))
                 showCurrentParameterOverlay(F("Chord"), CDT_STR[value]);
         }
         else
         {
+            currentPatch.Detune = value;
             if (!setEncValue(CCdetune, value, String((1 - detune) * 100) + F("%")))
                 showCurrentParameterOverlay(ParameterStrMap[CCdetune], String((1 - detune) * 100) + F("%"));
         }
@@ -1154,6 +1155,7 @@ FLASHMEM void myControlChange(byte channel, byte control, byte value)
     case MIDIThruMode:
         MIDIThru = value;
         storeMidiThru(MIDIThru);
+        changeMIDIThruMode();
         if (!setEncValue(MIDIThruMode, value, MIDIThruStr[MIDIThru]))
             showCurrentParameterOverlay(ParameterStrMap[MIDIThruMode], MIDIThruStr[MIDIThru]);
         break;
@@ -1228,6 +1230,10 @@ FLASHMEM void setSeqTimerPeriod(float bpm)
     if (arpRunning)
         currentSequence.tempo_us = currentSequence.tempo_us * (ARP_DIVISION_24PPQ[arpDivision] / 6.0f);
     sequencer_timer.setNextPeriod(currentSequence.tempo_us / 2);
+
+    lfoSyncFreq = 60.0f / currentSequence.bpm;
+    groupvec[activeGroupIndex]->filterMidiClock(lfoSyncFreq * lfoFilterTempoValue);
+    groupvec[activeGroupIndex]->pitchMidiClock(lfoSyncFreq * lfoPitchTempoValue);
 }
 
 FLASHMEM void sequencerStart(boolean cont = false)
@@ -1334,8 +1340,7 @@ FLASHMEM void myMIDIClock()
     {
         // TODO: Multitimbral Most of this needs to move into the VoiceGroup
         timeNow = millis();
-        midiClkTimeInterval = (timeNow - previousMillis);
-        lfoSyncFreq = 1000.0f / midiClkTimeInterval;
+        lfoSyncFreq = 1000.0f / (timeNow - previousMillis);
         previousMillis = timeNow;
         groupvec[activeGroupIndex]->filterMidiClock(lfoSyncFreq * lfoFilterTempoValue);
         groupvec[activeGroupIndex]->pitchMidiClock(lfoSyncFreq * lfoPitchTempoValue);
@@ -1931,11 +1936,14 @@ FLASHMEM void encoderButtonCallback(unsigned enc_idx, int buttonState)
             nameCursor = bankNames[tempBankIndex].length() - 1;
             break;
         case cancel:
-            currentPatchIndex = previousPatchIndex;
-            currentBankIndex = previousBankIndex;
-            loadBankNames(); // If in the middle of bank renaming
-            loadPatchNamesFromBank(currentBankIndex);
-            recallPatch(currentBankIndex, patches[currentPatchIndex].patchUID);
+            if (state != State::RENAMEPATCH)
+            {
+                currentPatchIndex = previousPatchIndex;
+                currentBankIndex = previousBankIndex;
+                loadBankNames(); // If in the middle of bank renaming
+                loadPatchNamesFromBank(currentBankIndex);
+                recallPatch(currentBankIndex, patches[currentPatchIndex].patchUID);
+            }
             ledsOff();
             break;
         case goback:

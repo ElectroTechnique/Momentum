@@ -15,9 +15,7 @@ extern int8_t tuningCents;
 extern float tuningCentsFrac;
 
 // Global patch modifiers
-extern uint32_t midiClkTimeInterval;
 extern float lfoSyncFreq;
-
 extern float lfoFilterTempoValue;
 extern float lfoPitchTempoValue;
 

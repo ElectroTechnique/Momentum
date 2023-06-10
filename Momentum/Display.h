@@ -193,7 +193,8 @@ FLASHMEM void renderMIDI()
   case midi::Thru::SameChannel:
     tft.print(F("  MIDI Thru: "));
     tft.setTextColor(ILI9341_GREENYELLOW);
-    tft.print(F("Same Ch"));
+    tft.print(F("Same Ch "));
+    tft.print(midiChannel);
     break;
   case midi::Thru::DifferentChannel:
     tft.print(F("  MIDI Thru: "));

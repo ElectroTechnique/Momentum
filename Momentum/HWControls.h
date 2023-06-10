@@ -202,6 +202,7 @@ FLASHMEM void ledAnimation(long millis)
 
 FLASHMEM void sdCardInteruptRoutine()
 {
+  detachInterrupt(pinCD);
   sdCardInterrupt = true;
 }
 

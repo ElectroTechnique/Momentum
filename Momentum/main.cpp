@@ -160,6 +160,9 @@ uint8_t loopCount = 0;
 
 FLASHMEM void setup()
 {
+    while (DEBUG == 1 && !Serial)
+    {
+    }
     AudioMemory(62);
     sequencer_timer.begin(sequencer, currentSequence.tempo_us / 2.0f, false);
     checkFirstRun();
@@ -178,7 +181,14 @@ FLASHMEM void setup()
         groupvec.push_back(currentGroup);
     }
     setUpSettings();
+    SD.setMediaDetectPin(pinCD);
     cardStatus = SD.begin(BUILTIN_SDCARD);
+    // ++++ For older sd cards
+    if (!cardStatus)
+        cardStatus = SD.begin(BUILTIN_SDCARD);
+    if (!cardStatus)
+        cardStatus = SD.begin(BUILTIN_SDCARD);
+
     if (cardStatus)
     {
         if (DEBUG)
@@ -2909,16 +2919,21 @@ FLASHMEM void sdCardDetect()
     if (sdCardInterrupt)
     {
         silence();
-        delayMicroseconds(200'000); // Switch bounce
-        cardStatus = !digitalReadFast(pinCD);
-        if (cardStatus)
+        delayMicroseconds(100'000); // Switch bounce
+        if (!digitalReadFast(pinCD))
         {
             cardStatus = SD.begin(BUILTIN_SDCARD); // Reinitialise when card inserted
+            // ++++ For older sd cards
+            if (!cardStatus)
+                cardStatus = SD.begin(BUILTIN_SDCARD);
+            if (!cardStatus)
+                cardStatus = SD.begin(BUILTIN_SDCARD);
             loadBankNames();
             loadPatchNamesFromBank(currentBankIndex);
         }
         else
         {
+            cardStatus = false;
             state = State::MAIN;
             // arpRunning = false;
             // sequencerStop();
@@ -2926,6 +2941,7 @@ FLASHMEM void sdCardDetect()
             ledsOff();
         }
         sdCardInterrupt = false;
+        attachInterrupt(digitalPinToInterrupt(pinCD), sdCardInteruptRoutine, CHANGE);
     }
 }
 

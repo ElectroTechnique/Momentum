@@ -183,12 +183,17 @@ FLASHMEM void setup()
     setUpSettings();
     SD.setMediaDetectPin(pinCD);
     cardStatus = SD.begin(BUILTIN_SDCARD);
-    // ++++ For older sd cards
-    if (!cardStatus)
-        cardStatus = SD.begin(BUILTIN_SDCARD);
-    if (!cardStatus)
-        cardStatus = SD.begin(BUILTIN_SDCARD);
-
+    if (SD.mediaPresent())
+    {
+        // ++++ For older sd cards
+        if (!cardStatus)
+            cardStatus = SD.begin(BUILTIN_SDCARD);
+        if (!cardStatus)
+            cardStatus = SD.begin(BUILTIN_SDCARD);
+        if (!cardStatus)
+            cardStatus = SD.begin(BUILTIN_SDCARD);
+        //++++
+    }
     if (cardStatus)
     {
         if (DEBUG)
@@ -1032,14 +1037,12 @@ FLASHMEM void myControlChange(byte channel, byte control, byte value)
         if (!setEncValue(CCampsustain, value, String(LINEAR[value])))
             showCurrentParameterOverlay(ParameterStrMap[CCampsustain], String(LINEAR[value]), AMP_ENV);
         break;
-
     case CCamprelease:
         currentPatch.Release = value;
         groupvec[activeGroupIndex]->setAmpRelease(ENVTIMES[value]);
         if (!setEncValue(CCamprelease, value, milliToString(ENVTIMES[value])))
             showCurrentParameterOverlay(ParameterStrMap[CCamprelease], milliToString(ENVTIMES[value]), AMP_ENV);
         break;
-
     case CCoscfx:
     {
         currentPatch.OscFX = value;
@@ -1076,7 +1079,6 @@ FLASHMEM void myControlChange(byte channel, byte control, byte value)
         if (!setEncValue(CCensemblefxamt, value, String(ENSEMBLE_LFO[value]) + F(" Hz")))
             showCurrentParameterOverlay(ParameterStrMap[CCensemblefxamt], String(ENSEMBLE_LFO[value]) + F(" Hz"));
         break;
-
     case CCensemblefxmix:
         currentPatch.EnsembleEffectMix = value;
         groupvec[activeGroupIndex]->setEnsembleEffectMix(LINEAR[value]);
@@ -1085,11 +1087,10 @@ FLASHMEM void myControlChange(byte channel, byte control, byte value)
         break;
     case CCreverbfxtime:
         currentPatch.ReverbEffectTime = value;
-        groupvec[activeGroupIndex]->setReverbEffectTime(LINEAR[value] * 10.0f);
+        groupvec[activeGroupIndex]->setReverbEffectTime((LINEAR[value] * 10.0f) + 0.01f); // Doesn't like 0.0
         if (!setEncValue(CCreverbfxtime, value, String(LINEAR[value] * 10.0f) + F(" s")))
             showCurrentParameterOverlay(ParameterStrMap[CCreverbfxtime], String(LINEAR[value] * 10.0f) + F(" s"));
         break;
-
     case CCreverbfxmix:
         currentPatch.ReverbEffectMix = value;
         groupvec[activeGroupIndex]->setReverbEffectMix(LINEAR[value]);
@@ -1946,7 +1947,9 @@ FLASHMEM void encoderButtonCallback(unsigned enc_idx, int buttonState)
             nameCursor = bankNames[tempBankIndex].length() - 1;
             break;
         case cancel:
-            if (state != State::RENAMEPATCH)
+            if (state != State::RENAMEPATCH && state != State::PATCHSAVING &&
+                state != State::PATCHLIST && state != State::DELETEPATCH &&
+                state != State::PERFORMANCERECALL && state != State::SEQUENCERECALL)
             {
                 currentPatchIndex = previousPatchIndex;
                 currentBankIndex = previousBankIndex;
@@ -2928,8 +2931,15 @@ FLASHMEM void sdCardDetect()
                 cardStatus = SD.begin(BUILTIN_SDCARD);
             if (!cardStatus)
                 cardStatus = SD.begin(BUILTIN_SDCARD);
-            loadBankNames();
-            loadPatchNamesFromBank(currentBankIndex);
+            if (!cardStatus)
+                cardStatus = SD.begin(BUILTIN_SDCARD);
+            //++++
+            checkSDCardStructure(); // May be a new card inserted
+            if (cardStatus)
+            {
+                loadBankNames();
+                loadPatchNamesFromBank(currentBankIndex);
+            }
         }
         else
         {

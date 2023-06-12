@@ -1817,7 +1817,7 @@ void setupDisplay()
   tft.begin(SPI_SPEED, SPICLOCK_READ);
   tft.useFrameBuffer(true);
   tft.setRotation(1);
-  tft.invertDisplay(true);
+  //tft.invertDisplay(true);
   tft.setTextWrap(false);
   renderBootUpPage();
   tft.updateScreen();

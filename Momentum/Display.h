@@ -8,12 +8,15 @@
 // These are Teensy numbering on https://learn.sparkfun.com/tutorials/micromod-teensy-processor-hookup-guide/all
 #define sclk 13  // SCK
 #define mosi 11  // MOSI
-#define cs 10    // CS
-#define dc 5     // D1
+#define cs 10    // CS - NOT USED
+#define dc 5     // D1 - Should use pin 10?
 #define rst 4    // D0
 #define miso 255 // Unused
 
-#define SPI_SPEED 100'000'000
+// #define SPI_SPEED 100'000'000
+// #define SPICLOCK_READ 80'000'000
+
+#define SPI_SPEED 70'000'000
 #define SPICLOCK_READ 80'000'000
 
 #define DISPLAYTIMEOUT 700
@@ -228,7 +231,7 @@ FLASHMEM void renderMidiClk()
   }
 }
 
-FLASHMEM void renderKeyboardActive()
+FLASHMEM void renderKeyboardIndicator()
 {
   if (keyboardActive)
   {
@@ -585,7 +588,14 @@ FLASHMEM void renderCurrentParameterOverlay()
   }
 }
 
-FLASHMEM void renderPatchName()
+FLASHMEM void renderCharactersInd(uint8_t currentlength, uint8_t maxlength)
+{
+  tft.setTextDatum(BL_DATUM);
+  tft.setTextColor(encTriColour[ENC_BL]);
+  tft.drawString(String(currentlength) + "/" + String(maxlength), 110, 230);
+}
+
+FLASHMEM void renderPatchNameAndBank()
 {
   tft.setFont(Arial_16);
   tft.setTextColor(ILI9341_YELLOW);
@@ -607,15 +617,15 @@ FLASHMEM void renderPatchName()
   tft.setTextColor(ILI9341_YELLOW);
   tft.drawString(currentPatchName, 45, 120);
   tft.setTextColor(ILI9341_ORANGE);
-  tft.setTextDatum(TC_DATUM);
+  tft.setTextDatum(TL_DATUM);
   tft.setFont(Arial_16);
   if (cardStatus)
   {
-    tft.drawString(bankNames[currentBankIndex], 160, 94);
+    tft.drawString(bankNames[currentBankIndex], 90, 94);
   }
   else
   {
-    tft.drawString(F("NO SD CARD"), 160, 94);
+    tft.drawString(F("NO SD CARD"), 90, 94);
   }
 }
 
@@ -775,6 +785,7 @@ FLASHMEM void renderPatchSavingPage()
   size_t offset = ceil(currentPatchIndex / 8);
   for (size_t i = 0; i < min(patches.size(), 8); i++)
   {
+
     currentPatchIndex == i + (8 * offset) ? tft.setTextColor(ILI9341_YELLOW)
                                           : tft.setTextColor(ILI9341_DARKYELLOW);
     if (i + 1 + (8 * offset) <= patches.size())
@@ -837,6 +848,7 @@ FLASHMEM void renderPatchNamingPage()
     }
   }
   renderCorners();
+  renderCharactersInd(currentPatchName.length(), PATCHNAMEMAXLEN);
 }
 
 FLASHMEM void renderBankNamingPage()
@@ -891,6 +903,7 @@ FLASHMEM void renderBankNamingPage()
     }
   }
   renderCorners();
+  renderCharactersInd(bankNames[tempBankIndex].length(), BANKNAMEMAXLEN);
 }
 
 FLASHMEM void renderSequenceNamingPage()
@@ -945,6 +958,7 @@ FLASHMEM void renderSequenceNamingPage()
     }
   }
   renderCorners();
+  renderCharactersInd(currentSequence.SequenceName.length(), SEQUENCENAMEMAXLEN);
 }
 
 FLASHMEM void renderPerformanceNamingPage()
@@ -999,6 +1013,7 @@ FLASHMEM void renderPerformanceNamingPage()
     }
   }
   renderCorners();
+  renderCharactersInd(currentPerformance.performanceName.length(), PERFORMANCENAMEMAXLEN);
 }
 
 FLASHMEM void renderRecallPage()
@@ -1069,7 +1084,7 @@ FLASHMEM void renderOscPage(size_t no)
   if (!arpRunning)
     renderSeqIndicator();
   renderMidiClk();
-  renderKeyboardActive();
+  renderKeyboardIndicator();
   renderPageIndicator(4, no);
   renderCorners();
 }
@@ -1130,7 +1145,7 @@ FLASHMEM void renderOscModPage(size_t no)
   if (!arpRunning)
     renderSeqIndicator();
   renderMidiClk();
-  renderKeyboardActive();
+  renderKeyboardIndicator();
   renderCorners();
 }
 
@@ -1159,7 +1174,7 @@ FLASHMEM void renderFilterPage(size_t no)
   if (!arpRunning)
     renderSeqIndicator();
   renderMidiClk();
-  renderKeyboardActive();
+  renderKeyboardIndicator();
   renderCorners();
 }
 
@@ -1176,7 +1191,7 @@ FLASHMEM void renderFilterModPage(size_t no)
   if (!arpRunning)
     renderSeqIndicator();
   renderMidiClk();
-  renderKeyboardActive();
+  renderKeyboardIndicator();
   renderCorners();
 }
 
@@ -1193,7 +1208,7 @@ FLASHMEM void renderAmpPage(size_t no)
   if (!arpRunning)
     renderSeqIndicator();
   renderMidiClk();
-  renderKeyboardActive();
+  renderKeyboardIndicator();
   renderCorners();
   if (no == 1)
   {
@@ -1226,19 +1241,19 @@ FLASHMEM void renderFXPage(size_t no)
   if (!arpRunning)
     renderSeqIndicator();
   renderMidiClk();
-  renderKeyboardActive();
+  renderKeyboardIndicator();
   renderCorners();
 }
 
 FLASHMEM void renderSeqRecIndicator()
 {
-  if (currentSequence.recording || state == State::SEQUENCEEDIT)
+  if (currentSequence.recording)
   {
     tft.setTextColor(ILI9341_BLACK);
     tft.setTextDatum(TC_DATUM);
     tft.setFont(Arial_10_Bold);
-    tft.fillRect(140, 3, 30, 15, ILI9341_RED);
-    tft.drawString(F("REC"), 155, 5);
+    tft.fillRect(145, 3, 30, 15, ILI9341_RED);
+    tft.drawString(F("REC"), 160, 5);
   }
 }
 
@@ -1261,9 +1276,10 @@ FLASHMEM void renderSequencerPage()
   tft.setTextColor(ILI9341_YELLOW);
   tft.setTextDatum(TC_DATUM);
   tft.drawString(currentSequence.SequenceName, 160, 19);
-  renderPatchName();
+  renderPatchNameAndBank();
   renderMidiClk();
   renderSeqIndicator();
+  renderKeyboardIndicator();
   renderPeak();
   renderCorners();
   renderMIDI();
@@ -1321,10 +1337,10 @@ FLASHMEM void renderMIDIPage()
 FLASHMEM void renderArpPage(uint8_t no)
 {
   tft.fillScreen(ILI9341_BLACK);
-  renderPatchName();
+  renderPatchNameAndBank();
   renderMidiClk();
   renderArpIndicator();
-  renderKeyboardActive();
+  renderKeyboardIndicator();
   renderPeak();
   renderCorners();
   renderMIDI();
@@ -1335,12 +1351,12 @@ FLASHMEM void renderArpPage(uint8_t no)
 FLASHMEM void renderMainPage()
 {
   tft.fillScreen(ILI9341_BLACK);
-  renderPatchName();
+  renderPatchNameAndBank();
   renderMidiClk();
   renderArpIndicator();
   if (!arpRunning)
     renderSeqIndicator();
-  renderKeyboardActive();
+  renderKeyboardIndicator();
   renderPeak();
   renderCorners();
   renderMIDI();
@@ -1367,7 +1383,7 @@ FLASHMEM void renderPerformancePage()
   renderMidiClk();
   renderArpIndicator();
   renderSeqIndicator();
-  renderKeyboardActive();
+  renderKeyboardIndicator();
   renderPerfIndicator();
   renderPeak();
   renderMIDI();
@@ -1817,7 +1833,7 @@ void setupDisplay()
   tft.begin(SPI_SPEED, SPICLOCK_READ);
   tft.useFrameBuffer(true);
   tft.setRotation(1);
-  //tft.invertDisplay(true);
+  tft.invertDisplay(true);
   tft.setTextWrap(false);
   renderBootUpPage();
   tft.updateScreen();

@@ -591,7 +591,7 @@ FLASHMEM uint8_t decSequenceIndex()
 FLASHMEM void seq_live_recording()
 {
     // record to sequencer if recording is active
-    if (currentSequence.note_in > 0 && currentSequence.recording == true)
+    if (currentSequence.note_in > 0 && currentSequence.recording)
     {
         currentSequence.Notes[currentSequence.step] = currentSequence.note_in;
         currentSequence.Velocities[currentSequence.step] = currentSequence.note_in_velocity;
@@ -753,10 +753,10 @@ FLASHMEM void noteOffRoutine()
 // Runs in Interrupt Timer. Switches between the Noteon and Noteoff Task, each cycle
 FLASHMEM void sequencer()
 {
-    if (currentSequence.running && state == SEQUENCEEDIT)
-        currentSequence.recording = true;
-    else
-        currentSequence.recording = false;
+    // if (currentSequence.running && state == SEQUENCEEDIT)
+    //     currentSequence.recording = true;
+    // else
+    //     currentSequence.recording = false;
     if (seqSwapper)
         noteOnRoutine();
     else

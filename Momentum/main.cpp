@@ -22,7 +22,7 @@
   SOFTWARE.
 
 ------------------------------------------------
-  ELECTROTECHNIQUE MOMENTUM - Firmware Rev 1.00
+            ELECTROTECHNIQUE MOMENTUM
   Teensy MicroMod based Synthesizer - 12 voices
 ------------------------------------------------
 
@@ -34,20 +34,17 @@
 
   This code is based on TSynth V2.32 firmware - ElectroTechnique 2021
   and includes code by:
-    Dave Benn - Handling MUXs, a few other bits and original inspiration  https://www.notesandvolts.com/2019/01/teensy-synth-part-10-hardware.html
+    Dave Benn -  A few bits and original inspiration  https://www.notesandvolts.com/2019/01/teensy-synth-part-10-hardware.html
     Alexander Davis / Vince R. Pearson - Stereo ensemble chorus effect https://github.com/quarterturn/teensy3-ensemble-chorus
     Will Winder - Major refactoring and monophonic mode
     Vince R. Pearson - Exponential envelopes & glide
     Github members fab672000 & CDW2000 - General improvements to code
-    Github member luni64 - EncoderTool library modified and included https://github.com/luni64/EncoderTool
-    Mark Tillotson - Special thanks for band-limiting the waveforms in the Audio Library
-    KuretE
+    Github/PJRC forum member luni64 - EncoderTool library modified https://github.com/luni64/EncoderTool
+    PJRC forum member Mark Tillotson - Special thanks for band-limiting the waveforms in the Audio Library
+
 
   Additional libraries:
-    Janila Array, Adafruit_GFX (available in Arduino libraries manager), T4_PowerButton
-
-    Power control:
-    https://forum.pjrc.com/threads/65797-Teensy-4-1-ON-OFF-Pin-Access-Use?highlight=Power+Control
+    Janila Array, Adafruit_GFX, ArduinoJSON, TeensyTimerTool, TeensyThreads, RokkitHash (available in Arduino libraries manager)
 */
 #define DEBUG 0
 
@@ -151,9 +148,9 @@ boolean firstPatchLoaded = false;
 uint32_t previousMillis = millis(); // For MIDI Clk Sync
 uint32_t timeNow = millis();        // For MIDI Clk Sync
 
-uint32_t midiClkCount = 0;    // For MIDI Clk Sync
-uint32_t midiClkArpCount = 0; // For MIDI Clk Sync with Arp
-int voiceToReturn = -1;       // Initialise
+uint8_t midiClkCount = 0;    // For MIDI Clk Sync
+uint8_t midiClkArpCount = 0; // For MIDI Clk Sync with Arp
+int voiceToReturn = -1;      // Initialise
 
 uint8_t seq_last_step = 0;
 uint8_t loopCount = 0;
@@ -163,7 +160,7 @@ FLASHMEM void setup()
     while (DEBUG == 1 && !Serial)
     {
     }
-    AudioMemory(62);
+    AudioMemory(61);
     sequencer_timer.begin(sequencer, currentSequence.tempo_us / 2.0f, false);
     checkFirstRun();
     // Initialize the voice groups.
@@ -183,9 +180,9 @@ FLASHMEM void setup()
     setUpSettings();
     SD.setMediaDetectPin(pinCD);
     cardStatus = SD.begin(BUILTIN_SDCARD);
-    if (SD.mediaPresent())
+    if (SD.mediaPresent()) // Card is detected by CD pin
     {
-        // ++++ For older sd cards
+        // ++++ For older sd cards - keep trying
         if (!cardStatus)
             cardStatus = SD.begin(BUILTIN_SDCARD);
         if (!cardStatus)
@@ -199,6 +196,7 @@ FLASHMEM void setup()
         if (DEBUG)
             Serial.println(F("SD card is connected"));
         loadLastPatchUsed();
+        currentSequenceIndex = getLastSequence();
         // Get patch numbers and names from SD card
         checkSDCardStructure();
         loadBankNames();
@@ -383,14 +381,15 @@ FLASHMEM void myNoteOn(byte channel, byte note, byte velocity)
     }
     else
     {
-        if (currentSequence.recording)
+        if (currentSequence.recording && currentSequence.running)
         {
             currentSequence.note_in = note;
             currentSequence.note_in_velocity = velocity;
         }
-        else if (!currentSequence.recording && state == SEQUENCEEDIT)
+        else if (currentSequence.recording && !currentSequence.running && state == SEQUENCEEDIT)
         {
             currentSequence.Notes[currentSeqPosition] = note;
+            currentSequence.Velocities[currentSeqPosition] = velocity;
             if (currentSeqPosition < currentSequence.length - 1)
                 currentSeqPosition++;
             else
@@ -400,7 +399,6 @@ FLASHMEM void myNoteOn(byte channel, byte note, byte velocity)
             if (currentSeqNote < 108)
                 seqCurrentOctPos = nearbyint((currentSeqNote + 4) / 12) - 2;
         }
-
         noteOn(midiChannel, note, velocity);
     }
 }
@@ -706,16 +704,13 @@ FLASHMEM void myControlChange(byte channel, byte control, byte value)
         groupvec[activeGroupIndex]->setOscLevelA(LINEAR[value]);
         switch (groupvec[activeGroupIndex]->getOscFX())
         {
-        case 1: // XOR
-            if (!setEncValue(CCoscLevelA, value, String(groupvec[activeGroupIndex]->getOscLevelA())))
-                showCurrentParameterOverlay(F("Osc Mix 1:2"), "   " + String(groupvec[activeGroupIndex]->getOscLevelA()) + F(" : ") + String(groupvec[activeGroupIndex]->getOscLevelB()));
-            break;
-        case 2: // XMod
-                // osc A sounds with increasing osc B mod
+        case OSCFXXMOD: // XMod
+                        // osc A sounds with increasing osc B mod
             if (!setEncValue(CCoscLevelA, value, String(groupvec[activeGroupIndex]->getOscLevelA())))
                 showCurrentParameterOverlay(F("X-Mod Osc 1"), F("by Osc 2: ") + String(1 - groupvec[activeGroupIndex]->getOscLevelB()));
             break;
-        case 0: // None
+        case OSCFXOFF: // None
+        case OSCFXXOR: // XOR
             if (!setEncValue(CCoscLevelA, value, String(groupvec[activeGroupIndex]->getOscLevelA())))
                 showCurrentParameterOverlay(ParameterStrMap[CCoscLevelA] + String(" Osc 1"), String(groupvec[activeGroupIndex]->getOscLevelA()));
             break;
@@ -727,16 +722,13 @@ FLASHMEM void myControlChange(byte channel, byte control, byte value)
         groupvec[activeGroupIndex]->setOscLevelB(LINEAR[value]);
         switch (groupvec[activeGroupIndex]->getOscFX())
         {
-        case 1: // XOR
-            if (!setEncValue(CCoscLevelB, value, String(groupvec[activeGroupIndex]->getOscLevelB())))
-                showCurrentParameterOverlay(F("Osc Mix 1:2"), "   " + String(groupvec[activeGroupIndex]->getOscLevelA()) + F(" : ") + String(groupvec[activeGroupIndex]->getOscLevelB()));
-            break;
-        case 2: // XMod
-                // osc B sounds with increasing osc A mod
+        case OSCFXXMOD: // XMod
+                        // osc B sounds with increasing osc A mod
             if (!setEncValue(CCoscLevelB, value, String(groupvec[activeGroupIndex]->getOscLevelB())))
                 showCurrentParameterOverlay(F("X-Mod Osc 2"), F("by Osc 1: ") + String(1 - groupvec[activeGroupIndex]->getOscLevelA()));
             break;
-        case 0: // None
+        case OSCFXOFF: // None
+        case OSCFXXOR: // XOR
             if (!setEncValue(CCoscLevelB, value, String(groupvec[activeGroupIndex]->getOscLevelB())))
                 showCurrentParameterOverlay(ParameterStrMap[CCoscLevelB] + String(" Osc 2"), String(groupvec[activeGroupIndex]->getOscLevelB()));
             break;
@@ -1268,7 +1260,7 @@ FLASHMEM void sequencerStop()
     sequencer_timer.stop();
     groupvec[activeGroupIndex]->allNotesOff();
     currentSequence.running = false;
-    currentSequence.recording = false;
+    // currentSequence.recording = false;
     currentSequence.note_in = 0;
 }
 
@@ -1440,6 +1432,7 @@ FLASHMEM void recallSequence(uint8_t filename)
         SequenceStruct ss;
         currentSequence = ss;
     }
+    storeLastSequenceToEEPROM(currentSequenceIndex);
 }
 
 FLASHMEM void setCurrentPatchData()
@@ -1972,7 +1965,10 @@ FLASHMEM void encoderButtonCallback(unsigned enc_idx, int buttonState)
             break;
         case choosecharacterBank:
             if (bankNames[tempBankIndex].length() < BANKNAMEMAXLEN)
+            {
                 bankNames[tempBankIndex] = bankNames[tempBankIndex].substring(0, nameCursor + 1) + CHARACTERS[charCursor] + bankNames[tempBankIndex].substring(nameCursor + 1, bankNames[tempBankIndex].length());
+                nameCursor++;
+            }
             break;
         case choosecharacterPerformance:
             if (currentPerformance.performanceName.length() < PERFORMANCENAMEMAXLEN)
@@ -2128,6 +2124,12 @@ FLASHMEM void encoderButtonCallback(unsigned enc_idx, int buttonState)
             setSeqTimerPeriod(currentSequence.bpm);
             break;
         case SeqLength:
+            if (buttonState == HELD)
+            {
+                // Toggle record sequence
+                currentSequence.recording = !currentSequence.recording;
+                break;
+            }
             switch (currentSequence.length)
             {
             case 64:
@@ -2156,10 +2158,27 @@ FLASHMEM void encoderButtonCallback(unsigned enc_idx, int buttonState)
             }
             break;
         case SeqPosition:
+            if (buttonState == HELD)
+            {
+                currentSeqPosition = 0;
+                break;
+            }
             if (currentSeqPosition < currentSequence.length - 1)
                 currentSeqPosition++;
             break;
         case SeqNote:
+            if (buttonState == HELD)
+            {
+                // Delete all notes
+                uint8_t n = 0;
+                while (n < currentSequence.length)
+                {
+                    currentSequence.Notes[n] = 0;
+                    n++;
+                }
+                saveSequence();
+                break;
+            }
             if (currentSequence.Notes[currentSeqPosition] == 0 || currentSequence.Notes[currentSeqPosition] != currentSeqNote)
             {
                 currentSequence.Notes[currentSeqPosition] = currentSeqNote;
@@ -2409,12 +2428,15 @@ FLASHMEM void buttonCallback(unsigned button_idx, int buttonStatus)
             {
                 if (!arpRunning)
                 {
+                    if (currentSequence.running)
+                        sequencerStop();
                     arpRunning = true;
                     setSeqTimerPeriod(currentSequence.bpm);
                     resetNotes();
                     sequencerStart();
                 }
                 state = State::ARPPAGE1;
+                ledsOff(); // Led 1 stays on after sequencerStart()
                 singleLED(GREEN, 2);
             }
             else if (state == State::ARPPAGE1 || state == State::ARPPAGE2)
@@ -2505,6 +2527,7 @@ FLASHMEM void buttonCallback(unsigned button_idx, int buttonStatus)
             {
                 state = State::SEQUENCERECALL;
                 loadSequenceNames();
+                currentSequence.recording = true;
                 singleLED(GREEN, 3);
             }
             else if (currentSequence.running && state != State::SEQUENCEPAGE)

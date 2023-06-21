@@ -556,10 +556,10 @@ FLASHMEM void configureCCoscfx(EncoderMappingStruct *enc, State st = State::MAIN
     enc->DefaultValue = 0;
     switch (groupvec[activeGroupIndex]->getOscFX())
     {
-    case 2:
+    case OSCFXXMOD:
         enc->ValueStr = "X Mod";
         break;
-    case 1:
+    case OSCFXXOR:
         enc->ValueStr = "XOR Mod";
         break;
     default:

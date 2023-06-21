@@ -19,6 +19,7 @@
 #define EEPROM_KEYBOARD_SCALE 16
 #define EEPROM_KEYBOARD_BASIS 17
 #define EEPROM_SEND_CC 18
+#define EEPROM_LAST_SEQUENCE 19
 
 FLASHMEM int8_t getFirstRun()
 {
@@ -48,6 +49,14 @@ FLASHMEM int8_t getLastBank()
   return b;
 }
 
+FLASHMEM int8_t getLastSequence()
+{
+  byte b = EEPROM.read(EEPROM_LAST_SEQUENCE);
+  if (b < 0 || b > 127)
+    return 0;
+  return b;
+}
+
 FLASHMEM void storeLastBankToEEPROM(byte type)
 {
   EEPROM.update(EEPROM_LAST_BANK, type);
@@ -64,6 +73,11 @@ FLASHMEM int8_t getLastPatch()
 FLASHMEM void storeLastPatchToEEPROM(byte type)
 {
   EEPROM.update(EEPROM_LAST_PATCH, type);
+}
+
+FLASHMEM void storeLastSequenceToEEPROM(byte type)
+{
+  EEPROM.update(EEPROM_LAST_SEQUENCE, type);
 }
 
 FLASHMEM void loadLastPatchUsed()
@@ -266,6 +280,7 @@ FLASHMEM void checkFirstRun()
     storeMidiThru(midi::Thru::Full);
     storeLastBankToEEPROM(0);
     storeLastPatchToEEPROM(0);
+    storeLastSequenceToEEPROM(0);
     storeTuning(0);
     storeVUEnable(0);
     storeVolumeToEEPROM(currentVolume);

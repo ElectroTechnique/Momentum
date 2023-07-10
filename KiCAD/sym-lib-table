@@ -1,4 +1,0 @@
-(sym_lib_table
-  (lib (name MicroMod)(type Legacy)(uri C:/Users/simon/OneDrive/Documents/Electronics/Ultra/Ultra/MachineLearning-MM-Carrier/MachineLearning-MM-Carrier-eagle-import.lib)(options "")(descr MicroMod))
-  (lib (name Momentum-rescue)(type Legacy)(uri ${KIPRJMOD}/Momentum-rescue.lib)(options "")(descr ""))
-)

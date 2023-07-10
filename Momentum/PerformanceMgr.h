@@ -165,8 +165,12 @@ FLASHMEM void savePerformance()
 {
     if (!cardStatus)
         return;
-    StaticJsonDocument<1024> doc;
+    // Delete existing performance
+    char resultdel[30];
+    concatPerformanceFolderAndFilename(currentPerformanceIndex + 1, resultdel);
+    SD.remove(resultdel);
 
+    StaticJsonDocument<1024> doc;
     doc["PerformanceName"] = currentPerformance.performanceName;
     doc["Mode"] = currentPerformance.mode;
 

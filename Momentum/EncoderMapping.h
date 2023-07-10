@@ -249,13 +249,11 @@ FLASHMEM void configureCCnoiseLevel(EncoderMappingStruct *enc, State st = State:
     if (groupvec[activeGroupIndex]->getPinkNoiseLevel() > 0)
     {
         enc->Value = currentPatch.NoiseLevel;
-        enc->DefaultValue = 63;
         enc->ValueStr = "Pink " + String(groupvec[activeGroupIndex]->getPinkNoiseLevel());
     }
     else if (groupvec[activeGroupIndex]->getWhiteNoiseLevel() > 0)
     {
         enc->Value = currentPatch.NoiseLevel;
-        enc->DefaultValue = 63;
         enc->ValueStr = "White " + String(groupvec[activeGroupIndex]->getWhiteNoiseLevel());
     }
     else
@@ -264,6 +262,7 @@ FLASHMEM void configureCCnoiseLevel(EncoderMappingStruct *enc, State st = State:
         enc->ValueStr = "Off";
     }
     enc->Range = 127;
+    enc->DefaultValue = 63;
     enc->ParameterStr = ParameterStrMap[CCnoiseLevel];
     enc->Push = true;
     enc->PushAction = st;
@@ -823,7 +822,7 @@ FLASHMEM void configureCCreverbfxtime(EncoderMappingStruct *enc, State st = Stat
     enc->ShowValue = true;
     enc->Value = currentPatch.ReverbEffectTime;
     enc->DefaultValue = 0;
-    enc->ValueStr = String(LINEAR[currentPatch.ReverbEffectTime] * 10.0f) + " s";
+    enc->ValueStr = String(LINEAR[currentPatch.ReverbEffectTime]);
     enc->Range = 127;
     enc->ParameterStr = ParameterStrMap[CCreverbfxtime];
     enc->Push = true;
@@ -1644,12 +1643,12 @@ FLASHMEM void setEncodersState(State s)
         encMap[ENC_TL].PushAction = State::ARPPAGE2;
 
         encMap[ENC_TR].active = true;
-        encMap[ENC_TR].Parameter = ArpBasis; // Style
+        encMap[ENC_TR].Parameter = ArpBasis; 
         encMap[ENC_TR].ShowValue = true;
         encMap[ENC_TR].Value = arpBasis;
         encMap[ENC_TR].ValueStr = ARP_BASIS_STR[arpBasis];
         encMap[ENC_TR].Range = 4;
-        encMap[ENC_TR].DefaultValue = 0;
+        encMap[ENC_TR].DefaultValue = 2;
         encMap[ENC_TR].ParameterStr = ParameterStrMap[ArpBasis];
         encMap[ENC_TR].Push = true;
         encMap[ENC_TR].PushAction = State::ARPPAGE2;
@@ -1691,7 +1690,7 @@ FLASHMEM void setEncodersState(State s)
         encMap[ENC_TR].Value = 0;
         encMap[ENC_TR].Range = 0;
         encMap[ENC_TR].ValueStr = "";
-        encMap[ENC_TR].ParameterStr = ParameterStrMap[cancel];
+        encMap[ENC_TR].ParameterStr = ParameterStrMap[goback];
         encMap[ENC_TR].Push = true;
         encMap[ENC_TR].PushAction = State::MAIN;
 
@@ -1733,7 +1732,7 @@ FLASHMEM void setEncodersState(State s)
         encMap[ENC_TR].Value = 0;
         encMap[ENC_TR].Range = 127;
         encMap[ENC_TR].ValueStr = "";
-        encMap[ENC_TR].ParameterStr = ParameterStrMap[cancel];
+        encMap[ENC_TR].ParameterStr = ParameterStrMap[goback];
         encMap[ENC_TR].Push = true;
         encMap[ENC_TR].PushAction = State::SEQUENCERECALL;
 

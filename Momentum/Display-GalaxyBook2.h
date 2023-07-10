@@ -64,6 +64,7 @@ const uint32_t colourPriority[5] = {ILI9341_BLACK, ILI9341_BLUE, ILI9341_YELLOW,
 const uint32_t encTriColour[4] = {ILI9341_LIGHTBLUE, ILI9341_YELLOW, ILI9341_WHITE, ILI9341_ORANGE};
 
 unsigned long timer = 0;
+
 boolean updateDisplay = true;
 
 void startTimer()
@@ -343,10 +344,10 @@ FLASHMEM void renderCorners()
   if (encMap[ENC_TL].active)
   {
     tft.fillTriangle(0, 0, 0, 14, 14, 0, encTriColour[ENC_TL]);
-    // if (encMap[ENC_TL].Push)
-    // {
-    //   tft.fillTriangle(2, 2, 2, 10, 10, 2, ILI9341_BLACK);
-    // }
+    if (encMap[ENC_TL].Push)
+    {
+      tft.fillTriangle(2, 2, 2, 10, 10, 2, ILI9341_BLACK);
+    }
     tft.setTextColor(encTriColour[ENC_TL]);
     tft.setTextDatum(TL_DATUM);
     tft.setFont(Arial_13);
@@ -361,10 +362,10 @@ FLASHMEM void renderCorners()
   if (encMap[ENC_TR].active)
   {
     tft.fillTriangle(305, 0, 319, 0, 319, 14, encTriColour[ENC_TR]);
-    // if (encMap[ENC_TR].Push)
-    // {
-    //   tft.fillTriangle(309, 2, 317, 2, 317, 10, ILI9341_BLACK);
-    // }
+    if (encMap[ENC_TR].Push)
+    {
+      tft.fillTriangle(309, 2, 317, 2, 317, 10, ILI9341_BLACK);
+    }
     tft.setTextColor(encTriColour[ENC_TR]);
     tft.setTextDatum(TR_DATUM);
     tft.setFont(Arial_13);
@@ -379,14 +380,14 @@ FLASHMEM void renderCorners()
   if (encMap[ENC_BR].active)
   {
     tft.fillTriangle(305, 239, 319, 239, 319, 225, encTriColour[ENC_BR]);
-    // if (encMap[ENC_BR].Push)
-    // {
-    //   tft.fillTriangle(309, 237, 317, 237, 317, 229, ILI9341_BLACK);
-    // }
+    if (encMap[ENC_BR].Push)
+    {
+      tft.fillTriangle(309, 237, 317, 237, 317, 229, ILI9341_BLACK);
+    }
     tft.setTextDatum(BR_DATUM);
     tft.setTextColor(encTriColour[ENC_BR]);
     tft.setFont(Arial_13);
-    tft.drawString(encMap[ENC_BR].ParameterStr, 303, 225);
+    tft.drawString(encMap[ENC_BR].ParameterStr, 303, 230);
     if (encMap[ENC_BR].ShowValue)
     {
       tft.setFont(Arial_16);
@@ -398,14 +399,14 @@ FLASHMEM void renderCorners()
   if (encMap[ENC_BL].active)
   {
     tft.fillTriangle(0, 225, 0, 239, 14, 239, encTriColour[ENC_BL]);
-    // if (encMap[ENC_BL].Push)
-    // {
-    //   tft.fillTriangle(2, 229, 2, 237, 10, 237, ILI9341_BLACK);
-    // }
+    if (encMap[ENC_BL].Push)
+    {
+      tft.fillTriangle(2, 229, 2, 237, 10, 237, ILI9341_BLACK);
+    }
     tft.setTextDatum(BL_DATUM);
     tft.setTextColor(encTriColour[ENC_BL]);
     tft.setFont(Arial_13);
-    tft.drawString(encMap[ENC_BL].ParameterStr, 15, 225);
+    tft.drawString(encMap[ENC_BL].ParameterStr, 15, 230);
     if (encMap[ENC_BL].ShowValue)
     {
       tft.setFont(Arial_16);
@@ -554,26 +555,6 @@ FLASHMEM void renderEnv(float att, float dec, float sus, float rel)
   tft.setOrigin(0, 0);
 }
 
-FLASHMEM void renderBankList()
-{
-  // Bank list - 8 banks
-  tft.setFont(Arial_12_Bold);
-  tft.setTextColor(ILI9341_RED);
-  for (size_t i = 0; i < 8; i++)
-  {
-    tempBankIndex == i ? tft.setTextColor(ILI9341_ORANGE)
-                       : tft.setTextColor(ILI9341_RED);
-    if (bankNames[i].length() > 9)
-    {
-      tft.drawString(bankNames[i].substring(0, 8) + String(".."), 0, 57 + (20 * i));
-    }
-    else
-    {
-      tft.drawString(bankNames[i], 0, 57 + (20 * i));
-    }
-  }
-}
-
 FLASHMEM void renderCurrentParameterOverlay()
 {
   tft.fillRect(40, 30, 230, 150, ILI9341_DARKRED);
@@ -669,7 +650,7 @@ FLASHMEM void renderSeqNote()
   tft.setFont(Arial_13);
   tft.setTextColor(ILI9341_YELLOW);
   tft.setTextDatum(BR_DATUM);
-  tft.drawString(NOTENAME[currentSeqNote], 250, 225);
+  tft.drawString(NOTENAME[currentSeqNote], 250, 230);
 }
 
 FLASHMEM void renderSeqPosition()
@@ -677,7 +658,7 @@ FLASHMEM void renderSeqPosition()
   tft.setFont(Arial_13);
   tft.setTextColor(ILI9341_ORANGE);
   tft.setTextDatum(BL_DATUM);
-  tft.drawString(SEQPOSSTR[currentSeqPosition] + "-" + String(currentSeqPosition + 1), 85, 225);
+  tft.drawString(SEQPOSSTR[currentSeqPosition] + "-" + String(currentSeqPosition + 1), 85, 230);
 }
 
 FLASHMEM void renderDeletePatchPage()
@@ -689,7 +670,15 @@ FLASHMEM void renderDeletePatchPage()
   tft.drawString(F("Delete Patch"), 160, 26);
   tft.drawFastHLine(10, 48, tft.width() - 20, ILI9341_RED);
 
-  renderBankList();
+  // Bank list - 8 banks
+  tft.setFont(Arial_12_Bold);
+  tft.setTextColor(ILI9341_RED);
+  for (size_t i = 0; i < 8; i++)
+  {
+    tempBankIndex == i ? tft.setTextColor(ILI9341_ORANGE)
+                       : tft.setTextColor(ILI9341_RED);
+    tft.drawString(bankNames[i], 0, 57 + (20 * i));
+  }
 
   // Patches -  up to 128 in each bank
   tft.setTextDatum(TL_DATUM);
@@ -772,7 +761,22 @@ FLASHMEM void renderPatchSavingPage()
   tft.drawString(F("Save Patch"), 160, 26);
   tft.drawFastHLine(10, 48, tft.width() - 20, ILI9341_RED);
 
-  renderBankList();
+  // Bank list - 8 banks
+  tft.setFont(Arial_12_Bold);
+  tft.setTextColor(ILI9341_RED);
+  for (size_t i = 0; i < 8; i++)
+  {
+    tempBankIndex == i ? tft.setTextColor(ILI9341_ORANGE)
+                       : tft.setTextColor(ILI9341_RED);
+    if (bankNames[i].length() > 9)
+    {
+      tft.drawString(bankNames[i].substring(0, 8) + String(".."), 0, 57 + (20 * i));
+    }
+    else
+    {
+      tft.drawString(bankNames[i], 0, 57 + (20 * i));
+    }
+  }
 
   // Patches -  up to 128 in each bank
   tft.setTextDatum(TL_DATUM);
@@ -880,8 +884,7 @@ FLASHMEM void renderBankNamingPage()
     tft.drawFontChar(95); // Underscore to show start of empty bank name
   }
 
-  tft.setTextSize(2);
-  tft.setFont(&FreeMono9pt7b);
+  tft.setFont(Arial_14);
   tft.setTextColor(ILI9341_LIGHTGREY);
   int row = 0;
   int start = 0;
@@ -1022,7 +1025,23 @@ FLASHMEM void renderRecallPage()
   tft.drawString("Recall Patch", 160, 26);
   tft.drawFastHLine(10, 48, tft.width() - 20, ILI9341_RED);
 
-  renderBankList();
+  // Bank list - 8 banks
+  tft.setFont(Arial_12_Bold);
+  tft.setTextColor(ILI9341_RED);
+  for (size_t i = 0; i < BANKS_LIMIT; i++)
+  {
+    tempBankIndex == i ? tft.setTextColor(ILI9341_ORANGE)
+                       : tft.setTextColor(ILI9341_RED);
+
+    if (bankNames[i].length() > 9)
+    {
+      tft.drawString(bankNames[i].substring(0, 8) + String(".."), 0, 57 + (20 * i));
+    }
+    else
+    {
+      tft.drawString(bankNames[i], 0, 57 + (20 * i));
+    }
+  }
 
   // Patches -  up to 128 in each bank
   tft.setFont(Arial_12_Bold);
@@ -1353,10 +1372,9 @@ FLASHMEM void renderPerformanceName()
 
   tft.setTextDatum(TL_DATUM);
   tft.setTextColor(ILI9341_DARKYELLOW);
-  // THIS ASSUMES JUST ONE PATCH - MULTITIMBRALITY NOT YET SUPPORTED
-  tft.drawString(bankNames[currentPerformance.patches[0].bankIndex], 80, 130); 
-  tft.setTextColor(ILI9341_YELLOW);
-  tft.drawString(currentPerformance.patches[0].patchName, 80, 150); 
+  tft.drawString(bankNames[currentPerformance.patches[0].bankIndex] +
+                     " : " + currentPerformance.patches[0].patchName,
+                 80, 130); // THIS ASSUMES JUST ONE PATCH - MULTITIMBRALITY NOT YET SUPPORTED
 }
 
 FLASHMEM void renderPerformancePage()
@@ -1456,7 +1474,23 @@ FLASHMEM void renderPerformancePatchEditPage()
   tft.drawString("Choose Patch", 160, 26);
   tft.drawFastHLine(10, 49, tft.width() - 20, ILI9341_RED);
 
-  renderBankList();
+  // Bank list - 8 banks
+  tft.setFont(Arial_12_Bold);
+  tft.setTextColor(ILI9341_RED);
+  for (size_t i = 0; i < BANKS_LIMIT; i++)
+  {
+    currentBankIndex == i ? tft.setTextColor(ILI9341_ORANGE)
+                          : tft.setTextColor(ILI9341_RED);
+
+    if (bankNames[i].length() > 9)
+    {
+      tft.drawString(bankNames[i].substring(0, 8) + String(".."), 0, 57 + (20 * i));
+    }
+    else
+    {
+      tft.drawString(bankNames[i], 0, 57 + (20 * i));
+    }
+  }
 
   // Patches -  up to 128 in each bank
   tft.setFont(Arial_12_Bold);
@@ -1522,7 +1556,23 @@ FLASHMEM void renderEditBankPage()
   tft.drawString("Edit Banks", 160, 19);
   tft.drawFastHLine(10, 42, tft.width() - 20, ILI9341_RED);
 
-  renderBankList();
+  // Bank list - 8 banks
+  tft.setFont(Arial_12_Bold);
+  tft.setTextColor(ILI9341_RED);
+  for (size_t i = 0; i < 8; i++)
+  {
+    tempBankIndex == i ? tft.setTextColor(ILI9341_ORANGE)
+                       : tft.setTextColor(ILI9341_RED);
+
+    if (bankNames[i].length() > 9)
+    {
+      tft.drawString(bankNames[i].substring(0, 8) + String(".."), 0, 51 + (20 * i));
+    }
+    else
+    {
+      tft.drawString(bankNames[i], 0, 51 + (20 * i));
+    }
+  }
   tft.setTextDatum(TL_DATUM);
   tft.setTextColor(ILI9341_YELLOW);
   if (patches[0].patchUID == 0)
@@ -1617,7 +1667,6 @@ void displayThread()
   threads.delay(1500); // Give bootup page chance to display
   while (1)
   {
-    threads.delay(5);
     if ((millis() - timer) > DISPLAYTIMEOUT)
     {
       switch (state)
@@ -1784,7 +1833,7 @@ void setupDisplay()
   tft.begin(SPI_SPEED, SPICLOCK_READ);
   tft.useFrameBuffer(true);
   tft.setRotation(1);
-  // tft.invertDisplay(true);
+  tft.invertDisplay(true);
   tft.setTextWrap(false);
   renderBootUpPage();
   tft.updateScreen();

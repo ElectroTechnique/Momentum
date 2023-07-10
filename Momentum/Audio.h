@@ -58,7 +58,7 @@
 
 #include "output_dacs.h"
 #include "effect_ensemble.h" //Electrotechnique exclusive stereo emsemble effect
-#include "effect_reverb.h"
+#include "effect_freeverb.h"
 #include "effect_envelope.h" //Local version
 #include "effect_combine.h"  //Local version
 #include "filter_variable.h" //Local version

@@ -560,10 +560,7 @@ FLASHMEM boolean savePatch(uint8_t bankIndex, uint8_t index)
     patches[index].patchUID = iUID;
     patches[index].patchName = currentPatch.PatchName;
   }
-  // else
-  // {
-  //   patches.push_back(PatchUIDAndName{currentPatch.UID, currentPatch.PatchName});
-  // }
+
   // Save index number to Patchindex
   insertIntoPatchIndexFile(bankIndex, index, iUID);
   loadPatchNamesFromBank(bankIndex);

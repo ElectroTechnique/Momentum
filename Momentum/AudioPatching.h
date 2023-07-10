@@ -43,15 +43,14 @@ struct PatchShared
     AudioMixer4 voiceMixerM;
 
     AudioEffectEnsemble ensemble;
-    AudioEffectReverb reverb;
+    AudioEffectFreeverb reverb;
     AudioFilterStateVariableTS dcOffsetFilter;
-    AudioAmplifier reverbAmpSwitch;
     AudioMixer4 volumeMixer;
     AudioMixer4 ensembleEffectMixerL;
     AudioMixer4 ensembleEffectMixerR;
     AudioMixer4 reverbMixer;
 
-    AudioConnection connections[16] = {
+    AudioConnection connections[15] = {
         {pitchBend, 0, pitchMixer, 0},
         {pitchLfo, 0, pitchMixer, 1},
         {voiceMixer[0], 0, voiceMixerM, 0},
@@ -59,8 +58,7 @@ struct PatchShared
         {voiceMixer[2], 0, voiceMixerM, 2},
         {voiceMixerM, 0, dcOffsetFilter, 0},
         {dcOffsetFilter, 2, volumeMixer, 0},
-        {volumeMixer, 0, reverbAmpSwitch, 0},
-        {reverbAmpSwitch, 0, reverb, 0},
+        {volumeMixer, 0, reverb, 0},
         {volumeMixer, 0, reverbMixer, 0},
         {reverb, 0, reverbMixer, 1},
         {reverbMixer, 0, ensemble, 0},
@@ -189,7 +187,7 @@ public:
         pwaConnection = new AudioConnection(shared.pwa, 0, pwMixer_a, 1);
         pwbConnection = new AudioConnection(shared.pwb, 0, pwMixer_b, 1);
         noiseMixerConnection = new AudioConnection(shared.noiseMixer, 0, waveformMixer_, 2);
-
+        shared.reverb.damping(0.5f);//TODO Replace with control
         uint8_t voiceMixerIndex = 0;
         uint8_t indexMod4 = index % 4;
         if (index != 0)

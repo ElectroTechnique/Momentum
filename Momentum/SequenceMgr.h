@@ -89,7 +89,7 @@ const static char *ARP_DIVISION_STR[10] = {"1/32", "1/24", "1/16", "1/12", "1/8"
 const static uint8_t ARP_DIVISION_24PPQ[10] = {3, 4, 6, 8, 12, 16, 24, 32, 48, 96};
 const static char *ARP_RANGE_STR[7] = {"4 Oct Down", "3 Oct Down", "2 Oct Down", "Base Oct", "2 Oct Up", "3 Oct Up", "4 Oct Up"};
 const static int8_t ARP_RANGE[7] = {-3, -2, -1, 0, 1, 2, 3};
-const static char *ARP_BASIS_STR[5] = {"-2 Oct", "-1 Oct", "Base Oct", "1 Oct", "2 Oct"};
+const static char *ARP_BASIS_STR[5] = {"2 Below", "1 Below", "Base Oct", "1 Above", "2 Above"};
 const static int8_t ARP_BASIS[5] = {-2, -1, 0, 1, 2};
 
 FLASHMEM void resetArp()
@@ -457,6 +457,11 @@ FLASHMEM void saveSequence()
 {
     if (!cardStatus)
         return;
+    //Delete existing sequence
+    char resultdel[30];
+    concatSequenceFolderAndFilename(currentSequenceIndex + 1, resultdel);
+    SD.remove(resultdel);
+
     StaticJsonDocument<3000> doc;
     // Need to generate a new UID as the sequence settings may have changed if overwriting an existing sequence
     String output;

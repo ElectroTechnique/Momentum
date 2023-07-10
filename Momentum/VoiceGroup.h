@@ -794,24 +794,15 @@ public:
     void setReverbEffectTime(float value)
     {
         reverbEffectTime = value;
-        shared.reverb.reverbTime(reverbEffectTime);
+        shared.reverb.roomsize(reverbEffectTime);
     }
 
     void setReverbEffectMix(float value)
     {
         reverbEffectMix = value;
-        if (value == 0)
-        {
-            // Stops reverb from processing if mix is totally dry
-            shared.reverbAmpSwitch.gain(0);
-        }
-        else
-        {
-            // Reverb seems to distort easily
-            shared.reverbAmpSwitch.gain(0.6f);
-        }
-        shared.reverbMixer.gain(0, 1.0f - reverbEffectMix); // Dry
-        shared.reverbMixer.gain(1, reverbEffectMix * 4.0f); // Wet
+        //Mix is up to 50:50
+        shared.reverbMixer.gain(0, 1.0f - (reverbEffectMix / 2.0f)); // Dry
+        shared.reverbMixer.gain(1, reverbEffectMix/2.0f); // Wet
     }
 
     inline void setMonophonic(uint8_t mode)

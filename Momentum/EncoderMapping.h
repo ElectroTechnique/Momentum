@@ -1643,7 +1643,7 @@ FLASHMEM void setEncodersState(State s)
         encMap[ENC_TL].PushAction = State::ARPPAGE2;
 
         encMap[ENC_TR].active = true;
-        encMap[ENC_TR].Parameter = ArpBasis; 
+        encMap[ENC_TR].Parameter = ArpBasis;
         encMap[ENC_TR].ShowValue = true;
         encMap[ENC_TR].Value = arpBasis;
         encMap[ENC_TR].ValueStr = ARP_BASIS_STR[arpBasis];
@@ -2044,7 +2044,13 @@ FLASHMEM void setConfigurationForCC(uint8_t enc, uint8_t cc)
     case CCensemblefxmix:
         configureCCensemblefxmix(&encMap[enc], State::PERFORMANCEPAGE);
         break;
-    case CCvelocitySens:
+    case CCreverbfxtime:
+        configureCCreverbfxtime(&encMap[enc], State::PERFORMANCEPAGE);
+        break;
+    case CCreverbfxmix:
+        configureCCreverbfxmix(&encMap[enc], State::PERFORMANCEPAGE);
+        break;
+        case CCvelocitySens:
         configureCCAmpVelocitySens(&encMap[enc], State::PERFORMANCEPAGE);
         break;
     case CCmonomode:

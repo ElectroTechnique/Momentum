@@ -1559,7 +1559,8 @@ FLASHMEM int8_t encScaling(EncoderMappingStruct *enc, int8_t delta)
 FLASHMEM void encoderCallback(unsigned enc_idx, int value, int delta)
 {
     // --- Value isn't used because it's absolute values that don't change with changes to the encoder assignment---
-     if(DEBUG) Serial.printf("enc[%u]: v=%d, d=%d\n", enc_idx, value, delta);
+    if (DEBUG)
+        Serial.printf("enc[%u]: v=%d, d=%d\n", enc_idx, value, delta);
     //  Subtract 4 from encoder index due to numbering on shift registers
     enc_idx -= 4;
     if (encMap[enc_idx].active)
@@ -2215,7 +2216,7 @@ FLASHMEM void encoderButtonCallback(unsigned enc_idx, int buttonState)
             if (currentSequence.Notes[currentSeqPosition] == 0 || currentSequence.Notes[currentSeqPosition] != currentSeqNote)
             {
                 currentSequence.Notes[currentSeqPosition] = currentSeqNote;
-                currentSequence.Velocities[currentSeqPosition] = 64;//Default velocity
+                currentSequence.Velocities[currentSeqPosition] = 64; // Default velocity
                 playNote(currentSeqNote);
             }
             else
@@ -3093,20 +3094,13 @@ FLASHMEM void sequencerLEDs()
 
 FLASHMEM void CPUMonitor()
 {
-    if (DEBUG)
-        Serial.print(F(" CPU:"));
-    if (DEBUG)
-        Serial.print(AudioProcessorUsage());
-    if (DEBUG)
-        Serial.print(F(" ("));
-    if (DEBUG)
-        Serial.print(AudioProcessorUsageMax());
-    if (DEBUG)
-        Serial.print(F(")"));
-    if (DEBUG)
-        Serial.print(F("  MEM:"));
-    if (DEBUG)
-        Serial.println(AudioMemoryUsageMax());
+    Serial.print(F(" CPU:"));
+    Serial.print(AudioProcessorUsage());
+    Serial.print(F(" ("));
+    Serial.print(AudioProcessorUsageMax());
+    Serial.print(F(")"));
+    Serial.print(F("  MEM:"));
+    Serial.println(AudioMemoryUsageMax());
 }
 
 void loop()
@@ -3123,8 +3117,8 @@ void loop()
         MIDI.read(midiChannel);
         sdCardDetect();
         sequencerLEDs();
-        if (DEBUG)
-            CPUMonitor();
+        // if (DEBUG)
+        //     CPUMonitor();
         loopCount = 0;
     }
     encoders.read();

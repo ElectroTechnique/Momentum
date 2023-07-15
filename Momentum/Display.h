@@ -1617,7 +1617,7 @@ void displayThread()
   threads.delay(1500); // Give bootup page chance to display
   while (1)
   {
-    threads.delay(5);
+    threads.delay(1);
     if ((millis() - timer) > DISPLAYTIMEOUT)
     {
       switch (state)

@@ -107,8 +107,8 @@ extern void noteOnRoutine();
 
 // USB HOST MIDI Class Compliant
 USBHost myusb;
-MIDIDevice usbHostMIDI(myusb);
-// MIDIDevice_BigBuffer usbHostMIDI(myusb); // Try this if your MIDI Compliant controller has problems
+//MIDIDevice usbHostMIDI(myusb);
+MIDIDevice_BigBuffer usbHostMIDI(myusb); // Try this if your MIDI Compliant controller has problems
 
 // MIDI 5 Pin DIN - (TRS MIDI)
 MIDI_CREATE_INSTANCE(HardwareSerial, Serial1, MIDI);
@@ -1263,6 +1263,7 @@ FLASHMEM void sequencerStop()
     currentSequence.running = false;
     // currentSequence.recording = false;
     currentSequence.note_in = 0;
+    ledsOff();
 }
 
 FLASHMEM void myMIDIClockContinue()

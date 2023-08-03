@@ -610,8 +610,9 @@ FLASHMEM void renderCurrentParameterOverlay()
 FLASHMEM void renderCharactersInd(uint8_t currentlength, uint8_t maxlength)
 {
   tft.setTextDatum(BL_DATUM);
+  tft.setFont(Arial_13);
   tft.setTextColor(encTriColour[ENC_BL]);
-  tft.drawString(String(currentlength) + "/" + String(maxlength), 110, 230);
+  tft.drawString(String(currentlength) + "/" + String(maxlength), 110, 225);
 }
 
 FLASHMEM void renderPatchNameAndBank()
@@ -729,7 +730,7 @@ FLASHMEM void renderDeleteBankMessagePage()
   tft.setTextDatum(TC_DATUM);
   tft.setTextColor(ILI9341_YELLOW);
   tft.drawString(F("Deleting Bank"), 160, 100);
-  tft.drawString(bankNames[currentBankIndex], 160, 125);
+  tft.drawString(bankNames[tempBankIndex], 160, 125);
 }
 
 FLASHMEM void renderSavePage()
@@ -1354,9 +1355,9 @@ FLASHMEM void renderPerformanceName()
   tft.setTextDatum(TL_DATUM);
   tft.setTextColor(ILI9341_DARKYELLOW);
   // THIS ASSUMES JUST ONE PATCH - MULTITIMBRALITY NOT YET SUPPORTED
-  tft.drawString(bankNames[currentPerformance.patches[0].bankIndex], 80, 130); 
+  tft.drawString(bankNames[currentPerformance.patches[0].bankIndex], 80, 130);
   tft.setTextColor(ILI9341_YELLOW);
-  tft.drawString(currentPerformance.patches[0].patchName, 80, 150); 
+  tft.drawString(currentPerformance.patches[0].patchName, 80, 150);
 }
 
 FLASHMEM void renderPerformancePage()

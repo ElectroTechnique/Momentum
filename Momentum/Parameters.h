@@ -59,10 +59,10 @@ typedef struct PatchStruct
     uint8_t PWMRateB = 10;    // 0.18Hz
     uint8_t PWA_Amount = 63;
     uint8_t PWB_Amount = 63;
-    uint8_t FilterRes = 10;   // 0.80
-    uint8_t FilterFreq = 230; // 8751Hz
+    uint8_t FilterRes = 0;    // 0.71
+    uint8_t FilterFreq = 255; // 12000Hz
     uint8_t FilterMixer = 0;
-    uint8_t FilterEnv = 89;
+    uint8_t FilterEnv = 63;
     uint8_t PitchLFOAmt = 0;
     uint8_t PitchLFORate = 10;
     uint8_t PitchLFOWaveform = 0;
@@ -76,7 +76,7 @@ typedef struct PatchStruct
     uint8_t FilterAttack = 0;
     uint8_t FilterDecay = 20;
     uint8_t FilterSustain = 80;
-    uint8_t FilterRelease = 50;
+    uint8_t FilterRelease = 25;
     uint8_t Attack = 0;
     uint8_t Decay = 20;
     uint8_t Sustain = 80;
@@ -93,7 +93,7 @@ typedef struct PatchStruct
     uint8_t FilterEnvShape = 9; // Exp 0
     uint8_t AmpEnvShape = 9;    // Exp 0
     uint8_t GlideShape = 1;     // Exp
-    uint8_t PitchBend = 12;
+    uint8_t PitchBend = 7;
     uint8_t PitchModWheelDepth = 1;
     uint8_t FilterModWheelDepth = 0;
 } PatchStruct;

@@ -60,6 +60,15 @@ uint32_t paramType = 0;
 uint32_t peakCount = 0;
 uint16_t prevLen = 0;
 
+size_t max_rows = 3;
+size_t x_step = 10;
+size_t y_step = 10;
+size_t x_end = 175;
+size_t x_start = x_end - (x_step * ceil(global.maxVoices() / float(max_rows))) + x_step;
+size_t y_start = 57;
+size_t y_end = 77;
+size_t idx = 0;
+
 const uint32_t colourPriority[5] = {ILI9341_BLACK, ILI9341_BLUE, ILI9341_YELLOW, ILI9341_ORANGE, ILI9341_MAROON};
 const uint32_t encTriColour[4] = {ILI9341_LIGHTBLUE, ILI9341_YELLOW, ILI9341_WHITE, ILI9341_ORANGE};
 
@@ -465,14 +474,7 @@ FLASHMEM void renderVoiceGrid()
   }
 
   // Draw rectangles to represent each voice.
-  size_t max_rows = 3;
-  size_t x_step = 10;
-  size_t y_step = 10;
-  size_t x_end = 175;
-  size_t x_start = x_end - (x_step * ceil(global.maxVoices() / float(max_rows))) + x_step;
-  size_t y_start = 57;
-  size_t y_end = 77;
-  size_t idx = 0;
+  idx = 0;
   for (size_t y = y_start; y <= y_end; y += y_step)
   {
     for (size_t x = x_start; x <= x_end; x += x_step)
@@ -827,7 +829,7 @@ FLASHMEM void renderPatchNamingPage()
 
   tft.setTextSize(2);
   tft.setFont(&FreeMono9pt7b);
-  tft.setTextColor(ILI9341_LIGHTGREY);
+  tft.setTextColor(ILI9341_MIDGREY);
   int row = 0;
   int start = 0;
   for (int i = 0; i < TOTALCHARS; i++)
@@ -883,7 +885,7 @@ FLASHMEM void renderBankNamingPage()
 
   tft.setTextSize(2);
   tft.setFont(&FreeMono9pt7b);
-  tft.setTextColor(ILI9341_LIGHTGREY);
+  tft.setTextColor(ILI9341_MIDGREY);
   int row = 0;
   int start = 0;
   for (int i = 0; i < TOTALCHARS; i++)
@@ -938,7 +940,7 @@ FLASHMEM void renderSequenceNamingPage()
 
   tft.setTextSize(2);
   tft.setFont(&FreeMono9pt7b);
-  tft.setTextColor(ILI9341_LIGHTGREY);
+  tft.setTextColor(ILI9341_MIDGREY);
   int row = 0;
   int start = 0;
   for (int i = 0; i < TOTALCHARS; i++)
@@ -993,7 +995,7 @@ FLASHMEM void renderPerformanceNamingPage()
 
   tft.setTextSize(2);
   tft.setFont(&FreeMono9pt7b);
-  tft.setTextColor(ILI9341_LIGHTGREY);
+  tft.setTextColor(ILI9341_MIDGREY);
   int row = 0;
   int start = 0;
   for (int i = 0; i < TOTALCHARS; i++)

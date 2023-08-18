@@ -107,7 +107,7 @@ extern void noteOnRoutine();
 
 // USB HOST MIDI Class Compliant
 USBHost myusb;
-//MIDIDevice usbHostMIDI(myusb);
+// MIDIDevice usbHostMIDI(myusb);
 MIDIDevice_BigBuffer usbHostMIDI(myusb); // Try this if your MIDI Compliant controller has problems
 
 // MIDI 5 Pin DIN - (TRS MIDI)
@@ -290,6 +290,7 @@ FLASHMEM void setup()
     keyboardScale = getKeyboardScale();
     keyboardOct = getKeyboardBasis();
     sendCC = getSendCC();
+    syncToMIDIClk = getSyncToMIDIClk();
 
     assignStrings();
     assignParametersForPerformanceEncoders();
@@ -1261,9 +1262,10 @@ FLASHMEM void sequencerStop()
     sequencer_timer.stop();
     groupvec[activeGroupIndex]->allNotesOff();
     currentSequence.running = false;
+    if (state == State::SEQUENCEEDIT || state == State::SEQUENCEPAGE || state == State::SEQUENCERECALL)
+        singleLED(GREEN, 3);
     // currentSequence.recording = false;
     currentSequence.note_in = 0;
-    ledsOff();
 }
 
 FLASHMEM void myMIDIClockContinue()
@@ -1271,7 +1273,8 @@ FLASHMEM void myMIDIClockContinue()
     if (!currentSequence.running)
     {
         seqMidiSync = true;
-        sequencerStart(true);
+        if (syncToMIDIClk)
+            sequencerStart(true);
     }
 }
 
@@ -1280,7 +1283,7 @@ FLASHMEM void myMIDIClockStart()
     if ((!currentSequence.running && !seqMidiSync) || arpRunning)
         seqMidiSync = true;
     midiClkCount = 0;
-    if ((state == State::SEQUENCEPAGE || state == State::SEQUENCEEDIT) && seqMidiSync)
+    if ((state == State::SEQUENCEPAGE || state == State::SEQUENCEEDIT) && seqMidiSync && syncToMIDIClk)
         sequencerStart();
     else if (arpRunning)
     {
@@ -1300,7 +1303,7 @@ FLASHMEM void myMIDIClockStart()
 
 FLASHMEM void myMIDIClockStop()
 {
-    if (seqMidiSync)
+    if (seqMidiSync && syncToMIDIClk)
     {
         sequencerStop();
         groupvec[activeGroupIndex]->allNotesOff();
@@ -1314,11 +1317,11 @@ FLASHMEM void myMIDIClock()
 {
     MIDIClkSignal = true;
     // 24ppq this is for 4/4 time, alternates between noteon and noteoff, 8 times
-    if ((seqMidiSync && currentSequence.running && (midiClkCount % 3) == 0))
+    if (seqMidiSync && syncToMIDIClk && currentSequence.running && (midiClkCount % 3) == 0)
     {
         sequencer();
         if (state == SEQUENCEPAGE || state == SEQUENCEEDIT || state == ARPPAGE1 || state == ARPPAGE2)
-            setEncValue(SeqTempo, lfoSyncFreq * 60, String(lfoSyncFreq * 60));
+            setEncValue(SeqTempo, lfoSyncFreq * 60, String(lfoSyncFreq * 60, 1));
     }
 
     if (seqMidiSync && arpRunning)
@@ -1803,11 +1806,11 @@ FLASHMEM void encoderCallback(unsigned enc_idx, int value, int delta)
             settings::save_current_value();
             break;
         case SeqTempo:
-            if (seqMidiSync || newDelta == 0 || currentSequence.bpm + (newDelta / 10.0f) < 20.0f || currentSequence.bpm + (newDelta / 10.0f) > 300.0)
+            if ((seqMidiSync && !syncToMIDIClk) || newDelta == 0 || currentSequence.bpm + (newDelta / 10.0f) < 20.0f || currentSequence.bpm + (newDelta / 10.0f) > 300.0)
                 break;
             currentSequence.bpm += (newDelta / 10.0f);
             setSeqTimerPeriod(currentSequence.bpm);
-            setEncValue(SeqTempo, currentSequence.bpm, String(currentSequence.bpm));
+            setEncValue(SeqTempo, currentSequence.bpm, String(currentSequence.bpm, 1));
             break;
         case SeqLength:
             if (newDelta == 0 || currentSequence.length + newDelta < 1 || currentSequence.length + newDelta > 64)
@@ -2301,6 +2304,8 @@ FLASHMEM void buttonCallback(unsigned button_idx, int buttonStatus)
                 state = State::MAIN;
                 ledsOff();
             }
+            if (state == State::SEQUENCEEDIT || state == State::SEQUENCEPAGE || state == State::SEQUENCERECALL)
+                singleLED(GREEN, 3);
         }
         else if (!currentSequence.running && (state == State::SEQUENCEEDIT || state == State::SEQUENCEPAGE))
         {
@@ -3084,6 +3089,8 @@ FLASHMEM void sequencerLEDs()
         seq_last_step = currentSequence.step;
         if (currentSequence.step % 16 < 8)
         {
+            if ((currentSequence.step % 8 + 1) == 3)
+                ledsOff();
             seqLED(RED, currentSequence.step % 8 + 1);
         }
         else

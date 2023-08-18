@@ -20,6 +20,7 @@
 #define EEPROM_KEYBOARD_BASIS 17
 #define EEPROM_SEND_CC 18
 #define EEPROM_LAST_SEQUENCE 19
+#define EEPROM_SYNC_TO_MIDI_CLK 20
 
 FLASHMEM int8_t getFirstRun()
 {
@@ -36,10 +37,21 @@ FLASHMEM int8_t getSendCC()
   return EEPROM.read(EEPROM_SEND_CC);
 }
 
+FLASHMEM int8_t getSyncToMIDIClk()
+{
+  return EEPROM.read(EEPROM_SYNC_TO_MIDI_CLK);
+}
+
 FLASHMEM void storeSendCCToEEPROM(byte cc)
 {
   EEPROM.update(EEPROM_SEND_CC, cc);
 }
+
+FLASHMEM void storeSyncToMIDIClkToEEPROM(byte cc)
+{
+  EEPROM.update(EEPROM_SYNC_TO_MIDI_CLK, cc);
+}
+
 
 FLASHMEM int8_t getLastBank()
 {
@@ -293,6 +305,7 @@ FLASHMEM void checkFirstRun()
     storeKeyboardScaleToEEPROM(0);
     storeKeyboardBasisToEEPROM(4);
     storeSendCCToEEPROM(0);
+    storeSyncToMIDIClkToEEPROM(0);
     storeFirstRun();
   }
 }

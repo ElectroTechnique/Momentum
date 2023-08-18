@@ -466,7 +466,7 @@ FLASHMEM void configureCCosclfoamt(EncoderMappingStruct *enc, State st = State::
     enc->ShowValue = true;
     enc->Value = currentPatch.PitchLFOAmt;
     enc->DefaultValue = 11;
-    enc->ValueStr = String(groupvec[activeGroupIndex]->getPitchLfoAmount());
+    enc->ValueStr = String(groupvec[activeGroupIndex]->getPitchLfoAmount(), 3);
     enc->Range = 127;
     enc->ParameterStr = ParameterStrMap[CCosclfoamt];
     enc->Push = true;
@@ -1126,7 +1126,7 @@ FLASHMEM void setEncodersState(State s)
     case State::OSCMODPAGE4:
         configureCCpitchenv(&encMap[ENC_TL], State::OSCMODPAGE4);
         configureCCosclforetrig(&encMap[ENC_TR], State::OSCMODPAGE4);
-        configureOff(&encMap[ENC_BL]);
+        configurepitchbendrange(&encMap[ENC_BL], State::AMPPAGE2);
         configurepitchmodwheeldepth(&encMap[ENC_BR], State::OSCMODPAGE4);
         break;
     case State::FILTERPAGE1:
@@ -1167,8 +1167,8 @@ FLASHMEM void setEncodersState(State s)
         break;
 
     case State::AMPPAGE2:
-        configurepitchbendrange(&encMap[ENC_TL], State::AMPPAGE2);
-        configureampenvshape(&encMap[ENC_TR], State::AMPPAGE2);
+        configureOff(&encMap[ENC_TR]);
+        configureampenvshape(&encMap[ENC_TL], State::AMPPAGE2);
         configureCCAmpVelocitySens(&encMap[ENC_BL], State::AMPPAGE2);
         configureCCmonomode(&encMap[ENC_BR], State::AMPPAGE2);
         break;
@@ -1718,7 +1718,7 @@ FLASHMEM void setEncodersState(State s)
         encMap[ENC_TL].active = true;
         encMap[ENC_TL].Parameter = SeqTempo;
         encMap[ENC_TL].ShowValue = true;
-        encMap[ENC_TL].ValueStr = String(currentSequence.bpm);
+        encMap[ENC_TL].ValueStr = String(currentSequence.bpm,1);
         encMap[ENC_TL].Value = currentSequence.bpm;
         encMap[ENC_TL].Range = 255;
         encMap[ENC_TL].DefaultValue = 120;
@@ -1753,7 +1753,7 @@ FLASHMEM void setEncodersState(State s)
         encMap[ENC_TL].active = true;
         encMap[ENC_TL].Parameter = SeqTempo;
         encMap[ENC_TL].ShowValue = false; // value is shown in a different position
-        encMap[ENC_TL].ValueStr = String(currentSequence.bpm);
+        encMap[ENC_TL].ValueStr = String(currentSequence.bpm,1);
         encMap[ENC_TL].Value = currentSequence.bpm;
         encMap[ENC_TL].Range = 255;
         encMap[ENC_TL].DefaultValue = 120;
@@ -2050,7 +2050,7 @@ FLASHMEM void setConfigurationForCC(uint8_t enc, uint8_t cc)
     case CCreverbfxmix:
         configureCCreverbfxmix(&encMap[enc], State::PERFORMANCEPAGE);
         break;
-        case CCvelocitySens:
+    case CCvelocitySens:
         configureCCAmpVelocitySens(&encMap[enc], State::PERFORMANCEPAGE);
         break;
     case CCmonomode:

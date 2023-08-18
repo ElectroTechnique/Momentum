@@ -11,6 +11,7 @@ extern String patchName;
 extern boolean encCW;
 extern boolean vuMeter;
 extern boolean sendCC;
+extern boolean syncToMIDIClk;
 extern int8_t tuningCents;
 extern float tuningCentsFrac;
 

@@ -13,6 +13,7 @@ boolean vuMeter = false;
 boolean sendCC = false;
 int8_t tuningCents = 0;
 float tuningCentsFrac = 1.0f;
+boolean syncToMIDIClk = false;
 
 float lfoSyncFreq = 1.0f;
 float lfoFilterTempoValue = 1.0f;

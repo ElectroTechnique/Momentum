@@ -13,11 +13,9 @@
 #define rst 4    // D0
 #define miso 255 // Unused
 
-// #define SPI_SPEED 100'000'000
-// #define SPICLOCK_READ 80'000'000
-
+// #define SPI_SPEED 100'000'000 Too fast for most displays
 #define SPI_SPEED 70'000'000
-#define SPICLOCK_READ 80'000'000
+ #define SPICLOCK_READ 80'000'000
 
 #define DISPLAYTIMEOUT 700
 
@@ -1620,7 +1618,6 @@ void displayThread()
   threads.delay(1500); // Give bootup page chance to display
   while (1)
   {
-    threads.delay(1);
     if ((millis() - timer) > DISPLAYTIMEOUT)
     {
       switch (state)

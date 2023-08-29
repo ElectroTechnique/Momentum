@@ -6,3 +6,5 @@ Electrotechnique Momentum Synthesizer
 Manual - User Manual including build guide
 
 Momentum - Folder with source code, set-up for PlatformIO
+
+SDCard - Folder with 'factory presets'. Copy the contents of the SDCard folder straight onto a formatted micro SD card

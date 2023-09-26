@@ -702,12 +702,18 @@ FLASHMEM void myControlChange(byte channel, byte control, byte value)
         break;
 
     case CCoscLevelA:
-        currentPatch.OscLevelA = value;
+        if (currentPatch.OscFX  == OSCFXXMOD)
+        {
+            value < 0.01f ? currentPatch.OscLevelA = 0.01f : currentPatch.OscLevelA = value; // Avoid problems with noise when level is zero
+        }
+        else
+        {
+            currentPatch.OscLevelA = value;
+        }
         groupvec[activeGroupIndex]->setOscLevelA(LINEAR[value]);
         switch (groupvec[activeGroupIndex]->getOscFX())
         {
         case OSCFXXMOD: // XMod
-                        // osc A sounds with increasing osc B mod
             if (!setEncValue(CCoscLevelA, value, String(groupvec[activeGroupIndex]->getOscLevelA())))
                 showCurrentParameterOverlay(F("X-Mod Osc 1"), F("by Osc 2: ") + String(1 - groupvec[activeGroupIndex]->getOscLevelB()));
             break;
@@ -720,12 +726,18 @@ FLASHMEM void myControlChange(byte channel, byte control, byte value)
         break;
 
     case CCoscLevelB:
-        currentPatch.OscLevelB = value;
+        if (currentPatch.OscFX == OSCFXXMOD)
+        {
+            value < 0.01f ? currentPatch.OscLevelB = 0.01f : currentPatch.OscLevelB = value; // Avoid problems with noise when level is zero
+        }
+        else
+        {
+            currentPatch.OscLevelB = value;
+        }
         groupvec[activeGroupIndex]->setOscLevelB(LINEAR[value]);
         switch (groupvec[activeGroupIndex]->getOscFX())
         {
         case OSCFXXMOD: // XMod
-                        // osc B sounds with increasing osc A mod
             if (!setEncValue(CCoscLevelB, value, String(groupvec[activeGroupIndex]->getOscLevelB())))
                 showCurrentParameterOverlay(F("X-Mod Osc 2"), F("by Osc 1: ") + String(1 - groupvec[activeGroupIndex]->getOscLevelA()));
             break;
@@ -1946,14 +1958,16 @@ FLASHMEM void encoderButtonCallback(unsigned enc_idx, int buttonState)
             nameCursor = bankNames[tempBankIndex].length() - 1;
             break;
         case cancel:
+            currentPatchIndex = previousPatchIndex;
+            currentBankIndex = previousBankIndex;
+            tempBankIndex = currentBankIndex;
+            loadPatchNamesFromBank(tempBankIndex);
             if (state != State::PATCHSAVING &&
-                state != State::PATCHLIST && state != State::DELETEPATCH &&
-                state != State::PERFORMANCERECALL && state != State::SEQUENCERECALL)
+                state != State::PATCHLIST &&
+                state != State::PERFORMANCERECALL &&
+                state != State::SEQUENCERECALL)
             {
-                currentPatchIndex = previousPatchIndex;
-                currentBankIndex = previousBankIndex;
                 loadBankNames(); // If in the middle of bank renaming
-                loadPatchNamesFromBank(currentBankIndex);
                 recallPatch(currentBankIndex, patches[currentPatchIndex].patchUID);
             }
             ledsOff();
@@ -2965,6 +2979,7 @@ FLASHMEM void buttonCallback(unsigned button_idx, int buttonStatus)
                 break;
             default:
                 currentPatchIndex = previousPatchIndex; // when coming from cancelled save on last Empty patch
+                currentBankIndex = previousBankIndex;
                 tempBankIndex = currentBankIndex;
                 loadPatchNamesFromBank(tempBankIndex);
                 state = State::PATCHLIST; // show patch list

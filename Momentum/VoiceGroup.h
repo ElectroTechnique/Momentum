@@ -461,26 +461,24 @@ public:
 
     void setOscLevelA(float value)
     {
-        oscLevelA = value;
-
+        if (oscFX == OSCFXXMOD)
+        {
+            value < 0.01f ? oscLevelA = 0.01f : oscLevelA = value;
+        }
+        else
+        {
+            oscLevelA = value;
+        }
         switch (oscFX)
         {
-        case 1:                                                       // XOR
+        case OSCFXXOR:                                                // XOR
             setWaveformMixerLevel(0, oscLevelA);                      // Osc 1 (A)
             setWaveformMixerLevel(3, (oscLevelA + oscLevelB) / 2.0f); // oscFX XOR level
             break;
-        case 2: // XMod
-            // osc A sounds with increasing osc B mod
-            if (oscLevelA > oscLevelB)
-            {
-                setOscModMixerA(3, 1 - oscLevelB); // Feed from Osc 2 (B)
-            }
-            else
-            {
-                setOscModMixerB(3, 1 - oscLevelA); // Feed from Osc 1 (A)
-            }
+        case OSCFXXMOD: // XMod
+                setOscModMixerB(3, 1 - oscLevelA);
             break;
-        case 0:                                  // None
+        case OSCFXOFF:                           // None
             setOscModMixerA(3, 0);               // Feed from Osc 2 (B)
             setWaveformMixerLevel(0, oscLevelA); // Osc 1 (A)
             setWaveformMixerLevel(3, 0);         // XOR
@@ -490,26 +488,25 @@ public:
 
     void setOscLevelB(float value)
     {
-        oscLevelB = value;
+        if (oscFX == OSCFXXMOD)
+        {
+            value < 0.01f ? oscLevelB = 0.01f : oscLevelB = value;
+        }
+        else
+        {
+            oscLevelB = value;
+        }
 
         switch (oscFX)
         {
-        case 1:                                                       // XOR
+        case OSCFXXOR:                                                // XOR
             setWaveformMixerLevel(1, oscLevelB);                      // Osc 2 (B)
             setWaveformMixerLevel(3, (oscLevelA + oscLevelB) / 2.0f); // oscFX XOR level
             break;
-        case 2: // XMod
-            // osc B sounds with increasing osc A mod
-            if (oscLevelA > oscLevelB)
-            {
+        case OSCFXXMOD: // XMod
                 setOscModMixerA(3, 1 - oscLevelB); // Feed from Osc 2 (B)
-            }
-            else
-            {
-                setOscModMixerB(3, 1 - oscLevelA); // Feed from Osc 1 (A)
-            }
             break;
-        case 0:                                  // None
+        case OSCFXOFF:                           // None
             setOscModMixerB(3, 0);               // Feed from Osc 1 (A)
             setWaveformMixerLevel(1, oscLevelB); // Osc 2 (B)
             setWaveformMixerLevel(3, 0);         // XOR
@@ -800,9 +797,9 @@ public:
     void setReverbEffectMix(float value)
     {
         reverbEffectMix = value;
-        //Mix is up to 50:50
+        // Mix is up to 50:50
         shared.reverbMixer.gain(0, 1.0f - (reverbEffectMix / 2.0f)); // Dry
-        shared.reverbMixer.gain(1, reverbEffectMix/2.0f); // Wet
+        shared.reverbMixer.gain(1, reverbEffectMix / 2.0f);          // Wet
     }
 
     inline void setMonophonic(uint8_t mode)

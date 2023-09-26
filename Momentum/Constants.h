@@ -144,7 +144,6 @@ extern const float LFOMAXRATE;
 #define OSCFXXOR 1
 #define OSCFXXMOD 2
 extern const float ONE;
-extern const float SGTL_MAXVOLUME;
 extern const float WAVEFORMLEVEL;
 extern const float VOICEMIXERLEVEL;
 extern const float MAX_VOL;
@@ -220,5 +219,8 @@ typedef enum State
   DELETECHARPATCH,       // Delete character
   CHOOSECHARBANK,        // Choose character
   DELETECHARBANK,        // Delete character
-  DELETEBANKMSG          // Delete bank message page
+  DELETEBANKMSG,         // Delete bank message page
+  FIRMWAREUPDATE,        // Update firmware page
+  FIRMWAREDELETE,        // Delete firmware
+  FIRMWAREUPDATE_ABORT   // Update firmware abort page
 } State;

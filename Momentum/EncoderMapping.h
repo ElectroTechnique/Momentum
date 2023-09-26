@@ -1590,7 +1590,7 @@ FLASHMEM void setEncodersState(State s)
         encMap[ENC_TL].active = true;
         encMap[ENC_TL].Parameter = SeqTempo;
         encMap[ENC_TL].ShowValue = true;
-        encMap[ENC_TL].ValueStr = String(currentSequence.bpm);
+        encMap[ENC_TL].ValueStr = String(currentSequence.bpm, 1);
         encMap[ENC_TL].Value = currentSequence.bpm;
         encMap[ENC_TL].Range = 255;
         encMap[ENC_TL].DefaultValue = 120;
@@ -1718,7 +1718,7 @@ FLASHMEM void setEncodersState(State s)
         encMap[ENC_TL].active = true;
         encMap[ENC_TL].Parameter = SeqTempo;
         encMap[ENC_TL].ShowValue = true;
-        encMap[ENC_TL].ValueStr = String(currentSequence.bpm,1);
+        encMap[ENC_TL].ValueStr = String(currentSequence.bpm, 1);
         encMap[ENC_TL].Value = currentSequence.bpm;
         encMap[ENC_TL].Range = 255;
         encMap[ENC_TL].DefaultValue = 120;
@@ -1753,7 +1753,7 @@ FLASHMEM void setEncodersState(State s)
         encMap[ENC_TL].active = true;
         encMap[ENC_TL].Parameter = SeqTempo;
         encMap[ENC_TL].ShowValue = false; // value is shown in a different position
-        encMap[ENC_TL].ValueStr = String(currentSequence.bpm,1);
+        encMap[ENC_TL].ValueStr = String(currentSequence.bpm, 1);
         encMap[ENC_TL].Value = currentSequence.bpm;
         encMap[ENC_TL].Range = 255;
         encMap[ENC_TL].DefaultValue = 120;

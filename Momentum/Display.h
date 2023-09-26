@@ -15,7 +15,7 @@
 
 // #define SPI_SPEED 100'000'000 Too fast for most displays
 #define SPI_SPEED 70'000'000
- #define SPICLOCK_READ 80'000'000
+#define SPICLOCK_READ 80'000'000
 
 #define DISPLAYTIMEOUT 700
 
@@ -66,6 +66,11 @@ size_t x_start = x_end - (x_step * ceil(global.maxVoices() / float(max_rows))) +
 size_t y_start = 57;
 size_t y_end = 77;
 size_t idx = 0;
+
+int16_t xt = 0;
+int16_t yt = 0;
+uint16_t wt = 0;
+uint16_t ht = 0;
 
 const uint32_t colourPriority[5] = {ILI9341_BLACK, ILI9341_BLUE, ILI9341_YELLOW, ILI9341_ORANGE, ILI9341_MAROON};
 const uint32_t encTriColour[4] = {ILI9341_LIGHTBLUE, ILI9341_YELLOW, ILI9341_WHITE, ILI9341_ORANGE};
@@ -554,6 +559,39 @@ FLASHMEM void renderEnv(float att, float dec, float sus, float rel)
   tft.setOrigin(0, 0);
 }
 
+void renderCharacterChooser()
+{
+  tft.setTextSize(2);
+  tft.setFont(&FreeMono9pt7b);
+  tft.setTextColor(ILI9341_MIDGREY);
+  int8_t row = 0;
+  int8_t start = 0;
+  for (int8_t i = 0; i < TOTALCHARS; i++)
+  {
+    i % 20 != 0 ? row : row++;
+    i % 20 != 0 ? start++ : start = 0;
+    if (charCursor == i)
+    {
+      tft.setTextColor(ILI9341_BLACK);
+      tft.getTextBounds('W', 19 + start * 15, 90 + row * 22, &xt, &yt, &wt, &ht);
+      tft.fillRect(xt - 2, yt - 2, wt - 8, ht - 3, ILI9341_WHITE);
+    }
+    else
+    {
+      tft.setTextColor(ILI9341_MIDGREY);
+    }
+
+    if (i == 26 || i == 53)
+    {
+      tft.drawString('_', 19 + start * 15, 90 + row * 22);
+    }
+    else
+    {
+      tft.drawString(CHARACTERS[i], 19 + start * 15, 90 + row * 22);
+    }
+  }
+}
+
 FLASHMEM void renderBankList()
 {
   // Bank list - 8 banks
@@ -561,16 +599,26 @@ FLASHMEM void renderBankList()
   tft.setTextColor(ILI9341_RED);
   for (size_t i = 0; i < 8; i++)
   {
-    tempBankIndex == i ? tft.setTextColor(ILI9341_ORANGE)
-                       : tft.setTextColor(ILI9341_RED);
+    String bankStr;
     if (bankNames[i].length() > 9)
     {
-      tft.drawString(bankNames[i].substring(0, 8) + String(".."), 0, 57 + (20 * i));
+      bankStr = bankNames[i].substring(0, 8) + String("..");
     }
     else
     {
-      tft.drawString(bankNames[i], 0, 57 + (20 * i));
+      bankStr = bankNames[i];
     }
+    if (tempBankIndex == i)
+    {
+      tft.setTextColor(ILI9341_BLACK);
+      tft.getTextBounds(bankStr, 2, 57 + (20 * i), &xt, &yt, &wt, &ht);
+      tft.fillRect(0, yt - 1, wt + 2, ht + 2, ILI9341_ORANGE);
+    }
+    else
+    {
+      tft.setTextColor(ILI9341_RED);
+    }
+    tft.drawString(bankStr, 2, 57 + (20 * i));
   }
 }
 
@@ -697,13 +745,23 @@ FLASHMEM void renderDeletePatchPage()
   tft.setFont(Arial_12_Bold);
   tft.setTextColor(ILI9341_LIGHTGREY);
   size_t offset = ceil(currentPatchIndex / 8);
+
   for (size_t i = 0; i < min(patches.size(), 8); i++)
   {
-    currentPatchIndex == i + (8 * offset) ? tft.setTextColor(ILI9341_YELLOW)
-                                          : tft.setTextColor(ILI9341_DARKYELLOW);
     if (i + 1 + (8 * offset) <= patches.size())
     {
-      tft.drawString(String(i + 1 + (8 * offset)) + " " + patches[i + (8 * offset)].patchName, 110, 57 + (20 * i));
+      String patchStr = String(i + 1 + (8 * offset)) + " " + patches[i + (8 * offset)].patchName;
+      if (currentPatchIndex == i + (8 * offset))
+      {
+        tft.setTextColor(ILI9341_BLACK);
+        tft.getTextBounds(patchStr, 110, 57 + (20 * i), &xt, &yt, &wt, &ht);
+        tft.fillRect(xt - 2, yt - 1, wt + 4, ht + 2, ILI9341_YELLOW);
+      }
+      else
+      {
+        tft.setTextColor(ILI9341_DARKYELLOW);
+      }
+      tft.drawString(patchStr, 110, 57 + (20 * i));
     }
   }
   renderCorners();
@@ -782,12 +840,20 @@ FLASHMEM void renderPatchSavingPage()
   size_t offset = ceil(currentPatchIndex / 8);
   for (size_t i = 0; i < min(patches.size(), 8); i++)
   {
-
-    currentPatchIndex == i + (8 * offset) ? tft.setTextColor(ILI9341_YELLOW)
-                                          : tft.setTextColor(ILI9341_DARKYELLOW);
     if (i + 1 + (8 * offset) <= patches.size())
     {
-      tft.drawString(String(i + 1 + (8 * offset)) + " " + patches[i + (8 * offset)].patchName, 110, 57 + (20 * i));
+      String patchStr = String(i + 1 + (8 * offset)) + " " + patches[i + (8 * offset)].patchName;
+      if (currentPatchIndex == i + (8 * offset))
+      {
+        tft.setTextColor(ILI9341_BLACK);
+        tft.getTextBounds(patchStr, 110, 57 + (20 * i), &xt, &yt, &wt, &ht);
+        tft.fillRect(xt - 2, yt - 1, wt + 4, ht + 2, ILI9341_YELLOW);
+      }
+      else
+      {
+        tft.setTextColor(ILI9341_DARKYELLOW);
+      }
+      tft.drawString(patchStr, 110, 57 + (20 * i));
     }
   }
   renderCorners();
@@ -825,25 +891,7 @@ FLASHMEM void renderPatchNamingPage()
     tft.drawFontChar(95); // Underscore to show start of empty patchname
   }
 
-  tft.setTextSize(2);
-  tft.setFont(&FreeMono9pt7b);
-  tft.setTextColor(ILI9341_MIDGREY);
-  int row = 0;
-  int start = 0;
-  for (int i = 0; i < TOTALCHARS; i++)
-  {
-    i % 20 != 0 ? row : row++;
-    i % 20 != 0 ? start++ : start = 0;
-    charCursor == i ? tft.setTextColor(ILI9341_WHITE) : tft.setTextColor(ILI9341_MIDGREY);
-    if (i == 26 || i == 53)
-    {
-      tft.drawString('_', 19 + start * 15, 90 + row * 22);
-    }
-    else
-    {
-      tft.drawString(CHARACTERS[i], 19 + start * 15, 90 + row * 22);
-    }
-  }
+  renderCharacterChooser();
   renderCorners();
   renderCharactersInd(currentPatchName.length(), PATCHNAMEMAXLEN);
 }
@@ -935,26 +983,7 @@ FLASHMEM void renderSequenceNamingPage()
   {
     tft.drawFontChar(95); // Underscore to show start of empty performance name
   }
-
-  tft.setTextSize(2);
-  tft.setFont(&FreeMono9pt7b);
-  tft.setTextColor(ILI9341_MIDGREY);
-  int row = 0;
-  int start = 0;
-  for (int i = 0; i < TOTALCHARS; i++)
-  {
-    i % 20 != 0 ? row : row++;
-    i % 20 != 0 ? start++ : start = 0;
-    charCursor == i ? tft.setTextColor(ILI9341_WHITE) : tft.setTextColor(ILI9341_MIDGREY);
-    if (i == 26 || i == 53)
-    {
-      tft.drawString('_', 19 + start * 15, 90 + row * 22);
-    }
-    else
-    {
-      tft.drawString(CHARACTERS[i], 19 + start * 15, 90 + row * 22);
-    }
-  }
+  renderCharacterChooser();
   renderCorners();
   renderCharactersInd(currentSequence.SequenceName.length(), SEQUENCENAMEMAXLEN);
 }
@@ -991,30 +1020,12 @@ FLASHMEM void renderPerformanceNamingPage()
     tft.drawFontChar(95); // Underscore to show start of empty performance name
   }
 
-  tft.setTextSize(2);
-  tft.setFont(&FreeMono9pt7b);
-  tft.setTextColor(ILI9341_MIDGREY);
-  int row = 0;
-  int start = 0;
-  for (int i = 0; i < TOTALCHARS; i++)
-  {
-    i % 20 != 0 ? row : row++;
-    i % 20 != 0 ? start++ : start = 0;
-    charCursor == i ? tft.setTextColor(ILI9341_WHITE) : tft.setTextColor(ILI9341_MIDGREY);
-    if (i == 26 || i == 53)
-    {
-      tft.drawString('_', 19 + start * 15, 90 + row * 22);
-    }
-    else
-    {
-      tft.drawString(CHARACTERS[i], 19 + start * 15, 90 + row * 22);
-    }
-  }
+  renderCharacterChooser();
   renderCorners();
   renderCharactersInd(currentPerformance.performanceName.length(), PERFORMANCENAMEMAXLEN);
 }
 
-FLASHMEM void renderRecallPage()
+FLASHMEM void renderPatchRecallPage()
 {
   tft.fillScreen(ILI9341_BLACK);
   tft.setFont(Arial_16);
@@ -1032,11 +1043,20 @@ FLASHMEM void renderRecallPage()
   size_t offset = ceil(currentPatchIndex / 8);
   for (size_t i = 0; i < min(patches.size(), 8); i++)
   {
-    currentPatchIndex == i + (8 * offset) ? tft.setTextColor(ILI9341_YELLOW)
-                                          : tft.setTextColor(ILI9341_DARKYELLOW);
     if (i + 1 + (8 * offset) <= patches.size())
     {
-      tft.drawString(String(i + 1 + (8 * offset)) + " " + patches[i + (8 * offset)].patchName, 110, 57 + (20 * i));
+      String patchStr = String(i + 1 + (8 * offset)) + " " + patches[i + (8 * offset)].patchName;
+      if (currentPatchIndex == i + (8 * offset))
+      {
+        tft.setTextColor(ILI9341_BLACK);
+        tft.getTextBounds(patchStr, 110, 57 + (20 * i), &xt, &yt, &wt, &ht);
+        tft.fillRect(xt - 2, yt - 1, wt + 4, ht + 2, ILI9341_YELLOW);
+      }
+      else
+      {
+        tft.setTextColor(ILI9341_DARKYELLOW);
+      }
+      tft.drawString(patchStr, 110, 57 + (20 * i));
     }
   }
   renderCorners();
@@ -1280,29 +1300,41 @@ FLASHMEM void renderSequenceRecallPage()
   tft.setFont(Arial_12);
   tft.setTextDatum(TL_DATUM);
   tft.setTextColor(ILI9341_RED);
+  String sequenceStr;
 
   size_t offset = ceil(currentSequenceIndex / 8);
+
   for (size_t i = 0; i < min(SEQUENCES_LIMIT, 8); i++)
   {
-    currentSequenceIndex == i + (8 * offset) ? tft.setTextColor(ILI9341_ORANGE)
-                                             : tft.setTextColor(ILI9341_RED);
     if (i + 1 + (8 * offset) <= SEQUENCES_LIMIT)
     {
-
       switch (i + 1 + (8 * offset))
       {
       case 0 ... 9:
-        tft.drawString("00" + String(i + 1 + (8 * offset)), 0, 56 + (20 * i));
+        sequenceStr = "00" + String(i + 1 + (8 * offset)) + " " + sequences[i + (8 * offset)];
         break;
       case 10 ... 99:
-        tft.drawString("0" + String(i + 1 + (8 * offset)), 0, 56 + (20 * i));
+        sequenceStr = "0" + String(i + 1 + (8 * offset)) + " " + sequences[i + (8 * offset)];
         break;
       default:
-        tft.drawString(String(i + 1 + (8 * offset)), 0, 56 + (20 * i));
+        sequenceStr = String(i + 1 + (8 * offset)) + " " + sequences[i + (8 * offset)];
       }
-      tft.drawString(sequences[i + (8 * offset)], 36, 56 + (20 * i));
+      if (currentSequenceIndex == i + (8 * offset))
+      {
+
+        tft.setTextColor(ILI9341_BLACK);
+        tft.getTextBounds(sequenceStr, 2, 56 + (20 * i), &xt, &yt, &wt, &ht);
+        tft.fillRect(0, yt - 1, wt + 4, ht + 4, ILI9341_ORANGE);
+      }
+      else
+      {
+        tft.setTextColor(ILI9341_RED);
+      }
+
+      tft.drawString(sequenceStr, 2, 56 + (20 * i));
     }
   }
+
   renderCorners();
 }
 
@@ -1488,27 +1520,36 @@ FLASHMEM void renderPerformanceRecallPage()
   tft.setFont(Arial_12);
   tft.setTextDatum(TL_DATUM);
   tft.setTextColor(ILI9341_RED);
-
+  String performanceStr;
   size_t offset = ceil(currentPerformanceIndex / 8);
   for (size_t i = 0; i < min(PERFORMANCES_LIMIT, 8); i++)
   {
-    currentPerformanceIndex == i + (8 * offset) ? tft.setTextColor(ILI9341_ORANGE)
-                                                : tft.setTextColor(ILI9341_RED);
     if (i + 1 + (8 * offset) <= PERFORMANCES_LIMIT)
     {
-
       switch (i + 1 + (8 * offset))
       {
       case 0 ... 9:
-        tft.drawString("00" + String(i + 1 + (8 * offset)), 0, 56 + (20 * i));
+        performanceStr = "00" + String(i + 1 + (8 * offset)) + " " + performances[i + (8 * offset)];
         break;
       case 10 ... 99:
-        tft.drawString("0" + String(i + 1 + (8 * offset)), 0, 56 + (20 * i));
+        performanceStr = "0" + String(i + 1 + (8 * offset)) + " " + performances[i + (8 * offset)];
         break;
       default:
-        tft.drawString(String(i + 1 + (8 * offset)), 0, 56 + (20 * i));
+        performanceStr = String(i + 1 + (8 * offset)) + " " + performances[i + (8 * offset)];
       }
-      tft.drawString(performances[i + (8 * offset)], 36, 56 + (20 * i));
+      if (currentPerformanceIndex == i + (8 * offset))
+      {
+
+        tft.setTextColor(ILI9341_BLACK);
+        tft.getTextBounds(performanceStr, 2, 56 + (20 * i), &xt, &yt, &wt, &ht);
+        tft.fillRect(0, yt - 1, wt + 4, ht + 4, ILI9341_ORANGE);
+      }
+      else
+      {
+        tft.setTextColor(ILI9341_RED);
+      }
+
+      tft.drawString(performanceStr, 2, 56 + (20 * i));
     }
   }
   renderCorners();
@@ -1581,6 +1622,36 @@ FLASHMEM void renderSettingsPage()
   renderCorners();
 }
 
+FLASHMEM void renderFirmwareUpdatePage()
+{
+  tft.fillScreen(ILI9341_BLACK);
+  tft.setFont(Arial_16);
+  tft.setTextColor(ILI9341_ORANGE);
+  tft.setTextDatum(TC_DATUM);
+  tft.drawString("Updating Firmware", 160, 150);
+}
+
+FLASHMEM void renderFirmwareDeletePage()
+{
+  tft.fillScreen(ILI9341_BLACK);
+  tft.setFont(Arial_16);
+  tft.setTextColor(ILI9341_RED);
+  tft.setTextDatum(TC_DATUM);
+  tft.drawString("Firmware Update Complete", 160, 110);
+  tft.setTextColor(ILI9341_ORANGE);
+  tft.drawString("Delete Firmware", 160, 130);
+  tft.drawString("File from SD Card", 160, 150);
+}
+
+FLASHMEM void renderFirmwareUpdateAbortPage()
+{
+  tft.fillScreen(ILI9341_BLACK);
+  tft.setFont(Arial_16);
+  tft.setTextColor(ILI9341_RED);
+  tft.setTextDatum(TC_DATUM);
+  tft.drawString("Aborting Firmware Update", 160, 110);
+}
+
 FLASHMEM void showCurrentParameterOverlay2(const char *param, float val, int pType)
 {
   if (!updateDisplay)
@@ -1626,7 +1697,7 @@ void displayThread()
         renderMainPage();
         break;
       case State::PATCHLIST:
-        renderRecallPage();
+        renderPatchRecallPage();
         break;
       case State::SAVE:
         renderSavePage();
@@ -1767,6 +1838,14 @@ void displayThread()
       case State::DELETECHARSEQUENCE:
         renderSequenceNamingPage();
         break;
+      case State::FIRMWAREUPDATE:
+        renderFirmwareUpdatePage();
+        break;
+      case State::FIRMWAREUPDATE_ABORT:
+        renderFirmwareUpdateAbortPage();
+        break;
+      case State::FIRMWAREDELETE:
+        renderFirmwareDeletePage();
       default:
         break;
       }

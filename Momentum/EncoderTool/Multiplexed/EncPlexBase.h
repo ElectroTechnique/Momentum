@@ -26,7 +26,7 @@ namespace EncoderTool
         allBtnCallback_t btnCallback = nullptr;
 
         // Encoder acceleration in millis
-        uint32_t ACC_TIME = 20;
+        uint32_t ACC_TIME = 15;
         uint32_t ACC_TIME2 = 7;
         uint32_t last[8] = {0};
     };

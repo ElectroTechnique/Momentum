@@ -94,13 +94,13 @@ namespace EncoderTool
             if (i > 3)
             {
                 int delta = encoders[i].update(digitalReadFast(A), digitalReadFast(B), digitalReadFast(Btn));
-                if (callback != nullptr && encoders[i].buttonChanged())
+                if (encoders[i].buttonChanged())
                 {
                     if (encoders[i].getButton() == LOW)
                     {
                         btnStarttime[i] = millis();
                         w = 0;
-                        encRotationBlocked = true;//Prevent rotation of encoder when pressing button
+                        encRotationBlocked = true; // Prevent rotation of encoder when pressing button
                     }
                     else
                     {
@@ -112,23 +112,24 @@ namespace EncoderTool
                     }
                 }
 
-                else if (delta != 0 && callback != nullptr && !encRotationBlocked)
+                else if (delta != 0 && !encRotationBlocked)
                 {
-                    callback(i, encoders[i].getValue(), delta);
                     if ((now - last[i]) < ACC_TIME) // Accelerate 1
                     {
+                        callback(i, encoders[i].getValue(), delta * 3);
+                    }
+                    else if ((now - last[i]) < ACC_TIME2) // Accelerate 2
+                    {
+                        callback(i, encoders[i].getValue(), delta * 10);
+                    }
+                    else
+                    {
                         callback(i, encoders[i].getValue(), delta);
-                        if ((now - last[i]) < ACC_TIME2) // Accelerate 2
-                        {
-                            callback(i, encoders[i].getValue(), delta);
-                            callback(i, encoders[i].getValue(), delta);
-                            callback(i, encoders[i].getValue(), delta);
-                        }
                     }
                     last[i] = now;
                 }
 
-                if (btnCallback != nullptr && encoders[i].getButton() == LOW && (millis() - btnStarttime[i]) > WINDOWTIME[w])
+                if (encoders[i].getButton() == LOW && (millis() - btnStarttime[i]) > WINDOWTIME[w])
                 {
                     buttonHeld[i] = true;
                     btnStarttime[i] = millis();

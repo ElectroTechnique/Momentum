@@ -42,7 +42,7 @@
     Github/PJRC forum member luni64 - EncoderTool library modified https://github.com/luni64/EncoderTool
     PJRC forum member Mark Tillotson - Special thanks for band-limiting the waveforms in the Audio Library
 
-    Any problems with code design and functionality is my own.
+    Any problems with code design and functionality are my own.
 
   Additional libraries:
     Janila Array, Adafruit_GFX, ArduinoJSON, TeensyTimerTool, TeensyThreads, RokkitHash (available in Arduino libraries manager)

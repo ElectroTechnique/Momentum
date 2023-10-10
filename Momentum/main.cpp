@@ -702,7 +702,7 @@ FLASHMEM void myControlChange(byte channel, byte control, byte value)
         break;
 
     case CCoscLevelA:
-        if (currentPatch.OscFX  == OSCFXXMOD)
+        if (currentPatch.OscFX == OSCFXXMOD)
         {
             value < 0.01f ? currentPatch.OscLevelA = 0.01f : currentPatch.OscLevelA = value; // Avoid problems with noise when level is zero
         }
@@ -1275,7 +1275,7 @@ FLASHMEM void sequencerStop()
     groupvec[activeGroupIndex]->allNotesOff();
     currentSequence.running = false;
     if (state == State::SEQUENCEEDIT || state == State::SEQUENCEPAGE || state == State::SEQUENCERECALL)
-        singleLED(GREEN, 3);
+        singleLED(ledColour::GREEN, 3);
     // currentSequence.recording = false;
     currentSequence.note_in = 0;
 }
@@ -1533,25 +1533,40 @@ FLASHMEM int8_t encScaling(EncoderMappingStruct *enc, int8_t delta)
     switch (enc->Range)
     {
     case 64 ... 127:
-        countLimit = 4;
+        countLimit = 3;
         break;
     case 32 ... 63:
-        countLimit = 5;
+        countLimit = 4;
         break;
     case 16 ... 31:
         countLimit = 6;
         break;
     case 8 ... 15:
-        countLimit = 8;
+        countLimit = 9;
+        // Less acceleration
+        if (delta > 3)
+            delta = 2;
+        if (delta < -3)
+            delta = -2;
         break;
     case 4 ... 7:
         countLimit = 12;
+        // Less acceleration
+        if (delta > 1)
+            delta = 1;
+        if (delta < -1)
+            delta = -1;
         break;
     case 1 ... 3:
-        countLimit = 25;
+        countLimit = 15;
+        // Less acceleration
+        if (delta > 1)
+            delta = 1;
+        if (delta < -1)
+            delta = -1;
         break;
-    default:
-        countLimit = 3;
+    default: // over 127
+        countLimit = 2;
         break;
     }
 
@@ -2319,7 +2334,7 @@ FLASHMEM void buttonCallback(unsigned button_idx, int buttonStatus)
                 ledsOff();
             }
             if (state == State::SEQUENCEEDIT || state == State::SEQUENCEPAGE || state == State::SEQUENCERECALL)
-                singleLED(GREEN, 3);
+                singleLED(ledColour::GREEN, 3);
         }
         else if (!currentSequence.running && (state == State::SEQUENCEEDIT || state == State::SEQUENCEPAGE))
         {
@@ -2361,19 +2376,19 @@ FLASHMEM void buttonCallback(unsigned button_idx, int buttonStatus)
             {
             case State::OSCPAGE1:
                 state = State::OSCPAGE2;
-                singleLED(RED, 1);
+                singleLED(ledColour::RED, 1);
                 break;
             case State::OSCPAGE2:
                 state = State::OSCPAGE3;
-                singleLED(RED, 1);
+                singleLED(ledColour::RED, 1);
                 break;
             case State::OSCPAGE3:
                 state = State::OSCPAGE4;
-                singleLED(RED, 1);
+                singleLED(ledColour::RED, 1);
                 break;
             case State::OSCPAGE4:
                 state = State::OSCPAGE1;
-                singleLED(RED, 1);
+                singleLED(ledColour::RED, 1);
                 break;
             case State::PERFORMANCEPAGE:
                 state = State::PERFORMANCERECALL;
@@ -2418,7 +2433,7 @@ FLASHMEM void buttonCallback(unsigned button_idx, int buttonStatus)
                 break;
             default:
                 state = State::OSCPAGE1; // show osc parameters
-                singleLED(RED, 1);
+                singleLED(ledColour::RED, 1);
                 break;
             }
         }
@@ -2433,7 +2448,7 @@ FLASHMEM void buttonCallback(unsigned button_idx, int buttonStatus)
                 state = State::PERFORMANCERECALL;
                 // Get performances from SD card
                 loadPerformanceNames();
-                singleLED(GREEN, 1);
+                singleLED(ledColour::GREEN, 1);
             }
             else
             {
@@ -2465,19 +2480,19 @@ FLASHMEM void buttonCallback(unsigned button_idx, int buttonStatus)
             {
             case State::OSCMODPAGE1:
                 state = State::OSCMODPAGE2;
-                singleLED(RED, 2);
+                singleLED(ledColour::RED, 2);
                 break;
             case State::OSCMODPAGE2:
                 state = State::OSCMODPAGE3;
-                singleLED(RED, 2);
+                singleLED(ledColour::RED, 2);
                 break;
             case State::OSCMODPAGE3:
                 state = State::OSCMODPAGE4;
-                singleLED(RED, 2);
+                singleLED(ledColour::RED, 2);
                 break;
             case State::OSCMODPAGE4:
                 state = State::OSCMODPAGE1;
-                singleLED(RED, 2);
+                singleLED(ledColour::RED, 2);
                 break;
             case State::ARPPAGE1:
                 state = State::ARPPAGE2;
@@ -2493,7 +2508,7 @@ FLASHMEM void buttonCallback(unsigned button_idx, int buttonStatus)
                 break;
             default:
                 state = State::OSCMODPAGE1; // show osc mod parameters
-                singleLED(RED, 2);
+                singleLED(ledColour::RED, 2);
                 break;
             }
         }
@@ -2516,7 +2531,7 @@ FLASHMEM void buttonCallback(unsigned button_idx, int buttonStatus)
                 }
                 state = State::ARPPAGE1;
                 ledsOff(); // Led 1 stays on after sequencerStart()
-                singleLED(GREEN, 2);
+                singleLED(ledColour::GREEN, 2);
             }
             else if (state == State::ARPPAGE1 || state == State::ARPPAGE2)
             {
@@ -2558,11 +2573,11 @@ FLASHMEM void buttonCallback(unsigned button_idx, int buttonStatus)
             {
             case State::FILTERPAGE1:
                 state = State::FILTERPAGE2;
-                singleLED(RED, 3);
+                singleLED(ledColour::RED, 3);
                 break;
             case State::FILTERPAGE2:
                 state = State::FILTERPAGE1;
-                singleLED(RED, 3);
+                singleLED(ledColour::RED, 3);
                 break;
             case State::SEQUENCEPAGE:
             case State::SEQUENCERECALL:
@@ -2588,7 +2603,7 @@ FLASHMEM void buttonCallback(unsigned button_idx, int buttonStatus)
                 break;
             default:
                 state = State::FILTERPAGE1; // show filter parameters
-                singleLED(RED, 3);
+                singleLED(ledColour::RED, 3);
                 break;
             }
         }
@@ -2607,17 +2622,17 @@ FLASHMEM void buttonCallback(unsigned button_idx, int buttonStatus)
                 state = State::SEQUENCERECALL;
                 loadSequenceNames();
                 currentSequence.recording = true;
-                singleLED(GREEN, 3);
+                singleLED(ledColour::GREEN, 3);
             }
             else if (currentSequence.running && state != State::SEQUENCEPAGE)
             {
                 state = State::SEQUENCEPAGE;
-                singleLED(GREEN, 3);
+                singleLED(ledColour::GREEN, 3);
             }
             else if (currentSequence.running && state == State::SEQUENCEPAGE)
             {
                 state = State::SEQUENCEEDIT;
-                singleLED(GREEN, 3);
+                singleLED(ledColour::GREEN, 3);
             }
             else if (state == State::SEQUENCEEDIT)
             {
@@ -2655,15 +2670,15 @@ FLASHMEM void buttonCallback(unsigned button_idx, int buttonStatus)
             {
             case State::FILTERMODPAGE1:
                 state = State::FILTERMODPAGE2;
-                singleLED(RED, 4);
+                singleLED(ledColour::RED, 4);
                 break;
             case State::FILTERMODPAGE2:
                 state = State::FILTERMODPAGE3;
-                singleLED(RED, 4);
+                singleLED(ledColour::RED, 4);
                 break;
             case State::FILTERMODPAGE3:
                 state = State::FILTERMODPAGE1;
-                singleLED(RED, 4);
+                singleLED(ledColour::RED, 4);
                 break;
             case State::MIDIPAGE:
                 state = State::MAIN;
@@ -2675,7 +2690,7 @@ FLASHMEM void buttonCallback(unsigned button_idx, int buttonStatus)
                 break;
             default:
                 state = State::FILTERMODPAGE1; // show filter mod parameters
-                singleLED(RED, 4);
+                singleLED(ledColour::RED, 4);
                 break;
             }
         }
@@ -2686,7 +2701,7 @@ FLASHMEM void buttonCallback(unsigned button_idx, int buttonStatus)
             if (state != State::MIDIPAGE && state != State::FILTERMODPAGE1 && state != State::FILTERMODPAGE2 && state != State::FILTERMODPAGE3)
             {
                 state = State::MIDIPAGE;
-                singleLED(GREEN, 4);
+                singleLED(ledColour::GREEN, 4);
             }
             else
             {
@@ -2717,15 +2732,15 @@ FLASHMEM void buttonCallback(unsigned button_idx, int buttonStatus)
             {
             case State::AMPPAGE1:
                 state = State::AMPPAGE2; // show amplifier parameters
-                singleLED(RED, 5);
+                singleLED(ledColour::RED, 5);
                 break;
             case State::AMPPAGE2:
                 state = State::AMPPAGE3; // show amplifier parameters
-                singleLED(RED, 5);
+                singleLED(ledColour::RED, 5);
                 break;
             case State::AMPPAGE3:
                 state = State::AMPPAGE1; // show amplifier parameters
-                singleLED(RED, 5);
+                singleLED(ledColour::RED, 5);
                 break;
             case State::SETTINGS:
                 state = State::MAIN;
@@ -2737,7 +2752,7 @@ FLASHMEM void buttonCallback(unsigned button_idx, int buttonStatus)
                 break;
             default:
                 state = State::AMPPAGE1; // show amplifier parameters
-                singleLED(RED, 5);
+                singleLED(ledColour::RED, 5);
                 break;
             }
         }
@@ -2759,7 +2774,7 @@ FLASHMEM void buttonCallback(unsigned button_idx, int buttonStatus)
                     state = SETTINGS;
                     break;
                 }
-                singleLED(GREEN, 5);
+                singleLED(ledColour::GREEN, 5);
             }
             else
             {
@@ -2800,7 +2815,7 @@ FLASHMEM void buttonCallback(unsigned button_idx, int buttonStatus)
                 break;
             }
 
-            singleLED(RED, 6);
+            singleLED(ledColour::RED, 6);
         }
         if (buttonStatus == HELD)
         {
@@ -2867,7 +2882,7 @@ FLASHMEM void buttonCallback(unsigned button_idx, int buttonStatus)
             // SAVE
             else if (cardStatus && state != State::PATCHSAVING && state != State::CHOOSECHARPATCH && state != State::DELETECHARPATCH)
             {
-                singleLED(RED, 7);
+                singleLED(ledColour::RED, 7);
                 loadBankNames(); // If in the middle of bank renaming and cancelling
                 tempBankIndex = currentBankIndex;
                 if (patches.size() < PATCHES_LIMIT)
@@ -2926,7 +2941,7 @@ FLASHMEM void buttonCallback(unsigned button_idx, int buttonStatus)
                 state = State::DELETEPATCH;
                 loadBankNames(); // If in the middle of bank renaming and cancelling
                 tempBankIndex = currentBankIndex;
-                singleLED(GREEN, 7);
+                singleLED(ledColour::GREEN, 7);
             }
             else
             {
@@ -2961,7 +2976,7 @@ FLASHMEM void buttonCallback(unsigned button_idx, int buttonStatus)
                 ledsOff();
                 return;
             }
-            singleLED(RED, 8);
+            singleLED(ledColour::RED, 8);
             switch (state)
             {
             case State::PATCHLIST:
@@ -2975,7 +2990,7 @@ FLASHMEM void buttonCallback(unsigned button_idx, int buttonStatus)
                 }
                 recallPatch(currentBankIndex, patches[currentPatchIndex].patchUID);
                 state = State::MAIN;
-                singleLED(OFF, 8);
+                singleLED(ledColour::OFF, 8);
                 break;
             default:
                 currentPatchIndex = previousPatchIndex; // when coming from cancelled save on last Empty patch
@@ -3044,7 +3059,7 @@ FLASHMEM void sdCardDetect()
         if (!digitalReadFast(pinCD))
         {
             cardStatus = SD.begin(BUILTIN_SDCARD); // Reinitialise when card inserted
-            // ++++ For older sd cards
+            // ++++ For older sd cards, retry three times
             if (!cardStatus)
                 cardStatus = SD.begin(BUILTIN_SDCARD);
             if (!cardStatus)
@@ -3117,13 +3132,7 @@ FLASHMEM void sequencerLEDs()
 
 FLASHMEM void CPUMonitor()
 {
-    Serial.print(F(" CPU:"));
-    Serial.print(AudioProcessorUsage());
-    Serial.print(F(" ("));
-    Serial.print(AudioProcessorUsageMax());
-    Serial.print(F(")"));
-    Serial.print(F("  MEM:"));
-    Serial.println(AudioMemoryUsageMax());
+    Serial.printf(" CPU:%f (%f)  MEM:%f\n", AudioProcessorUsage(), AudioProcessorUsageMax(), AudioMemoryUsageMax());
 }
 
 void loop()

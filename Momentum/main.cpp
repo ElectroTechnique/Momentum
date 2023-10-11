@@ -79,6 +79,7 @@ boolean keyboardActive = false;
 
 #include "PatchMgr.h"
 #include "HWControls.h"
+include "Firmware.h"
 #include "EepromMgr.h"
 #include "Detune.h"
 #include "Keyboard.h"
@@ -297,6 +298,7 @@ FLASHMEM void setup()
     setupDisplay();
     setEncodersState(state);
     setupHardware(encoderCallback, encoderButtonCallback, buttonCallback);
+    firmwareUpdate();
 }
 
 // Specifically for Sequencer, bypassing recording note in and arp

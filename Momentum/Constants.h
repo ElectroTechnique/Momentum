@@ -103,6 +103,7 @@ const static char *MIDIThruStr[] = {"Off", "Full", "Same Ch.", "Diff. Ch."};
 const static char *CHARACTERS[TOTALCHARS] = {"A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", " ", "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", " ", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "-", "!", "?", "+", ":"};
 
 extern const char *VERSION;
+extern const char *HEXFILENAME;
 extern const float PROGMEM FILTERFREQS256[256];
 extern const float POWER[128];
 extern const float NOTEFREQS[128];

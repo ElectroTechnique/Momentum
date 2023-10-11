@@ -79,7 +79,7 @@ boolean keyboardActive = false;
 
 #include "PatchMgr.h"
 #include "HWControls.h"
-include "Firmware.h"
+#include "Firmware.h"
 #include "EepromMgr.h"
 #include "Detune.h"
 #include "Keyboard.h"

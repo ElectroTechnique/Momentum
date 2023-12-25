@@ -62,6 +62,7 @@
 #include "effect_envelope.h" //Local version
 #include "effect_combine.h"  //Local version
 #include "filter_variable.h" //Local version
+#include "filter_dcblock.h"  //Local version
 #include "mixer.h"
 #include "output_i2s.h"
 #include "synth_waveform.h" //Local version

@@ -44,7 +44,7 @@ struct PatchShared
 
     AudioEffectEnsemble ensemble;
     AudioEffectFreeverb reverb;
-    AudioFilterStateVariableTS dcOffsetFilter;
+    AudioFilterDCBlock dcOffsetFilter;
     AudioMixer4 volumeMixer;
     AudioMixer4 ensembleEffectMixerL;
     AudioMixer4 ensembleEffectMixerR;
@@ -57,7 +57,7 @@ struct PatchShared
         {voiceMixer[1], 0, voiceMixerM, 1},
         {voiceMixer[2], 0, voiceMixerM, 2},
         {voiceMixerM, 0, dcOffsetFilter, 0},
-        {dcOffsetFilter, 2, volumeMixer, 0},
+        {dcOffsetFilter, 0, volumeMixer, 0},
         {volumeMixer, 0, reverb, 0},
         {volumeMixer, 0, reverbMixer, 0},
         {reverb, 0, reverbMixer, 1},
@@ -187,7 +187,7 @@ public:
         pwaConnection = new AudioConnection(shared.pwa, 0, pwMixer_a, 1);
         pwbConnection = new AudioConnection(shared.pwb, 0, pwMixer_b, 1);
         noiseMixerConnection = new AudioConnection(shared.noiseMixer, 0, waveformMixer_, 2);
-        shared.reverb.damping(0.5f);//TODO Replace with control
+        shared.reverb.damping(0.5f); // TODO Replace with control
         uint8_t voiceMixerIndex = 0;
         uint8_t indexMod4 = index % 4;
         if (index != 0)
@@ -263,8 +263,7 @@ public:
             SharedAudio[i].volumeMixer.gain(3, 0);
 
             // This removes dc offset (mostly from unison pulse waves) before the effects
-            SharedAudio[i].dcOffsetFilter.octaveControl(1.0f);
-            SharedAudio[i].dcOffsetFilter.frequency(12.0f); // Lower values will give clicks on note on/off
+            SharedAudio[i].dcOffsetFilter.frequency(7.0f);
         }
 
         constant1Dc.amplitude(1.0f);

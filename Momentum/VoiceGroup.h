@@ -476,7 +476,7 @@ public:
             setWaveformMixerLevel(3, (oscLevelA + oscLevelB) / 2.0f); // oscFX XOR level
             break;
         case OSCFXXMOD: // XMod
-                setOscModMixerB(3, 1 - oscLevelA);
+            setOscModMixerB(3, 1 - oscLevelA);
             break;
         case OSCFXOFF:                           // None
             setOscModMixerA(3, 0);               // Feed from Osc 2 (B)
@@ -503,8 +503,8 @@ public:
             setWaveformMixerLevel(1, oscLevelB);                      // Osc 2 (B)
             setWaveformMixerLevel(3, (oscLevelA + oscLevelB) / 2.0f); // oscFX XOR level
             break;
-        case OSCFXXMOD: // XMod
-                setOscModMixerA(3, 1 - oscLevelB); // Feed from Osc 2 (B)
+        case OSCFXXMOD:                        // XMod
+            setOscModMixerA(3, 1 - oscLevelB); // Feed from Osc 2 (B)
             break;
         case OSCFXOFF:                           // None
             setOscModMixerB(3, 0);               // Feed from Osc 1 (A)
@@ -1091,6 +1091,16 @@ private:
     Voice *getVoice()
     {
         Voice *result = nullptr;
+
+        // Find free voice
+        for (uint8_t i = 0; i < voices.size(); i++)
+        {
+            if (!voices[i]->on())
+            {
+                result = voices[i];
+                break;
+            }
+        }
 
         for (uint8_t i = 0; i < voices.size(); i++)
         {

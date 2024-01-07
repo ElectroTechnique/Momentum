@@ -12,3 +12,4 @@ SDCard - Folder with 'factory presets'. Copy the contents of the SDCard folder s
 # Flashing firmware
 Get the firmware hex file from [RELEASES](https://github.com/ElectroTechnique/Momentum/releases) on the right
 See the User Manual sections on Flashing Firmware - use either TyUploader (recommended) or Teensy Loader.
+TyUploader is in [TyTools Releases](https://github.com/Koromix/tytools/releases)

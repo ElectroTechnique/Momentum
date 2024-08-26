@@ -53,8 +53,8 @@
 // This allows different eponential curvatures (positive and negative) with the endpoints constrained
 // to start at 0 and end at 1 (normalized) in the specified time interval.
 // and ynew = k1*yold+k2 (normalized).
-// The funtion for the k2 term is a continous funtion of curveFactor through zero, but it is an indeterminate form at zero that
-// This causes problems with finite precision math when approaching zero from either side (like the sinc funtion sin(x)/x but worse).
+// The function for the k2 term is a continuous function of curveFactor through zero, but it is an indeterminate form at zero that
+// causes problems with finite precision math when approaching zero from either side (like the sinc function sin(x)/x but worse).
 // It can be expressed as a continous function using a ratio of power series but it is simpler to restrict the values to integers
 // between -8 and 8 treating zero as a special case (linear ramp).
 //
@@ -152,9 +152,9 @@ public:
   FLASHMEM void close()
   {
     __disable_irq();
-    mult_hires = 0; // Zero gain
-    inc_hires = 0;  // Same as STATE_DELAY
-    state=STATE_IDLE; // Added, VRP. Shouldn't this be in the idle state when closed?
+    mult_hires = 0;     // Zero gain
+    inc_hires = 0;      // Same as STATE_DELAY
+    state = STATE_IDLE; // Added, VRP. Shouldn't this be in the idle state when closed?
     ysum = 0;
     __enable_irq();
   }
@@ -162,6 +162,7 @@ public:
   bool isSustain();
   using AudioStream::release;
   virtual void update(void);
+  void setEnvType(uint8_t type);
 
 private:
   uint16_t milliseconds2count(float milliseconds)
@@ -181,7 +182,7 @@ private:
     // decay_target=(1.0L-k)*sustain_target;
   }
 
-  void updateExpAttack() // This is needed in case env type changes.
+  FLASHMEM void updateExpAttack() // This is needed in case env type changes.
   {
     double k1, k2;
     if (env_type > 8 || env_type < -8)
@@ -248,7 +249,7 @@ private:
     STATE_IDLE_NEXT, // Not used for original linear envelope.
   };
   // Exponential ADSR variables
-  int8_t env_type;    // Attack curve type. Limit to -8 to 8 integers for exp curve, -128 for original linear.
+  int8_t env_type;    // Attack curve type. Limit to -8 to 8 integers for exp curve, -128 for linear.
   uint32_t exp_count; // same function as count in linear generator but for single samples, not groups of 8.
   int32_t ysum;
   int32_t attack_k;
